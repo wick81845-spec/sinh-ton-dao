@@ -1,4 +1,6 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import { useAuth } from '../providers/useAuth'
 import { GameLayout } from '../layouts/GameLayout'
 import { HomePage } from '../../modules/core/pages/HomePage'
 import { ModulePage } from '../../modules/core/pages/ModulePage'
@@ -20,12 +22,27 @@ import { MarketPage } from '../../modules/economy/pages/MarketPage'
 import { UpdatesPage } from '../../modules/updates/pages/UpdatesPage'
 import { WorldPresenceProvider } from '../providers/WorldPresenceProvider'
 
+function RequireAuthentication({ children }: { children: ReactNode }) {
+  const { configured, isLoading, session } = useAuth()
+  const location = useLocation()
+
+  if (isLoading) return <p className="page-state">Đang kiểm tra phiên đăng nhập…</p>
+  if (configured && !session) {
+    return <Navigate to="/account" replace state={{ from: location }} />
+  }
+  return children
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="account" element={<AccountPage />} />
-        <Route element={<WorldPresenceProvider><GameLayout /></WorldPresenceProvider>}>
+        <Route element={(
+          <RequireAuthentication>
+            <WorldPresenceProvider><GameLayout /></WorldPresenceProvider>
+          </RequireAuthentication>
+        )}>
           <Route index element={<GatheringPage />} />
           <Route path="overview" element={<HomePage />} />
           <Route path="character" element={<CharacterPage />} />

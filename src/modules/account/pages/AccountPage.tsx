@@ -1,13 +1,28 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/providers/useAuth'
 import { useThemePreference } from '../../../app/providers/useThemePreference'
 import { isValidUsername } from '../../../services/auth/usernameAuth'
 
+function getSafeReturnPath(state: unknown): string {
+  if (typeof state !== 'object' || state === null || !('from' in state)) return '/'
+  const from = state.from
+  if (typeof from !== 'object' || from === null || !('pathname' in from)) return '/'
+  const pathname = from.pathname
+  if (typeof pathname !== 'string' || !pathname.startsWith('/') || pathname.startsWith('//') || pathname === '/account') {
+    return '/'
+  }
+  const search = 'search' in from && typeof from.search === 'string' ? from.search : ''
+  const hash = 'hash' in from && typeof from.hash === 'string' ? from.hash : ''
+  return `${pathname}${search}${hash}`
+}
+
 export function AccountPage() {
   const { configured, isLoading, session, error: authError, signIn, signUp } = useAuth()
   const { theme, themeReady, toggleTheme } = useThemePreference()
+  const location = useLocation()
   const navigate = useNavigate()
+  const returnTo = getSafeReturnPath(location.state)
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
@@ -20,8 +35,8 @@ export function AccountPage() {
   const isDesignPreview = new URLSearchParams(window.location.search).get('design-preview') === '1'
 
   useEffect(() => {
-    if (session && !isLoading && !isDesignPreview) navigate('/', { replace: true })
-  }, [isDesignPreview, isLoading, navigate, session])
+    if (session && !isLoading && !isDesignPreview) navigate(returnTo, { replace: true })
+  }, [isDesignPreview, isLoading, navigate, returnTo, session])
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -44,9 +59,10 @@ export function AccountPage() {
       : await signUp(username.trim(), password, displayName.trim(), islandName.trim(), appearance)
 
     if (result.ok && mode === 'sign-in') {
-      navigate('/', { replace: true })
+      navigate(returnTo, { replace: true })
       return
     }
+
     setFeedback(result.message)
     setIsSubmitting(false)
   }
