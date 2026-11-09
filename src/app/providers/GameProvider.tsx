@@ -21,7 +21,7 @@ import {
   resolveRandomWorldEvent as resolveRandomEvent,
 } from '../../modules/world/services/randomWorldEventService'
 import { advanceVoyages, startVoyage } from '../../modules/voyage/services/voyageService'
-import { tutorialSteps } from '../../modules/onboarding/tutorialSteps'
+import { shouldShowTutorialIntro, tutorialSteps } from '../../modules/onboarding/tutorialSteps'
 import type { GameSnapshot, ItemId } from '../../shared/types/game'
 import { gameClock } from '../../services/clock/gameClock'
 import { gameEventBus } from '../../services/events/gameEvents'
@@ -599,7 +599,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         randomWorldEventScheduleVersion: 2,
         randomWorldEventSeed: restoredBase.randomWorldEventSeed
           ?? (playerId ? `account:${playerId}` : `local:${restoredBase.character.id}`),
-        tutorialIntroCompleted: restoredBase.tutorialIntroCompleted ?? Boolean(save),
+        tutorialIntroCompleted: !shouldShowTutorialIntro(restoredBase, Boolean(save)),
         isResting: false,
         weather: restoredWeatherState,
         character: {

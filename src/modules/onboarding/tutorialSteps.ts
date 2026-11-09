@@ -83,10 +83,11 @@ export function inferTutorialProgress(state: GameSnapshot): string[] {
   if (hasExplored) return tutorialSteps.map((step) => step.id)
 
   const completed = new Set<string>()
-  if (hasAxe || hasCampfire || hasShelter || researchedTools || hasCompletedWorkbench || state.character.level > 1) {
+  const hasGameplayProgress = state.character.level > 1 || state.character.experience > 0
+  if (hasAxe || hasCampfire || hasShelter || researchedTools || hasCompletedWorkbench || hasGameplayProgress) {
     completed.add('gather-resources')
   }
-  if (hasAxe || hasCampfire || hasShelter || researchedTools || hasCompletedWorkbench || state.character.level > 1) {
+  if (hasAxe || hasCampfire || hasShelter || researchedTools || hasCompletedWorkbench || hasGameplayProgress) {
     completed.add('craft-axe')
   }
   if (hasCampfire || hasShelter) completed.add('build-campfire')
@@ -96,4 +97,11 @@ export function inferTutorialProgress(state: GameSnapshot): string[] {
   if (hasCompletedWorkbench) completed.add('build-workbench')
 
   return tutorialSteps.filter((step) => completed.has(step.id)).map((step) => step.id)
+}
+
+export function shouldShowTutorialIntro(state: GameSnapshot, hasExistingSave: boolean): boolean {
+  if (state.tutorialIntroCompleted === true) return false
+  if (inferTutorialProgress(state).length > 0) return false
+  if (state.tutorialIntroCompleted === false) return true
+  return !hasExistingSave
 }

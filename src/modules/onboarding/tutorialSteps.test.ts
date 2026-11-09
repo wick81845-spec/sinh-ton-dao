@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { getNextTutorialStep, inferTutorialProgress, tutorialSteps } from './tutorialSteps'
+import {
+  getNextTutorialStep,
+  inferTutorialProgress,
+  shouldShowTutorialIntro,
+  tutorialSteps,
+} from './tutorialSteps'
 import { newPlayerGameState } from '../../data/mockGameState'
 
 describe('tutorialSteps', () => {
@@ -34,6 +39,22 @@ describe('tutorialSteps', () => {
       ...newPlayerGameState,
       discoveredIslandIds: ['island_001', 'island_002'],
     })).toEqual(tutorialSteps.map((step) => step.id))
+  })
+
+  it('shows the plane intro to new players but skips it for returning saves', () => {
+    expect(shouldShowTutorialIntro(newPlayerGameState, false)).toBe(true)
+    expect(shouldShowTutorialIntro({
+      ...newPlayerGameState,
+      tutorialIntroCompleted: undefined,
+    }, true)).toBe(false)
+    expect(shouldShowTutorialIntro({
+      ...newPlayerGameState,
+      character: { ...newPlayerGameState.character, experience: 10 },
+    }, true)).toBe(false)
+    expect(shouldShowTutorialIntro({
+      ...newPlayerGameState,
+      tutorialIntroCompleted: true,
+    }, true)).toBe(false)
   })
 
   it('starts new players healthy with food, water, and materials for the first tools', () => {

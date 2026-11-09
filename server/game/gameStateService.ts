@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { initialGameState } from '../../src/data/mockGameState.js'
+import { newPlayerGameState } from '../../src/data/mockGameState.js'
 import { isValidGameSnapshot } from '../../src/services/persistence/gameSaveService.js'
 import type { GameSnapshot } from '../../src/shared/types/game.js'
 import type { ApiConfig } from '../config.js'
@@ -52,7 +52,7 @@ export function createSupabaseGameStateService(config: ApiConfig): GameStateServ
         return { ...parsedState, created: false }
       }
 
-      const state = structuredClone(initialGameState)
+      const state = structuredClone(newPlayerGameState)
       const now = new Date().toISOString()
       state.character.id = playerId
       state.character.name = displayName
