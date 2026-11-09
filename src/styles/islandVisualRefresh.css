@@ -1,0 +1,502 @@
+:root {
+  --ink: #244b3a;
+  --muted: #647d6c;
+  --line: #dce5ce;
+  --paper: #fffdf3;
+  --sea: #28845a;
+  --sea-dark: #1d6848;
+  --sea-soft: #e7f1dc;
+  --sand: #efb83f;
+}
+
+:root[data-theme="dark"] {
+  --ink: #e9f1d9;
+  --muted: #b6c8a9;
+  --line: #425849;
+  --paper: #24352b;
+  --sea: #8bc77e;
+  --sea-dark: #b4dfa0;
+  --sea-soft: #304638;
+  --sand: #f0bf50;
+}
+
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 82% 10%, rgb(240 184 63 / 11%), transparent 25%),
+    #f5f2e4;
+  font-family: var(--font-family-base);
+}
+
+.main-column {
+  background-color: #f5f2e4;
+  background-image:
+    radial-gradient(ellipse at 82% 0%, rgb(112 171 105 / 9%), transparent 34%),
+    linear-gradient(180deg, rgb(255 254 247 / 56%), transparent 360px);
+}
+
+.sidebar {
+  background: #fffdf3;
+  border-color: #e6e3d2;
+  box-shadow: 7px 0 26px rgb(65 89 53 / 7%);
+}
+
+.brand-mark {
+  border-radius: 12px;
+  color: #284f35;
+  background: linear-gradient(145deg, #ffdb68, #f1b63d);
+  box-shadow: inset 0 -3px 0 rgb(145 96 24 / 13%), 0 4px 11px rgb(135 102 37 / 13%);
+}
+
+.brand-copy strong {
+  color: #275b3b;
+}
+
+.nav-link {
+  border-radius: 10px;
+  color: #647b68;
+  font-weight: 650;
+}
+
+.nav-link:hover {
+  color: #236742;
+  background: #f1f5e5;
+}
+
+.nav-link.active {
+  color: #1e613e;
+  background: #e4f0d7;
+  box-shadow: inset 3px 0 #53a264;
+}
+
+.nav-link.active .nav-icon {
+  color: #33864e;
+}
+
+.season-card {
+  border-color: #e9e5d3;
+  border-radius: 12px;
+  background: #faf8ea;
+}
+
+.topbar {
+  border-bottom: 1px solid rgb(222 224 202 / 76%);
+  background: rgb(255 253 243 / 94%);
+  box-shadow: 0 5px 18px rgb(57 78 49 / 6%);
+  backdrop-filter: blur(14px);
+}
+
+.breadcrumb,
+.breadcrumb strong {
+  color: #55705d;
+}
+
+.weather-pill {
+  color: #98732c;
+}
+
+.page-title-row h1,
+.overview-identity h1,
+.overview-stat-heading h2,
+.section-heading h2,
+.gathering-page .gathering-section-heading h2 {
+  color: var(--ink);
+  font-family: var(--font-family-base);
+  font-weight: 750;
+  letter-spacing: -.035em;
+}
+
+.section-kicker,
+.sidebar-label {
+  color: #758b56;
+  font-size: 10px;
+}
+
+.page-title-row {
+  margin-bottom: 16px;
+}
+
+.overview-dashboard {
+  gap: 12px;
+}
+
+.overview-hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 220px;
+  border-color: #d8e2c8;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 10% 100%, rgb(152 192 120 / 25%), transparent 48%),
+    linear-gradient(125deg, #fffdf3 12%, #f3f5e5 72%, #e8f0db);
+  box-shadow: 0 10px 24px rgb(56 84 47 / 8%);
+}
+
+.overview-hero::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 0 44%;
+  background: linear-gradient(90deg, var(--paper), transparent 46%), url("/assets/world/tropical-island.svg") center / cover no-repeat;
+  opacity: .14;
+  content: "";
+  pointer-events: none;
+}
+
+.overview-portrait-glow {
+  background: color-mix(in srgb, #f3c75e 35%, transparent);
+}
+
+.overview-level {
+  color: #466c3a;
+  background: #fff9df;
+}
+
+.overview-identity h1 {
+  font-size: clamp(29px, 3vw, 38px);
+}
+
+.overview-home {
+  border-color: #dce6d0;
+  border-radius: 13px;
+  background: rgb(255 254 247 / 82%);
+}
+
+.overview-home-icon {
+  color: #397248;
+  background: #e7f1dc;
+}
+
+.overview-home > a,
+.overview-stat-heading > a {
+  border-radius: 9px;
+  color: #286744;
+  background: #e6f0dc;
+}
+
+.overview-effect {
+  border-radius: 999px;
+  font-size: 10px;
+}
+
+.overview-detail-link {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.overview-stat-panel {
+  background: rgb(231 241 220 / 48%);
+}
+
+.overview-stat-grid .stat-card {
+  border-color: #dfe7d5;
+  border-radius: 12px;
+  background: rgb(255 254 247 / 90%);
+}
+
+.overview-monitor-panel,
+.overview-events-panel {
+  border-color: #dce5d2;
+  border-radius: 16px;
+  background: #fffdf4;
+  box-shadow: 0 7px 20px rgb(56 84 47 / 6%);
+}
+
+.overview-status-badge {
+  color: #3d7749;
+  background: #edf5df;
+}
+
+.overview-alert-summary {
+  border-radius: 12px;
+}
+
+.overview-event-card {
+  border-radius: 13px;
+}
+
+.gathering-page .page-title-row {
+  border-color: #d7e2c8;
+  border-radius: 17px;
+  background:
+    linear-gradient(90deg, rgb(255 253 243 / 96%) 0%, rgb(255 253 243 / 89%) 46%, rgb(255 253 243 / 20%) 100%),
+    url("/assets/world/tropical-island.svg") right center / auto 100% no-repeat,
+    linear-gradient(120deg, #f8f3d9, #e6f0dd);
+  box-shadow: 0 8px 20px rgb(57 78 49 / 7%);
+}
+
+.gathering-page .page-title-row h1 {
+  color: #28573b;
+  font-family: var(--font-family-base);
+  font-size: 31px;
+  font-weight: 800;
+}
+
+.gathering-page .page-title-row p {
+  max-width: 580px;
+  color: #5e7863;
+  font-size: 13px;
+}
+
+.gathering-page .stamina-chip {
+  border-color: #e4dfc3;
+  border-radius: 999px;
+  color: #68794e;
+  background: #fff9df;
+}
+
+.gathering-page .resource-node-card {
+  border-color: #dfe7d5;
+  border-radius: 13px;
+  background: #fffdf4;
+  box-shadow: 0 4px 12px rgb(56 84 47 / 5%);
+}
+
+.gathering-page .node-icon {
+  border-color: #dae5ce;
+  border-radius: 11px;
+  background: #edf4df;
+}
+
+.gathering-page .node-copy h2 {
+  color: #315d3d;
+  font-family: var(--font-family-base);
+  font-weight: 750;
+}
+
+.gathering-page .node-copy p {
+  color: #687e69;
+}
+
+.gathering-page .node-availability {
+  border-color: #dbe8cd;
+  color: #507a42;
+  background: #eff5e2;
+}
+
+.gathering-page .gathering-activity {
+  border-color: #dce5d2;
+  border-left: 4px solid #65a46c;
+  border-radius: 15px;
+  background: #fffdf4;
+  box-shadow: 0 6px 16px rgb(56 84 47 / 6%);
+}
+
+.gathering-page .forage-activity {
+  border-left-color: #e6ae39;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(245 201 91 / 15%), transparent 42%),
+    #fffdf4;
+}
+
+.gathering-page .gathering-activity-copy h3 {
+  color: #2e593b;
+  font-family: var(--font-family-base);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.gathering-page .gathering-activity-copy p {
+  color: #657c69;
+  font-size: 12px;
+}
+
+.gathering-page .activity-requirements span {
+  border: 1px solid #e6ead9;
+  border-radius: 999px;
+  color: #63764f;
+  background: #f3f5e8;
+  font-size: 10px;
+}
+
+.gathering-page .gather-button {
+  min-height: 40px;
+  border: 1px solid #e4a927;
+  border-radius: 999px;
+  color: #49320b;
+  background: linear-gradient(180deg, #ffdc72, #f5b938);
+  box-shadow: 0 3px 0 #d99522, 0 5px 12px rgb(175 123 31 / 17%);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.gathering-page .gather-button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffe48c, #f9c54d);
+  box-shadow: 0 4px 0 #d99522, 0 7px 15px rgb(175 123 31 / 20%);
+}
+
+.gathering-page .gather-button:disabled {
+  border-color: #dfe5d6;
+  color: #8c9884;
+  background: #edf0e6;
+  box-shadow: none;
+}
+
+.gathering-page .fishing-activity {
+  border-left-color: #409a9a;
+  background: #fffdf4;
+}
+
+.gathering-page .fishing-location-scene {
+  border-radius: 13px;
+  box-shadow: 0 5px 14px rgb(34 73 67 / 13%);
+}
+
+.gathering-page .fish-zone-guide {
+  border-color: #d9e4d1;
+  border-radius: 15px;
+  background: #fffdf4;
+}
+
+.gathering-page .fish-zone-guide > summary {
+  color: #315d3d;
+}
+
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(ellipse at 82% 10%, rgb(240 184 63 / 8%), transparent 25%),
+    #17251e;
+}
+
+:root[data-theme="dark"] .main-column {
+  background-color: #17251e;
+  background-image:
+    radial-gradient(ellipse at 82% 0%, rgb(112 171 105 / 8%), transparent 34%),
+    linear-gradient(180deg, rgb(31 48 38 / 62%), transparent 360px);
+}
+
+:root[data-theme="dark"] .sidebar {
+  background: #1d2d23;
+  border-color: #3d5140;
+}
+
+:root[data-theme="dark"] .brand-copy strong {
+  color: #d9ecc9;
+}
+
+:root[data-theme="dark"] .nav-link {
+  color: #b5c8ae;
+}
+
+:root[data-theme="dark"] .nav-link:hover,
+:root[data-theme="dark"] .nav-link.active {
+  color: #e2f2d3;
+  background: #304638;
+}
+
+:root[data-theme="dark"] .topbar {
+  border-color: #3c5040;
+  background: rgb(29 45 35 / 94%);
+}
+
+:root[data-theme="dark"] .breadcrumb,
+:root[data-theme="dark"] .breadcrumb strong {
+  color: #c1d3b5;
+}
+
+:root[data-theme="dark"] .overview-hero {
+  border-color: #425a44;
+  background:
+    radial-gradient(ellipse at 10% 100%, rgb(152 192 120 / 13%), transparent 48%),
+    linear-gradient(125deg, #25382b 12%, #2b3d2e 72%, #304533);
+}
+
+:root[data-theme="dark"] .overview-hero::before {
+  background: linear-gradient(90deg, var(--paper), transparent 46%), url("/assets/world/tropical-island.svg") center / cover no-repeat;
+  opacity: .08;
+}
+
+:root[data-theme="dark"] .overview-home,
+:root[data-theme="dark"] .overview-stat-grid .stat-card,
+:root[data-theme="dark"] .overview-monitor-panel,
+:root[data-theme="dark"] .overview-events-panel,
+:root[data-theme="dark"] .gathering-page .resource-node-card,
+:root[data-theme="dark"] .gathering-page .gathering-activity,
+:root[data-theme="dark"] .gathering-page .fish-zone-guide {
+  border-color: #425747;
+  background-color: #24362a;
+}
+
+:root[data-theme="dark"] .overview-stat-panel {
+  background: rgb(49 69 47 / 31%);
+}
+
+:root[data-theme="dark"] .overview-status-badge {
+  color: #b9dfa2;
+  background: #304a34;
+}
+
+:root[data-theme="dark"] .gathering-page .page-title-row {
+  border-color: #435b43;
+  background:
+    linear-gradient(90deg, rgb(34 52 39 / 97%) 0%, rgb(34 52 39 / 88%) 48%, rgb(34 52 39 / 28%) 100%),
+    url("/assets/world/tropical-island.svg") right center / auto 100% no-repeat,
+    #2c4232;
+}
+
+:root[data-theme="dark"] .gathering-page .page-title-row h1,
+:root[data-theme="dark"] .gathering-page .node-copy h2,
+:root[data-theme="dark"] .gathering-page .gathering-activity-copy h3,
+:root[data-theme="dark"] .gathering-page .fish-zone-guide > summary {
+  color: #e5efd4;
+}
+
+:root[data-theme="dark"] .gathering-page .page-title-row p,
+:root[data-theme="dark"] .gathering-page .node-copy p,
+:root[data-theme="dark"] .gathering-page .gathering-activity-copy p {
+  color: #bdcdb5;
+}
+
+:root[data-theme="dark"] .gathering-page .activity-requirements span {
+  border-color: #435645;
+  color: #c2d0b1;
+  background: #304234;
+}
+
+:root[data-theme="dark"] .gathering-page .node-availability {
+  border-color: #4a6244;
+  color: #c4dda6;
+  background: #344a34;
+}
+
+:root[data-theme="dark"] .gathering-page .gather-button {
+  border-color: #e4a927;
+  color: #49320b;
+  background: linear-gradient(180deg, #ffdc72, #f5b938);
+  box-shadow: 0 3px 0 #d99522, 0 5px 12px rgb(175 123 31 / 17%);
+}
+
+:root[data-theme="dark"] .gathering-page .gather-button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffe48c, #f9c54d);
+}
+
+:root[data-theme="dark"] .gathering-page .gather-button:disabled {
+  border-color: #4b5a49;
+  color: #a7b49b;
+  background: #354438;
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .gathering-page .gathering-progress {
+  border-color: #425747;
+  background: #24362a;
+}
+
+@media (max-width: 760px) {
+  .overview-hero::before {
+    inset-inline-start: 28%;
+  }
+
+  .gathering-page .page-title-row {
+    background:
+      linear-gradient(90deg, rgb(255 253 243 / 97%) 0%, rgb(255 253 243 / 86%) 64%, rgb(255 253 243 / 28%) 100%),
+      url("/assets/world/tropical-island.svg") right center / auto 100% no-repeat,
+      linear-gradient(120deg, #f8f3d9, #e6f0dd);
+  }
+
+  :root[data-theme="dark"] .gathering-page .page-title-row {
+    background:
+      linear-gradient(90deg, rgb(34 52 39 / 97%) 0%, rgb(34 52 39 / 88%) 64%, rgb(34 52 39 / 30%) 100%),
+      url("/assets/world/tropical-island.svg") right center / auto 100% no-repeat,
+      #2c4232;
+  }
+}

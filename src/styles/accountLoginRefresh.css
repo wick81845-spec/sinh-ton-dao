@@ -1,0 +1,447 @@
+.account-login-screen {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100svh;
+  grid-template-rows: auto 1fr;
+  align-content: stretch;
+  justify-items: stretch;
+  gap: 0;
+  overflow: hidden;
+  padding: 12px clamp(18px, 4vw, 56px) 16px;
+  color: #173a43;
+  background: #d7e6d9;
+  font-family: var(--font-family-base);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+.account-login-screen,
+.account-login-screen * {
+  font-family: var(--font-family-base);
+}
+
+.account-login-screen::before,
+.account-login-screen::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+}
+
+.account-login-screen::before {
+  background:
+    linear-gradient(180deg, rgb(217 237 225 / 42%) 0%, rgb(15 76 81 / 8%) 42%, rgb(4 41 55 / 48%) 100%),
+    url("/assets/login/background.png") center 52% / cover no-repeat;
+  opacity: 1;
+}
+
+.account-login-screen::after {
+  background:
+    radial-gradient(ellipse at 50% 48%, rgb(227 239 217 / 78%), rgb(227 239 217 / 30%) 38%, transparent 62%),
+    linear-gradient(180deg, rgb(9 46 58 / 8%) 0%, transparent 45%, rgb(4 37 53 / 33%) 100%);
+}
+
+.account-login-screen .account-login-topbar,
+.account-login-content {
+  position: relative;
+  z-index: 1;
+}
+
+.account-login-topbar {
+  display: flex;
+  width: min(100%, 1120px);
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: center;
+  padding: 4px 0;
+}
+
+.account-login-topbar .account-brand-link {
+  gap: 9px;
+  color: #164b51;
+}
+
+.account-login-topbar .account-brand-mark {
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: 12px;
+  color: #e8f4dc;
+  background: linear-gradient(145deg, #1d7f7e, #125567);
+  box-shadow: 0 5px 14px rgb(13 64 67 / 18%);
+  font-family: var(--font-family-base);
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.account-login-topbar .account-brand-link > span:last-child {
+  gap: 1px;
+  font-family: var(--font-family-base);
+  font-size: 10px;
+  letter-spacing: 1.6px;
+}
+
+.account-login-topbar .account-brand-link small {
+  color: #527b75;
+  font-size: 8px;
+  letter-spacing: 2px;
+}
+
+.account-login-topbar .account-header-actions {
+  gap: 17px;
+}
+
+.account-login-topbar .account-return-link {
+  color: #155761;
+  font-size: 11px;
+}
+
+.account-login-topbar .theme-toggle {
+  border-color: rgb(25 91 96 / 25%);
+  color: #155761;
+  background: rgb(239 248 231 / 70%);
+}
+
+.account-login-content {
+  display: flex;
+  width: min(100%, 500px);
+  flex-direction: column;
+  align-items: center;
+  justify-self: center;
+  align-self: center;
+  padding: 8px 0 18px;
+  text-align: center;
+}
+
+.account-login-logo {
+  display: block;
+  width: min(74vw, 300px);
+  height: auto;
+  margin: -26px 0 -18px;
+  filter: drop-shadow(0 8px 13px rgb(7 42 46 / 25%));
+  object-fit: contain;
+}
+
+.account-login-kicker {
+  margin-top: 16px;
+  color: #287875;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 2.7px;
+}
+
+.account-login-title {
+  margin: 10px 0 0;
+  color: #143e49;
+  font-family: var(--font-family-base);
+  font-size: clamp(29px, 4vw, 40px);
+  font-weight: 800;
+  letter-spacing: -.045em;
+}
+
+.account-login-lead {
+  margin: 8px 0 0;
+  color: #426b69;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.account-login-content > .account-preview-badge {
+  padding: 5px 10px;
+  margin: 13px 0 -4px;
+  border-color: rgb(26 106 108 / 26%);
+  color: #1d6668;
+  background: rgb(243 250 235 / 68%);
+  font-size: 8px;
+}
+
+.account-login-panel {
+  width: min(100%, 410px);
+  margin-top: 18px;
+}
+
+.account-login-card {
+  width: 100%;
+  padding: 22px 26px 24px;
+  border: 1px solid rgb(235 248 221 / 80%);
+  border-radius: 20px 20px 7px 20px;
+  background: rgb(236 244 224 / 93%);
+  box-shadow: 0 18px 45px rgb(13 64 67 / 24%), inset 0 1px rgb(255 255 255 / 75%);
+  text-align: left;
+  backdrop-filter: blur(12px);
+}
+
+.account-login-card .account-auth-intro {
+  justify-items: center;
+  text-align: center;
+}
+
+.account-login-card .account-auth-intro .section-kicker {
+  color: #477d70;
+  font-size: 8px;
+  letter-spacing: 1.7px;
+}
+
+.account-login-card .account-auth-intro h2 {
+  margin-top: 7px;
+  color: #193e43;
+  font-family: var(--font-family-base);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+}
+
+.account-login-card .account-auth-intro p {
+  max-width: 330px;
+  margin-top: 5px;
+  color: #58766c;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.account-login-card .account-mode-switch {
+  gap: 5px;
+  padding: 4px;
+  margin-top: 19px;
+  border: 1px solid rgb(42 105 93 / 15%);
+  border-radius: 11px;
+  background: rgb(216 232 208 / 72%);
+}
+
+.account-login-card .account-mode-switch button {
+  position: relative;
+  min-height: 38px;
+  border-radius: 8px;
+  color: #57756d;
+  background: transparent;
+  font-family: var(--font-family-base);
+  font-size: 10px;
+}
+
+.account-login-card .account-mode-switch button:not([aria-selected="true"]) {
+  background: transparent;
+}
+
+.account-login-card .account-mode-switch button[aria-selected="true"] {
+  color: #f2f5df;
+  background: #236d6c;
+  box-shadow: 0 3px 8px rgb(24 86 83 / 20%);
+  font-weight: 750;
+}
+
+.account-login-card .account-form {
+  gap: 13px;
+  margin-top: 17px;
+}
+
+.account-login-card .account-form label {
+  gap: 6px;
+  color: #42645b;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.account-login-card .account-form input {
+  height: 43px;
+  padding: 0 12px;
+  border: 1px solid rgb(47 103 93 / 24%);
+  border-radius: 10px;
+  color: #153c42;
+  background: rgb(249 250 235 / 92%);
+  font-family: var(--font-family-base);
+  font-size: 12px;
+}
+
+.account-login-card .account-form input:focus {
+  border-color: #278b84;
+  box-shadow: 0 0 0 3px rgb(39 139 132 / 14%);
+}
+
+.account-login-card .account-form .gather-button {
+  min-height: 47px;
+  justify-content: center;
+  margin-top: 3px;
+  border: 1px solid #e6a56c;
+  border-radius: 11px 11px 5px 11px;
+  color: #422f24;
+  background: linear-gradient(180deg, #ffc879, #f3a761);
+  box-shadow: 0 5px 0 #cf8152, 0 10px 18px rgb(120 72 45 / 17%);
+  font-family: var(--font-family-base);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.account-login-card .account-form .gather-button:hover:not(:disabled) {
+  color: #422f24;
+  background: linear-gradient(180deg, #ffd48b, #f7b371);
+}
+
+.account-login-card .account-form .gather-button:disabled {
+  cursor: default;
+  opacity: .72;
+}
+
+.account-login-card .account-feedback,
+.account-login-card .account-error {
+  font-family: var(--font-family-base);
+}
+
+.account-login-footnote {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 14px 0 0;
+  color: #f0f3db;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .04em;
+  text-shadow: 0 1px 5px rgb(8 50 58 / 50%);
+}
+
+.account-login-footnote span {
+  color: #ffc879;
+  font-size: 15px;
+}
+
+:root[data-theme="dark"] .account-login-screen {
+  color: #e8f0d7;
+  background: #092634;
+}
+
+:root[data-theme="dark"] .account-login-screen::before {
+  background:
+    linear-gradient(180deg, rgb(5 29 44 / 58%) 0%, rgb(8 63 77 / 32%) 45%, rgb(4 28 44 / 78%) 100%),
+    url("/assets/login/background.png") center 52% / cover no-repeat;
+  opacity: 1;
+}
+
+:root[data-theme="dark"] .account-login-screen::after {
+  background:
+    radial-gradient(ellipse at 50% 48%, rgb(8 45 52 / 54%), rgb(8 45 52 / 24%) 38%, transparent 62%),
+    linear-gradient(180deg, rgb(3 23 37 / 18%) 0%, transparent 45%, rgb(3 23 37 / 40%) 100%);
+}
+
+:root[data-theme="dark"] .account-login-topbar .account-brand-link,
+:root[data-theme="dark"] .account-login-topbar .account-return-link,
+:root[data-theme="dark"] .account-login-topbar .theme-toggle {
+  color: #d1ebd3;
+}
+
+:root[data-theme="dark"] .account-login-topbar .account-brand-link small {
+  color: #a0c6b6;
+}
+
+:root[data-theme="dark"] .account-login-topbar .theme-toggle {
+  border-color: rgb(180 226 207 / 28%);
+  background: rgb(8 45 58 / 72%);
+}
+
+:root[data-theme="dark"] .account-login-kicker {
+  color: #8ed3c4;
+}
+
+:root[data-theme="dark"] .account-login-title {
+  color: #eaf0d8;
+}
+
+:root[data-theme="dark"] .account-login-lead {
+  color: #b6d2c8;
+}
+
+:root[data-theme="dark"] .account-login-content > .account-preview-badge {
+  border-color: rgb(142 211 196 / 30%);
+  color: #c1e3d2;
+  background: rgb(8 42 57 / 70%);
+}
+
+:root[data-theme="dark"] .account-login-card {
+  border-color: rgb(158 217 201 / 21%);
+  background: rgb(13 47 59 / 92%);
+  box-shadow: 0 18px 45px rgb(1 19 31 / 34%), inset 0 1px rgb(255 255 255 / 7%);
+}
+
+:root[data-theme="dark"] .account-login-card .account-auth-intro .section-kicker,
+:root[data-theme="dark"] .account-login-card .account-form label {
+  color: #a9cec0;
+}
+
+:root[data-theme="dark"] .account-login-card .account-auth-intro h2 {
+  color: #e8f0d7;
+}
+
+:root[data-theme="dark"] .account-login-card .account-auth-intro p {
+  color: #b1cfc3;
+}
+
+:root[data-theme="dark"] .account-login-card .account-mode-switch {
+  border-color: rgb(152 209 193 / 17%);
+  background: rgb(7 37 50 / 85%);
+}
+
+:root[data-theme="dark"] .account-login-card .account-mode-switch button {
+  color: #b2d0c3;
+  background: transparent;
+}
+
+:root[data-theme="dark"] .account-login-card .account-mode-switch button[aria-selected="true"] {
+  color: #eff3dc;
+  background: #267c7a;
+}
+
+:root[data-theme="dark"] .account-login-card .account-form input {
+  border-color: rgb(152 209 193 / 23%);
+  color: #eff3dc;
+  background: #092d3a;
+}
+
+:root[data-theme="dark"] .account-login-footnote {
+  color: #d9e8d3;
+}
+
+@media (max-width: 600px) {
+  .account-login-screen {
+    overflow: auto;
+    padding: 13px 14px 20px;
+  }
+
+  .account-login-topbar .account-header-actions {
+    gap: 12px;
+  }
+
+  .account-login-topbar .account-return-link {
+    font-size: 10px;
+  }
+
+  .account-login-content {
+    align-self: start;
+    padding: 34px 0 70px;
+  }
+
+  .account-login-logo {
+    width: min(78vw, 285px);
+    margin: -16px 0 -9px;
+  }
+
+  .account-login-title {
+    font-size: 31px;
+  }
+
+  .account-login-lead {
+    max-width: 310px;
+    font-size: 12px;
+  }
+
+  .account-login-panel {
+    margin-top: 22px;
+  }
+
+  .account-login-card {
+    padding: 19px 16px 21px;
+  }
+
+  .account-login-footnote {
+    font-size: 9px;
+  }
+}

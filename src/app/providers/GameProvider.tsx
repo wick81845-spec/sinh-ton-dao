@@ -1,0 +1,852 @@
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { newPlayerGameState } from '../../data/mockGameState'
+import { completeConstructions, startConstruction, upgradeBuilding } from '../../modules/building/services/buildingService'
+import { attackCombat as resolveCombatTurn, retreatCombat as retreatFromCombat, respawnCharacter as respawn, startCombat } from '../../modules/combat/services/combatService'
+import { completeCrafting, queueRecipe } from '../../modules/crafting/services/craftingService'
+import { completeExploration, startExploration } from '../../modules/exploration/services/explorationService'
+import { cancelGathering, completeGathering, refreshResourceNodes, startGathering } from '../../modules/gathering/services/gatheringService'
+import { consumeItem, transferItems } from '../../modules/inventory/services/inventoryService'
+import { buyMarketItem as buyMarket, sellMarketItem as sellMarket } from '../../modules/economy/services/marketService'
+import { addFriend as addSocialFriend, proposeTrade as createTradeOffer, resolveTrade as resolveSocialTrade, returnToHomeIsland, visitPlayerIsland as visitIsland } from '../../modules/social/services/socialService'
+import { completeShipConstruction, startShipConstruction } from '../../modules/ship/services/shipService'
+import { advanceSurvival, isSurvivorBusy, isSurvivorResting } from '../../modules/survival/utils/survivalCalculator'
+import { researchTechnology as researchTech } from '../../modules/progression/services/technologyService'
+import { advanceWeather, createWeatherState } from '../../modules/world/services/weatherService'
+import { getWeatherDefinition } from '../../modules/world/data/weatherDefinitions'
+import { getWorldWeatherAtTime } from '../../modules/world/services/worldClock'
+import { randomWorldEventDefinitions } from '../../modules/world/data/randomWorldEventDefinitions'
+import {
+  advanceRandomWorldEvents,
+  RANDOM_WORLD_EVENT_INTERVAL_MS,
+  resolveRandomWorldEvent as resolveRandomEvent,
+} from '../../modules/world/services/randomWorldEventService'
+import { advanceVoyages, startVoyage } from '../../modules/voyage/services/voyageService'
+import { tutorialSteps } from '../../modules/onboarding/tutorialSteps'
+import type { GameSnapshot, ItemId } from '../../shared/types/game'
+import { gameClock } from '../../services/clock/gameClock'
+import { gameEventBus } from '../../services/events/gameEvents'
+import { createGameSaveService } from '../../services/persistence/gameSaveService'
+import { isRemoteGameSaveConfigured, loadRemoteGameState, saveRemoteGameState } from '../../services/persistence/remoteGameSaveClient'
+import { localStorageAdapter } from '../../services/storage/localStorageAdapter'
+import { GameContext, type FishingActionResult, type GameActionResult } from './gameContext'
+import { useAuth } from './useAuth'
+
+function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : 'Đã xảy ra lỗi không xác định.'
+}
+
+function emitSurvivalChanges(previous: GameSnapshot, next: GameSnapshot): void {
+  const previousConditions = new Set(previous.survival.conditions)
+  const nextConditions = new Set(next.survival.conditions)
+
+  nextConditions.forEach((condition) => {
+    if (!previousConditions.has(condition)) {
+      gameEventBus.emit('survival:condition-changed', { condition, active: true })
+    }
+  })
+  previousConditions.forEach((condition) => {
+    if (!nextConditions.has(condition)) {
+      gameEventBus.emit('survival:condition-changed', { condition, active: false })
+    }
+  })
+
+  for (const stat of ['health', 'hunger', 'thirst', 'stamina'] as const) {
+    if (previous.survival[stat] !== next.survival[stat]) {
+      gameEventBus.emit('survival:stat-changed', { stat, value: next.survival[stat] })
+    }
+  }
+}
+
+export function GameProvider({ children }: { children: ReactNode }) {
+  const { isLoading: isAuthLoading, session } = useAuth()
+  const playerId = session?.user.id ?? null
+  const username = typeof session?.user.user_metadata.username === 'string'
+    ? session.user.user_metadata.username.trim()
+    : ''
+  const characterName = typeof session?.user.user_metadata.display_name === 'string'
+    ? session.user.user_metadata.display_name.trim()
+    : username
+  const homeIslandName = typeof session?.user.user_metadata.island_name === 'string'
+    ? session.user.user_metadata.island_name.trim()
+    : ''
+  const characterAppearance = session?.user.user_metadata.character_appearance === 'female' ? 'female' : 'male'
+  const accessTokenRef = useRef<string | null>(null)
+  useEffect(() => {
+    accessTokenRef.current = session?.access_token ?? null
+  }, [session?.access_token])
+  const gameSaveService = useMemo(
+    () => createGameSaveService(localStorageAdapter, playerId ? `game.save.${playerId}` : 'game.save'),
+    [playerId],
+  )
+  const [gameState, setGameState] = useState<GameSnapshot | null>(null)
+  const [loadedPlayerId, setLoadedPlayerId] = useState<string | null>()
+  const isLoading = loadedPlayerId !== playerId
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const stateRef = useRef<GameSnapshot | null>(null)
+  const lastTickRef = useRef<number | null>(null)
+  const cloudRevisionRef = useRef<number | null>(null)
+  const saveInProgressRef = useRef(false)
+  const saveRequestedRef = useRef(false)
+
+  const persistCurrentState = useCallback(async () => {
+    if (saveInProgressRef.current) {
+      saveRequestedRef.current = true
+      return
+    }
+
+    saveInProgressRef.current = true
+    try {
+      do {
+        saveRequestedRef.current = false
+        const currentState = stateRef.current
+        if (currentState) {
+          const accessToken = accessTokenRef.current
+          if (playerId && accessToken && isRemoteGameSaveConfigured) {
+            const expectedRevision = cloudRevisionRef.current
+            if (expectedRevision === null) throw new Error('Tiến trình trên máy chủ chưa được tải.')
+            const saved = await saveRemoteGameState(accessToken, currentState, expectedRevision)
+            cloudRevisionRef.current = saved.revision
+            await gameSaveService.save(saved.state, gameClock.now())
+          } else {
+            await gameSaveService.save(currentState, gameClock.now())
+          }
+        }
+      } while (saveRequestedRef.current)
+      setError(null)
+    } catch (saveError: unknown) {
+      const message = `Không thể lưu tiến trình: ${describeError(saveError)}`
+      console.error(message, saveError)
+      setError(message)
+    } finally {
+      saveInProgressRef.current = false
+    }
+  }, [gameSaveService, playerId])
+
+  const commitState = useCallback((nextState: GameSnapshot, message: string) => {
+    const currentState = stateRef.current
+    const stateToCommit = currentState && (
+      isSurvivorBusy(nextState)
+      || currentState.character.currentLocationId !== nextState.character.currentLocationId
+      || nextState.character.status !== 'alive'
+    )
+      ? { ...nextState, isResting: false }
+      : nextState
+    stateRef.current = stateToCommit
+    setGameState(stateToCommit)
+    setNotice(message)
+    void persistCurrentState()
+    return { ok: true, message } as const
+  }, [persistCurrentState])
+
+  const startResting = useCallback((): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    if (currentState.character.status !== 'alive') {
+      return { ok: false, message: 'Bạn cần hồi sinh trước khi nghỉ ngơi.' }
+    }
+    if (isSurvivorBusy(currentState)) {
+      return { ok: false, message: 'Hãy hoàn thành hoạt động hiện tại trước khi nghỉ ngơi.' }
+    }
+    if (currentState.survival.stamina >= 100) {
+      return { ok: false, message: 'Sức lực đã đầy, bạn chưa cần nghỉ ngơi.' }
+    }
+    return commitState(
+      { ...currentState, isResting: true },
+      'Bạn bắt đầu nghỉ ngơi. Sức lực sẽ hồi phục cho đến khi bạn tiếp tục hành trình.',
+    )
+  }, [commitState])
+
+  const stopResting = useCallback((): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    if (!currentState.isResting) return { ok: false, message: 'Bạn hiện không nghỉ ngơi.' }
+    return commitState({ ...currentState, isResting: false }, 'Bạn đã dừng nghỉ ngơi.')
+  }, [commitState])
+
+  const beginTutorial = useCallback((): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    if (currentState.tutorialIntroCompleted) return { ok: true, message: 'Hành trình sinh tồn đã bắt đầu.' }
+    return commitState(
+      { ...currentState, tutorialIntroCompleted: true },
+      'Bạn đã sẵn sàng. Hãy bắt đầu thu thập vật liệu quanh bãi biển.',
+    )
+  }, [commitState])
+
+  const startGatheringAction = useCallback((activityId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+
+    const result = startGathering(currentState, activityId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const cancelGatheringAction = useCallback(() => {
+    const currentState = stateRef.current
+    if (!currentState?.activeGathering) return
+    commitState(cancelGathering(currentState), 'Đã hủy hoạt động thu thập.')
+  }, [commitState])
+
+  const finishFishingAction = useCallback((castPower: number, caughtItemId: ItemId): FishingActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    if (currentState.activeGathering?.activityId !== 'shore-fishing') {
+      return { ok: false, message: 'Bạn chưa có cá đang mắc câu.' }
+    }
+
+    const result = completeGathering(currentState, gameClock.now(), castPower, caughtItemId)
+    if (result.status !== 'completed') {
+      if (result.status === 'failed') {
+        stateRef.current = result.state
+        setGameState(result.state)
+        setNotice(result.message)
+        void persistCurrentState()
+        return { ok: false, message: result.message }
+      }
+      return { ok: false, message: 'Chưa thể kéo cá lên lúc này.' }
+    }
+
+    commitState(result.state, result.message)
+    gameEventBus.emit('gathering:completed', {
+      activityId: result.activityId,
+      itemId: result.itemId,
+      quantity: result.quantity,
+      rewards: result.rewards,
+    })
+    return { ok: true, message: result.message, itemId: result.itemId }
+  }, [commitState, persistCurrentState])
+
+  const transferToStorage = useCallback((itemId: ItemId, quantity: number): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    if (currentState.character.status !== 'alive' || currentState.activeCombat
+      || currentState.character.currentLocationId !== currentState.character.homeIslandId
+      || currentState.voyages.some((voyage) => voyage.status === 'departed' || voyage.status === 'traveling')) {
+      const message = currentState.activeCombat
+        ? 'Không thể dùng kho trong khi chiến đấu.'
+        : 'Kho chứa chỉ có thể sử dụng khi bạn đang ở đảo nhà và còn sống.'
+      setNotice(message)
+      return { ok: false, message }
+    }
+
+    const result = transferItems(currentState.inventory, currentState.storage, itemId, quantity)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(
+      { ...currentState, inventory: result.source, storage: result.destination },
+      `Đã cất ${quantity} vật phẩm.`,
+    )
+  }, [commitState])
+
+  const transferToInventory = useCallback((itemId: ItemId, quantity: number): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    if (currentState.character.status !== 'alive' || currentState.activeCombat
+      || currentState.character.currentLocationId !== currentState.character.homeIslandId
+      || currentState.voyages.some((voyage) => voyage.status === 'departed' || voyage.status === 'traveling')) {
+      const message = currentState.activeCombat
+        ? 'Không thể dùng kho trong khi chiến đấu.'
+        : 'Kho chứa chỉ có thể sử dụng khi bạn đang ở đảo nhà và còn sống.'
+      setNotice(message)
+      return { ok: false, message }
+    }
+    if (currentState.craftingQueue.length > 0 || currentState.activeExploration || currentState.activeGathering) {
+      const message = currentState.craftingQueue.length > 0
+        ? 'Hãy chờ hàng đợi chế tạo hoàn tất trước khi lấy đồ khỏi kho.'
+        : currentState.activeExploration
+          ? 'Hãy chờ hoạt động thám hiểm hoàn tất trước khi lấy đồ khỏi kho.'
+          : 'Hãy chờ hoạt động thu thập hoàn tất trước khi lấy đồ khỏi kho.'
+      setNotice(message)
+      return { ok: false, message }
+    }
+
+    const result = transferItems(currentState.storage, currentState.inventory, itemId, quantity)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(
+      { ...currentState, inventory: result.destination, storage: result.source },
+      `Đã lấy ${quantity} vật phẩm.`,
+    )
+  }, [commitState])
+
+  const consumeItemAction = useCallback((itemId: ItemId): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    if (currentState.activeCombat) {
+      const message = 'Không thể dùng vật phẩm trong khi chiến đấu.'
+      setNotice(message)
+      return { ok: false, message }
+    }
+
+    const result = consumeItem(currentState, itemId)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+
+    gameEventBus.emit('inventory:item-used', { itemId: result.itemId, quantity: 1 })
+    if (result.state.survival.hunger !== currentState.survival.hunger) {
+      gameEventBus.emit('survival:stat-changed', { stat: 'hunger', value: result.state.survival.hunger })
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const buyMarketItemAction = useCallback((itemId: ItemId): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = buyMarket(currentState, itemId)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const sellMarketItemAction = useCallback((itemId: ItemId, quantity: number): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = sellMarket(currentState, itemId, quantity)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const queueRecipeAction = useCallback((recipeId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+
+    const result = queueRecipe(currentState, recipeId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const startBuildingAction = useCallback((definitionId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+
+    const result = startConstruction(currentState, definitionId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const upgradeBuildingAction = useCallback((buildingId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+
+    const result = upgradeBuilding(currentState, buildingId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const startExplorationAction = useCallback((taskId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+
+    const result = startExploration(currentState, taskId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const buildShipAction = useCallback((definitionId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+
+    const result = startShipConstruction(currentState, definitionId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const startVoyageAction = useCallback((destinationId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+
+    const result = startVoyage(currentState, destinationId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const addFriendAction = useCallback((playerId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = addSocialFriend(currentState, playerId)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const visitPlayerIslandAction = useCallback((playerId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = visitIsland(currentState, playerId)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const returnHomeIslandAction = useCallback((): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = returnToHomeIsland(currentState)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const proposeTradeAction = useCallback((
+    playerId: string,
+    offeredItemId: ItemId,
+    offeredQuantity: number,
+    requestedItemId: ItemId,
+    requestedQuantity: number,
+  ): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = createTradeOffer(
+      currentState, playerId, offeredItemId, offeredQuantity, requestedItemId, requestedQuantity, gameClock.now(),
+    )
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const resolveTradeAction = useCallback((offerId: string, accepted: boolean): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = resolveSocialTrade(currentState, offerId, accepted, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const startCombatAction = useCallback((encounterId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = startCombat(currentState, encounterId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const attackCombatAction = useCallback((): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = resolveCombatTurn(currentState, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    const nextLog = result.state.combatLog.at(-1)
+    if (nextLog && nextLog.id !== currentState.combatLog.at(-1)?.id) {
+      gameEventBus.emit('combat:completed', { encounterId: nextLog.encounterId, outcome: nextLog.outcome })
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const retreatCombatAction = useCallback((): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = retreatFromCombat(currentState, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    const lastLog = result.state.combatLog.at(-1)
+    if (lastLog) gameEventBus.emit('combat:completed', { encounterId: lastLog.encounterId, outcome: 'retreated' })
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const respawnCharacterAction = useCallback((): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = respawn(currentState)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const clearNotice = useCallback(() => setNotice(null), [])
+
+  const completeTutorialStep = useCallback((stepId: string) => {
+    const currentState = stateRef.current
+    if (!currentState) return
+    const completed = currentState.tutorialCompletedStepIds ?? []
+    const nextStep = tutorialSteps.find((step) => !completed.includes(step.id))
+    if (nextStep?.id !== stepId) return
+    const nextState = {
+      ...currentState,
+      tutorialCompletedStepIds: [...completed, stepId],
+    }
+    stateRef.current = nextState
+    setGameState(nextState)
+    void persistCurrentState()
+  }, [persistCurrentState])
+
+  const researchTechnologyAction = useCallback((technologyId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = researchTech(currentState, technologyId)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    const outcome = commitState(result.state, result.message)
+    gameEventBus.emit('technology:researched', { technologyId })
+    return outcome
+  }, [commitState])
+
+  const resolveRandomWorldEventAction = useCallback((recordId: string, choiceId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = resolveRandomEvent(currentState, recordId, choiceId, gameClock.now())
+    if (!result.ok || !result.state) {
+      setNotice(result.message)
+      return { ok: false, message: result.message }
+    }
+    if (currentState.character.status === 'alive' && result.state.character.status === 'dead') {
+      gameEventBus.emit('character:died', { characterId: currentState.character.id })
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  useEffect(() => {
+    if (isAuthLoading) return
+    let active = true
+
+    stateRef.current = null
+    cloudRevisionRef.current = null
+    void (async () => {
+      const accessToken = accessTokenRef.current
+      if (playerId && accessToken && isRemoteGameSaveConfigured) {
+        let remoteSave = await loadRemoteGameState(accessToken)
+        if (!active) return null
+        if (remoteSave.created) {
+          const localSave = await gameSaveService.load()
+          if (!active) return null
+          if (localSave) {
+            remoteSave = await saveRemoteGameState(accessToken, localSave.data, remoteSave.revision)
+          }
+        }
+        if (!active) return null
+        cloudRevisionRef.current = remoteSave.revision
+        await gameSaveService.save(remoteSave.state, gameClock.now())
+        return {
+          schemaVersion: 5,
+          savedAt: new Date().toISOString(),
+          data: remoteSave.state,
+        }
+      }
+      return gameSaveService.load()
+    })().then((save) => {
+      if (!active) return
+      const now = gameClock.now()
+      const restoredBase = save
+        ? save.data
+        : newPlayerGameState
+      const restoredWeatherState = restoredBase.weather
+        && restoredBase.weather.locationId === restoredBase.character.currentLocationId
+        && now < restoredBase.weather.changesAt
+        ? restoredBase.weather
+        : createWeatherState(restoredBase.character.currentLocationId, now)
+      const restoredState: GameSnapshot = {
+        ...restoredBase,
+        randomWorldEvents: restoredBase.randomWorldEvents ?? [],
+        nextRandomWorldEventAt: restoredBase.randomWorldEventScheduleVersion === 2
+          ? restoredBase.nextRandomWorldEventAt ?? now + RANDOM_WORLD_EVENT_INTERVAL_MS
+          : now + RANDOM_WORLD_EVENT_INTERVAL_MS,
+        randomWorldEventScheduleVersion: 2,
+        randomWorldEventSeed: restoredBase.randomWorldEventSeed
+          ?? (playerId ? `account:${playerId}` : `local:${restoredBase.character.id}`),
+        tutorialIntroCompleted: restoredBase.tutorialIntroCompleted ?? Boolean(save),
+        isResting: false,
+        weather: restoredWeatherState,
+        character: {
+          ...restoredBase.character,
+          coins: restoredBase.character.coins ?? 25,
+          reputation: restoredBase.character.reputation ?? 50,
+          skillExperience: restoredBase.character.skillExperience ?? {},
+          researchedTechnologyIds: restoredBase.character.researchedTechnologyIds ?? [],
+          ...(restoredBase.survival.health === 0 ? { status: 'dead' as const } : {}),
+          ...(characterName ? { name: characterName } : {}),
+          ...(homeIslandName ? { homeIslandName } : {}),
+          appearance: characterAppearance,
+        },
+      }
+
+      stateRef.current = restoredState
+      lastTickRef.current = now
+      setGameState(restoredState)
+      if (restoredBase.survival.health === 0 && restoredBase.character.status === 'alive') {
+        setNotice('Bạn đã gục ngã do thiếu thức ăn hoặc nước uống.')
+      }
+      setLoadedPlayerId(playerId)
+    }).catch((loadError: unknown) => {
+      if (!active) return
+      const message = `Không thể tải tiến trình đã lưu: ${describeError(loadError)}`
+      console.error(message, loadError)
+      setError(message)
+      setLoadedPlayerId(playerId)
+    })
+
+    return () => {
+      active = false
+    }
+  }, [characterAppearance, characterName, gameSaveService, homeIslandName, isAuthLoading, playerId])
+
+  useEffect(() => {
+    if (isLoading || !stateRef.current) return
+
+    void persistCurrentState()
+
+    const tickTimer = window.setInterval(() => {
+      const currentState = stateRef.current
+      const previousTick = lastTickRef.current
+      const now = gameClock.now()
+      if (!currentState || previousTick === null) return
+
+      lastTickRef.current = now
+      const hasRestingCampfire = currentState.buildings.some((building) => (
+        building.definitionId === 'building_campfire'
+        && building.status === 'completed'
+        && building.islandId === currentState.character.currentLocationId
+      ))
+      const hasShelter = currentState.buildings.some((building) => (
+        building.definitionId === 'building_shelter'
+        && building.status === 'completed'
+        && building.islandId === currentState.character.currentLocationId
+      ))
+      const restBonusMultiplier = 1 + (hasRestingCampfire ? 0.25 : 0) + (hasShelter ? 0.25 : 0)
+      const survival = currentState.character.status === 'alive'
+        ? advanceSurvival(
+          currentState.survival,
+          now - previousTick,
+          isSurvivorResting(currentState),
+          getWorldWeatherAtTime(
+            currentState.weather ? getWeatherDefinition(currentState.weather.weatherId) : undefined,
+            now,
+          ),
+          restBonusMultiplier,
+        )
+        : currentState.survival
+      let nextState: GameSnapshot = {
+        ...currentState,
+        survival,
+        character: currentState.character.status === 'alive' && survival.health === 0
+          ? { ...currentState.character, status: 'dead' }
+          : currentState.character,
+        resourceNodes: refreshResourceNodes(currentState.resourceNodes, now),
+      }
+      if (currentState.character.status === 'alive' && survival.health === 0) {
+        setNotice('Bạn đã gục ngã do thiếu thức ăn hoặc nước uống.')
+        gameEventBus.emit('character:died', { characterId: currentState.character.id })
+      }
+      let shouldPersist = false
+      const weatherResult = advanceWeather(nextState, now)
+      if (weatherResult.changed) {
+        nextState = weatherResult.state
+        const definition = weatherResult.state.weather
+          ? getWeatherDefinition(weatherResult.state.weather.weatherId)
+          : undefined
+        if (definition) setNotice(`Thời tiết thay đổi: ${definition.name}.`)
+        shouldPersist = true
+      } else {
+        nextState = weatherResult.state
+      }
+
+      const randomEventResult = advanceRandomWorldEvents(nextState, now)
+      if (randomEventResult.changed) {
+        nextState = randomEventResult.state
+        shouldPersist = true
+        if (randomEventResult.spawned) {
+          const event = randomWorldEventDefinitions.find((entry) => entry.id === randomEventResult.spawned?.eventId)
+          setNotice(`Sự kiện mới: ${event?.title ?? 'Biến cố ngoài khơi'}.`)
+        }
+      }
+
+      const activeGathering = nextState.activeGathering
+      if (activeGathering
+        && activeGathering.activityId !== 'shore-fishing'
+        && now >= activeGathering.completesAt) {
+        const result = completeGathering(nextState, now)
+        if (result.status === 'completed') {
+          nextState = result.state
+          setNotice(result.message)
+          gameEventBus.emit('gathering:completed', {
+            activityId: result.activityId,
+            itemId: result.itemId,
+            quantity: result.quantity,
+            rewards: result.rewards,
+          })
+          shouldPersist = true
+        } else if (result.status === 'failed') {
+          nextState = result.state
+          setNotice(result.message)
+          shouldPersist = true
+        }
+      }
+
+      const craftResult = completeCrafting(nextState, now)
+      if (craftResult.status === 'completed') {
+        nextState = craftResult.state
+        setNotice(craftResult.message)
+        gameEventBus.emit('crafting:completed', {
+          jobId: craftResult.jobId,
+          recipeId: craftResult.recipeId,
+          itemId: craftResult.itemId,
+          quantity: craftResult.quantity,
+        })
+        shouldPersist = true
+      } else if (craftResult.status === 'failed') {
+        nextState = craftResult.state
+        setNotice(craftResult.message)
+        shouldPersist = true
+      }
+
+      const explorationResult = completeExploration(nextState, now)
+      if (explorationResult.status === 'completed') {
+        nextState = explorationResult.state
+        setNotice(explorationResult.message)
+        gameEventBus.emit('exploration:completed', {
+          taskId: explorationResult.taskId,
+          eventId: explorationResult.eventId,
+        })
+        shouldPersist = true
+      } else if (explorationResult.status === 'failed') {
+        nextState = explorationResult.state
+        setNotice(explorationResult.message)
+        shouldPersist = true
+      }
+
+      const shipResult = completeShipConstruction(nextState, now)
+      if (shipResult.completedShipId) {
+        nextState = shipResult.state
+        const ship = nextState.ships.find((entry) => entry.id === shipResult.completedShipId)
+        if (ship) gameEventBus.emit('ship:completed', { shipId: ship.id, definitionId: ship.definitionId })
+        setNotice('Đóng thuyền hoàn tất.')
+        shouldPersist = true
+      }
+
+      const voyageResult = advanceVoyages(nextState, now)
+      if (voyageResult.changed) {
+        nextState = voyageResult.state
+        shouldPersist = true
+      }
+      if (voyageResult.arrivedVoyageId && voyageResult.destinationName) {
+        gameEventBus.emit('voyage:arrived', {
+          voyageId: voyageResult.arrivedVoyageId,
+          locationId: nextState.character.currentLocationId,
+        })
+        setNotice(`Đã cập bến ${voyageResult.destinationName}.`)
+      }
+
+      const constructionResult = completeConstructions(nextState, now)
+      if (constructionResult.completedBuildingIds.length > 0) {
+        nextState = constructionResult.state
+        constructionResult.completedBuildingIds.forEach((buildingId) => {
+          gameEventBus.emit('building:completed', { buildingId })
+        })
+        setNotice(`Hoàn thành ${constructionResult.completedBuildingIds.length} công trình.`)
+        shouldPersist = true
+      }
+
+      emitSurvivalChanges(currentState, nextState)
+      stateRef.current = nextState
+      setGameState(nextState)
+      if (shouldPersist) void persistCurrentState()
+    }, 1000)
+    const saveTimer = window.setInterval(() => void persistCurrentState(), 30_000)
+    const saveOnHidden = () => {
+      if (document.visibilityState === 'hidden') void persistCurrentState()
+    }
+
+    document.addEventListener('visibilitychange', saveOnHidden)
+    return () => {
+      window.clearInterval(tickTimer)
+      window.clearInterval(saveTimer)
+      document.removeEventListener('visibilitychange', saveOnHidden)
+    }
+  }, [isLoading, persistCurrentState])
+
+  return (
+    <GameContext.Provider value={{
+      gameState,
+      isLoading,
+      error,
+      notice,
+      beginTutorial,
+      startResting,
+      stopResting,
+      completeTutorialStep,
+      startGathering: startGatheringAction,
+      finishFishing: finishFishingAction,
+      cancelGathering: cancelGatheringAction,
+      transferToStorage,
+      transferToInventory,
+      buyMarketItem: buyMarketItemAction,
+      sellMarketItem: sellMarketItemAction,
+      consumeItem: consumeItemAction,
+      queueRecipe: queueRecipeAction,
+      researchTechnology: researchTechnologyAction,
+      startBuilding: startBuildingAction,
+      upgradeBuilding: upgradeBuildingAction,
+      startExploration: startExplorationAction,
+      buildShip: buildShipAction,
+      startVoyage: startVoyageAction,
+      addFriend: addFriendAction,
+      visitPlayerIsland: visitPlayerIslandAction,
+      returnHomeIsland: returnHomeIslandAction,
+      proposeTrade: proposeTradeAction,
+      resolveTrade: resolveTradeAction,
+      startCombat: startCombatAction,
+      attackCombat: attackCombatAction,
+      retreatCombat: retreatCombatAction,
+      respawnCharacter: respawnCharacterAction,
+      resolveRandomWorldEvent: resolveRandomWorldEventAction,
+      clearNotice,
+    }}>
+      {children}
+    </GameContext.Provider>
+  )
+}

@@ -1,0 +1,91 @@
+import type { SurvivalStats } from '../../../shared/types/game'
+import { getBodyStatusEffects } from '../services/bodyStatusService'
+import type { WeatherDefinition } from '../../world/data/weatherDefinitions'
+
+const severityLabels = {
+  mild: 'Nhẹ',
+  moderate: 'Vừa',
+  severe: 'Nặng',
+  positive: 'Tốt',
+} as const
+
+export function BodyStatusPanel({ stats, characterName, appearance, weather, isResting = true }: {
+  stats: SurvivalStats
+  characterName: string
+  appearance: 'male' | 'female'
+  weather?: WeatherDefinition
+  isResting?: boolean
+}) {
+  const effects = getBodyStatusEffects(stats, weather, isResting)
+  const weatherEffectIds = ['overheated', 'cold-weather', 'rain-wet']
+  const prioritizedEffects = [...effects].sort((left, right) => {
+    const leftWeather = weatherEffectIds.includes(left.id) ? 0 : 1
+    const rightWeather = weatherEffectIds.includes(right.id) ? 0 : 1
+    if (leftWeather !== rightWeather) return leftWeather - rightWeather
+    if (left.severity === 'positive' && right.severity !== 'positive') return 1
+    if (left.severity !== 'positive' && right.severity === 'positive') return -1
+    return 0
+  })
+  const visualEffect = prioritizedEffects.find((effect) => weatherEffectIds.includes(effect.id))
+    ?? prioritizedEffects.find((effect) => effect.severity === 'severe')
+    ?? prioritizedEffects.find((effect) => effect.severity === 'moderate')
+    ?? prioritizedEffects[0]
+  const visibleEffects = prioritizedEffects.slice(0, 4)
+
+  return (
+    <section className="body-status-panel" aria-label="Hiệu ứng trạng thái cơ thể">
+      <div className="body-status-heading">
+        <div>
+          <span className="section-kicker">QUAN SÁT NHÂN VẬT</span>
+          <h2>Trạng thái cơ thể</h2>
+        </div>
+        <span className="body-status-count">{effects.length} hiệu ứng</span>
+      </div>
+      <div className="body-status-layout">
+        <div
+          className={`body-status-portrait${visualEffect ? ` body-state-${visualEffect.id}` : ''}${stats.health === 0 ? ' body-state-dead' : ''}`}
+          role="img"
+          aria-label={`${characterName}: ${visualEffect?.appearance ?? 'Thể trạng ổn định'}`}
+        >
+          <span className="body-status-halo" />
+          {visibleEffects.slice(0, 3).map((effect, index) => (
+            <span
+              className={`body-effect-bubble body-effect-${effect.severity}`}
+              key={effect.id}
+              style={{ top: `${12 + index * 29}px` }}
+              aria-hidden="true"
+            >
+              {effect.icon}
+            </span>
+          ))}
+          <img
+            className={`body-status-figure body-status-character-${appearance}`}
+            src={`/assets/characters/survivor-${appearance}.png`}
+            alt=""
+            aria-hidden="true"
+          />
+          <span className="body-status-name">{characterName}</span>
+        </div>
+        <div className="body-status-effects">
+          {effects.length === 0
+            ? <p className="body-status-empty">Chưa có hiệu ứng nổi bật. Nhân vật đang trong trạng thái ổn định.</p>
+            : prioritizedEffects.map((effect) => (
+              <article className={`body-effect-card body-effect-card-${effect.severity}`} key={effect.id}>
+                <span className="body-effect-icon" aria-hidden="true">{effect.icon}</span>
+                <div className="body-effect-copy">
+                  <div className="body-effect-title">
+                    <strong>{effect.name}</strong>
+                    <span>{severityLabels[effect.severity]}</span>
+                  </div>
+                  <p>{effect.appearance}</p>
+                  <small className="body-effect-cause">Nguyên nhân: {effect.cause}</small>
+                  <small>{effect.impact}</small>
+                </div>
+              </article>
+            ))}
+        </div>
+      </div>
+      <p className="body-status-footnote">Nhiệt độ, mưa và các trạng thái cơ thể được thể hiện bằng hiệu ứng, không tạo thêm thanh chỉ số sinh tồn.</p>
+    </section>
+  )
+}

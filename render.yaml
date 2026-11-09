@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: sinh-ton-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:api
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: WEB_ORIGIN
+        sync: false

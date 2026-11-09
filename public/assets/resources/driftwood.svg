@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <defs>
+    <linearGradient id="sea" x2="0" y2="1"><stop stop-color="#b6d9d4"/><stop offset="1" stop-color="#6da4a0"/></linearGradient>
+    <linearGradient id="wood" x2="0" y2="1"><stop stop-color="#bd9165"/><stop offset="1" stop-color="#805b3d"/></linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="18" fill="#eaf4ef"/>
+  <path d="M0 64c18-8 31 7 49 0s30-7 47 0v32H0Z" fill="url(#sea)"/>
+  <path d="M13 68c14-4 22 5 35 1m11 5c10-4 17 2 25-1" fill="none" stroke="#d7ece5" stroke-linecap="round" stroke-width="3"/>
+  <path d="m22 48 48-15 7 9-48 17Z" fill="url(#wood)" stroke="#684b36" stroke-linejoin="round" stroke-width="2"/>
+  <path d="m35 45 4 11m14-17 4 11m14-16 4 10" stroke="#dfbd91" stroke-linecap="round" stroke-width="2"/>
+  <path d="m18 59 10-3m43-22 8-2" stroke="#684b36" stroke-linecap="round" stroke-width="3"/>
+  <circle cx="71" cy="21" r="7" fill="#f3d9a1"/>
+</svg>
