@@ -14,7 +14,10 @@ export async function buildApiApp(
   const app = Fastify({ logger: true })
   app.decorateRequest('authenticatedUser', null)
   app.decorateRequest('accessToken', null)
-  await app.register(cors, { origin: webOrigin })
+  await app.register(cors, {
+    origin: webOrigin,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE'],
+  })
 
   app.get('/health', async () => ({ status: 'ok' }))
 

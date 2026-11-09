@@ -36,6 +36,26 @@ describe('backend API foundation', () => {
     expect(response.json()).toEqual({ status: 'ok' })
   })
 
+  it('allows browser preflight for authenticated game saves and world leave', async () => {
+    const app = await buildApiApp({ verifyAccessToken: vi.fn(), getPlayerProfile: vi.fn() }, 'https://sinh-ton-dao.vercel.app')
+    apps.push(app)
+
+    const response = await app.inject({
+      method: 'OPTIONS',
+      url: '/api/v1/game/state',
+      headers: {
+        origin: 'https://sinh-ton-dao.vercel.app',
+        'access-control-request-method': 'PUT',
+        'access-control-request-headers': 'authorization,content-type',
+      },
+    })
+
+    expect(response.statusCode).toBe(204)
+    expect(response.headers['access-control-allow-origin']).toBe('https://sinh-ton-dao.vercel.app')
+    expect(response.headers['access-control-allow-methods']).toContain('PUT')
+    expect(response.headers['access-control-allow-headers']).toContain('content-type')
+  })
+
   it('rejects missing and invalid bearer tokens before profile access', async () => {
     const getPlayerProfile = vi.fn()
     const authentication: AuthenticationServices = {
