@@ -51,6 +51,12 @@ describe('gameSaveService', () => {
       itemDurability: { item_wooden_spear: 12 },
     }
     expect(isValidGameSnapshot(state)).toBe(true)
+    expect(isValidGameSnapshot({
+      ...state,
+      equippedWeaponId: 'item_fishing_rod' as const,
+      itemDurability: { item_fishing_rod: 12 },
+    })).toBe(true)
+    expect(isValidGameSnapshot({ ...state, equippedWeaponId: 'item_rope' as const })).toBe(false)
     expect(isValidGameSnapshot({ ...state, clothesDrying: { buildingId: 'missing', startedAt: 1_000, completesAt: 181_000 } })).toBe(false)
     expect(isValidGameSnapshot({ ...state, campfireFuel: { missing: { remainingMs: 1, lastUpdatedAt: 1 } } })).toBe(false)
     expect(isValidGameSnapshot({

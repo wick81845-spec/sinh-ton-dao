@@ -171,8 +171,8 @@ function ContainerPanel({
                     {kind === 'bag' && slot.itemId === 'item_backpack' && onEquipBackpack && (
                       <button className="small-action" type="button" onClick={onEquipBackpack}>Trang bị ba lô</button>
                     )}
-                    {kind === 'bag' && item.equipmentSlot === 'weapon' && onEquipWeapon && (
-                      <button className="small-action" type="button" onClick={() => onEquipWeapon(slot.itemId)}>Trang bị vũ khí</button>
+                    {kind === 'bag' && item.category === 'tool' && slot.itemId !== 'item_backpack' && onEquipWeapon && (
+                      <button className="small-action" type="button" onClick={() => onEquipWeapon(slot.itemId)}>Đưa vào ô vũ khí / dụng cụ</button>
                     )}
                     {kind === 'bag' && item.maxDurability && onRepair
                       && (itemDurability?.[slot.itemId] ?? item.maxDurability) < item.maxDurability && (
@@ -282,14 +282,14 @@ export function InventoryPage() {
         </div>
         <BodyExposureMeters stats={survival} />
       </section>
-      <section className="container-panel equipped-weapon-panel" aria-label="Vũ khí đang trang bị">
+      <section className="container-panel equipped-weapon-panel" aria-label="Vũ khí hoặc dụng cụ đang trang bị">
         <div className="container-heading">
           <div>
-            <span className="section-kicker">TRANG BỊ RIÊNG</span>
-            <h2>Vũ khí</h2>
+            <span className="section-kicker">Ô TRANG BỊ</span>
+            <h2>Vũ khí / dụng cụ</h2>
           </div>
           {gameState.equippedWeaponId
-            ? <button className="small-action" type="button" onClick={unequipWeapon}>Cất vũ khí</button>
+            ? <button className="small-action" type="button" onClick={unequipWeapon}>Cất vào túi</button>
             : <span className="container-slots">Chưa trang bị</span>}
         </div>
         {gameState.equippedWeaponId && (() => {
@@ -301,7 +301,15 @@ export function InventoryPage() {
               <div className="item-row-details">
                 <strong>{weapon.name}</strong>
                 <small>{weapon.description}</small>
-                <small>Độ bền {gameState.itemDurability?.[weaponId] ?? weapon.maxDurability}/{weapon.maxDurability} · +{weapon.weaponDamageBonus ?? 0} sát thương</small>
+                <small>
+                  {weapon.maxDurability
+                    ? `Độ bền ${gameState.itemDurability?.[weaponId] ?? weapon.maxDurability}/${weapon.maxDurability}`
+                    : 'Không có độ bền'}
+                  {' · '}
+                  {weapon.weaponDamageBonus === undefined
+                    ? 'Dùng làm dụng cụ · không tăng sát thương chiến đấu'
+                    : `+${weapon.weaponDamageBonus} sát thương chiến đấu`}
+                </small>
               </div>
               {weapon.maxDurability
                 && (gameState.itemDurability?.[weaponId] ?? weapon.maxDurability) < weapon.maxDurability

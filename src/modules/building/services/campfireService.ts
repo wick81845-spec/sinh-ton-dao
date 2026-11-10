@@ -36,6 +36,35 @@ export function isCampfireLitAt(state: GameSnapshot, buildingId: string, now: nu
   return Boolean(getCampfireBuilding(state, buildingId)) && getCampfireRemainingMs(state, buildingId, now) > 0
 }
 
+export function setCampfireWarming(
+  state: GameSnapshot,
+  buildingId: string,
+  now: number,
+  isWarming: boolean,
+): CampfireActionResult {
+  if (!isWarming) {
+    return {
+      ok: true,
+      state: { ...state, isWarmingAtCampfire: false },
+      message: 'Bạn đã dừng sưởi ấm bên lửa trại.',
+    }
+  }
+  if (state.character.status !== 'alive') {
+    return { ok: false, message: 'Bạn cần hồi sinh trước khi sưởi ấm.' }
+  }
+  if (!isCampfireLitAt(state, buildingId, now)) {
+    return { ok: false, message: 'Cần có lửa trại đang cháy để sưởi ấm.' }
+  }
+  if ((state.survival.bodyTemperature ?? 37) >= 37) {
+    return { ok: false, message: 'Thân nhiệt đã đạt mức an toàn, bạn chưa cần sưởi thêm.' }
+  }
+  return {
+    ok: true,
+    state: { ...state, isWarmingAtCampfire: true },
+    message: 'Bạn bắt đầu sưởi ấm bên lửa trại. Thân nhiệt sẽ tăng dần đến 37°C.',
+  }
+}
+
 export function fuelCampfire(
   state: GameSnapshot,
   buildingId: string,

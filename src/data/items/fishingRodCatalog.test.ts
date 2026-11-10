@@ -41,6 +41,12 @@ describe('fishingRodCatalog', () => {
     expect(getBestFishingRod(state)?.itemId).toBe('item_fishing_rod')
     expect(getBestFishingRod({
       ...state,
+      inventory: { ...state.inventory, slots: [] },
+      equippedWeaponId: 'item_fishing_rod_2',
+      itemDurability: { item_fishing_rod_2: 18 },
+    })?.itemId).toBe('item_fishing_rod_2')
+    expect(getBestFishingRod({
+      ...state,
       itemDurability: { item_fishing_rod: 0, item_fishing_rod_2: 0 },
     })).toBeUndefined()
   })

@@ -45,6 +45,20 @@ describe('bodyExposureService', () => {
     expect(warmed.state.survival.bodyTemperature).toBeLessThanOrEqual(37)
   })
 
+  it('warms faster when the survivor actively chooses to warm by the fire', () => {
+    const coldState = {
+      ...initialGameState,
+      survival: { ...initialGameState.survival, bodyTemperature: 34, wetness: 0 },
+      isWarmingAtCampfire: true,
+    }
+    const warmed = advanceBodyExposure(coldState, 60_000, undefined, false, true, true)
+
+    expect(warmed.state.survival.bodyTemperature).toBe(34.6)
+    expect(warmed.state.isWarmingAtCampfire).toBe(true)
+    expect(advanceBodyExposure(coldState, 10 * 60_000, undefined, false, true, true)
+      .state.isWarmingAtCampfire).toBe(false)
+  })
+
   it('leaves the state untouched when no time has elapsed', () => {
     expect(advanceBodyExposure(initialGameState, 0)).toEqual({
       state: initialGameState,

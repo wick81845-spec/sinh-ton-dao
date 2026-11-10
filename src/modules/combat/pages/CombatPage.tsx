@@ -33,7 +33,10 @@ export function CombatPage() {
 
   const active = gameState.activeCombat
   const encounter = active && combatEncounters.find((entry) => entry.id === active.encounterId)
-  const weaponId = gameState.equippedWeaponId
+  const equippedItemId = gameState.equippedWeaponId
+  const weaponId = (equippedItemId && itemDefinitions[equippedItemId].equipmentSlot === 'weapon'
+    ? equippedItemId
+    : undefined)
     ?? (gameState.inventory.slots.some((slot) => slot.itemId === 'item_wooden_axe') ? 'item_wooden_axe' : undefined)
 
   return (
@@ -101,6 +104,9 @@ export function CombatPage() {
                   ? `${itemDefinitions[weaponId].name} (+${itemDefinitions[weaponId].weaponDamageBonus ?? 0} sát thương, độ bền ${gameState.itemDurability?.[weaponId] ?? itemDefinitions[weaponId].maxDurability})`
                   : 'Không trang bị (+12 sát thương)'}
               </span>
+              {equippedItemId && itemDefinitions[equippedItemId].equipmentSlot !== 'weapon' && (
+                <span>Dụng cụ đang ở ô trang bị: {itemDefinitions[equippedItemId].name} · không tăng sát thương</span>
+              )}
               <span>Vị trí: {getIslandDefinition(gameState.character.currentLocationId)?.name ?? gameState.character.currentLocationId}</span>
             </div>
           </div>

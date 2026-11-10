@@ -135,7 +135,11 @@ export function attackCombat(state: GameSnapshot, now: number): CombatActionResu
   if (!encounter) return { ok: false, message: 'Không tìm thấy đối thủ.' }
 
   const legacyAxe = state.inventory.slots.some((slot) => slot.itemId === 'item_wooden_axe')
-  const weaponId = state.equippedWeaponId ?? (legacyAxe ? 'item_wooden_axe' : undefined)
+  const equippedWeapon = state.equippedWeaponId
+    && itemDefinitions[state.equippedWeaponId].equipmentSlot === 'weapon'
+    ? state.equippedWeaponId
+    : undefined
+  const weaponId = equippedWeapon ?? (legacyAxe ? 'item_wooden_axe' : undefined)
   const weapon = weaponId ? itemDefinitions[weaponId] : undefined
   const weaponDurability = weaponId ? state.itemDurability?.[weaponId] ?? weapon?.maxDurability ?? 0 : 0
   const hasUsableWeapon = Boolean(weapon && weaponDurability > 0)

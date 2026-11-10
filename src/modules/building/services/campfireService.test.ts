@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { initialGameState } from '../../../data/mockGameState'
-import { advanceCampfireFuel, fuelCampfire, getCampfireRemainingMs, isCampfireLitAt } from './campfireService'
+import {
+  advanceCampfireFuel,
+  fuelCampfire,
+  getCampfireRemainingMs,
+  isCampfireLitAt,
+  setCampfireWarming,
+} from './campfireService'
 
 function litCampfireState() {
   return {
@@ -49,5 +55,30 @@ describe('campfireService', () => {
     expect(second.ok).toBe(true)
     if (!second.ok) throw new Error(second.message)
     expect(second.state.campfireFuel?.['campfire-1']?.remainingMs).toBe(9 * 60_000)
+  })
+
+  it('only starts warming beside a lit campfire when body temperature is low', () => {
+    const coldState = {
+      ...litCampfireState(),
+      survival: { ...initialGameState.survival, bodyTemperature: 34 },
+      campfireFuel: { 'campfire-1': { remainingMs: 60_000, lastUpdatedAt: 1_000 } },
+    }
+
+    expect(setCampfireWarming(coldState, 'campfire-1', 1_000, true)).toMatchObject({
+      ok: true,
+      state: { isWarmingAtCampfire: true },
+    })
+    expect(setCampfireWarming(coldState, 'campfire-1', 61_000, true)).toMatchObject({
+      ok: false,
+      message: 'Cần có lửa trại đang cháy để sưởi ấm.',
+    })
+    expect(setCampfireWarming({
+      ...coldState,
+      survival: { ...coldState.survival, bodyTemperature: 37 },
+    }, 'campfire-1', 1_000, true)).toMatchObject({ ok: false })
+    expect(setCampfireWarming(coldState, 'campfire-1', 1_000, false)).toMatchObject({
+      ok: true,
+      state: { isWarmingAtCampfire: false },
+    })
   })
 })

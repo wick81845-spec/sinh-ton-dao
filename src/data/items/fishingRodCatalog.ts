@@ -91,10 +91,11 @@ export function getFishingRod(itemId: FishingRodItemId): FishingRodDefinition {
 }
 
 export function getBestFishingRod(
-  state: Pick<GameSnapshot, 'inventory' | 'itemDurability'>,
+  state: Pick<GameSnapshot, 'inventory' | 'itemDurability'> & { equippedWeaponId?: GameSnapshot['equippedWeaponId'] },
 ): (FishingRodDefinition & { durability: number }) | undefined {
   return fishingRodCatalog
-    .filter((rod) => state.inventory.slots.some((slot) => slot.itemId === rod.itemId && slot.quantity > 0))
+    .filter((rod) => state.equippedWeaponId === rod.itemId
+      || state.inventory.slots.some((slot) => slot.itemId === rod.itemId && slot.quantity > 0))
     .map((rod) => ({ ...rod, durability: state.itemDurability?.[rod.itemId] ?? rod.maxDurability }))
     .filter((rod) => rod.durability > 0)
     .sort((left, right) => right.tier - left.tier)[0]

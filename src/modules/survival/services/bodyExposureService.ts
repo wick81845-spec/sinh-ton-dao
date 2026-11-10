@@ -4,6 +4,7 @@ import { getSurvivalConditions } from '../utils/survivalCalculator'
 
 const millisecondsPerMinute = 60_000
 const campfireWarmthPerMinute = 0.12
+const activeCampfireWarmthPerMinute = 0.6
 const rainRatesPerMinute: Readonly<Record<string, number>> = {
   drizzle: 0.3,
   moderate_rain: 0.6,
@@ -29,6 +30,7 @@ export function advanceBodyExposure(
   weather?: WeatherDefinition,
   isSheltered = false,
   isNearCampfire = false,
+  isActivelyWarming = false,
 ): { state: GameSnapshot; changed: boolean } {
   const elapsedMinutes = Math.max(0, elapsedMilliseconds) / millisecondsPerMinute
   if (elapsedMinutes === 0) return { state, changed: false }
@@ -53,7 +55,10 @@ export function advanceBodyExposure(
     : temperatureDelta * 0.004
   const wetColdShiftPerMinute = temperatureDelta < 0 ? (wetness / 100) * 0.03 : 0
   const campfireWarmth = isNearCampfire
-    ? Math.min(Math.max(0, 37 - previousBodyTemperature), campfireWarmthPerMinute * elapsedMinutes)
+    ? Math.min(
+      Math.max(0, 37 - previousBodyTemperature),
+      (isActivelyWarming ? activeCampfireWarmthPerMinute : campfireWarmthPerMinute) * elapsedMinutes,
+    )
     : 0
   const bodyTemperature = round(clamp(
     previousBodyTemperature
@@ -71,6 +76,7 @@ export function advanceBodyExposure(
   return {
     state: {
       ...state,
+      ...(isActivelyWarming && bodyTemperature >= 37 ? { isWarmingAtCampfire: false } : {}),
       survival: { ...survival, conditions: getSurvivalConditions(survival) },
     },
     changed: true,

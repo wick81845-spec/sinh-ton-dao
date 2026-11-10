@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { newPlayerGameState } from '../../data/mockGameState'
 import { completeConstructions, getShelterRestBonusMultiplier, startConstruction, upgradeBuilding } from '../../modules/building/services/buildingService'
-import { advanceCampfireFuel, fuelCampfire as addCampfireFuel } from '../../modules/building/services/campfireService'
+import {
+  advanceCampfireFuel,
+  fuelCampfire as addCampfireFuel,
+  setCampfireWarming as updateCampfireWarming,
+} from '../../modules/building/services/campfireService'
 import { advanceClothesDrying, startClothesDrying } from '../../modules/building/services/clothesDryingService'
 import { harvestCrop as harvestFarmCrop, plantCrop as plantFarmCrop } from '../../modules/building/services/farmService'
 import {
@@ -527,6 +531,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return commitWorkState(currentState, result.state, result.message)
   }, [commitWorkState])
 
+  const setCampfireWarmingAction = useCallback((buildingId: string, isWarming: boolean): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = updateCampfireWarming(currentState, buildingId, gameClock.now(), isWarming)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
   const startDryingClothesAction = useCallback((buildingId: string): GameActionResult => {
     const currentState = stateRef.current
     if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
@@ -1050,6 +1065,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         && building.islandId === stateAfterFire.character.currentLocationId
         && (stateAfterFire.campfireFuel?.[building.id]?.remainingMs ?? 0) > 0
       ))
+      const isActivelyWarming = stateAfterFire.isWarmingAtCampfire === true
+        && hasRestingCampfire
+        && stateAfterFire.character.status === 'alive'
+        && (stateAfterFire.survival.bodyTemperature ?? 37) < 37
       const shelterMultiplier = getShelterRestBonusMultiplier(stateAfterFire)
       const hasShelter = shelterMultiplier > 1
       const campfireMultiplier = hasRestingCampfire ? 1.25 : 1
@@ -1075,11 +1094,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
         )
         : stateAfterFood.survival
       const bodyExposure = advanceBodyExposure(
-        { ...stateAfterFood, survival: baseSurvival },
+        {
+          ...stateAfterFood,
+          ...(stateAfterFire.isWarmingAtCampfire
+            ? { isWarmingAtCampfire: isActivelyWarming }
+            : {}),
+          survival: baseSurvival,
+        },
         now - previousTick,
         survivalWeather,
         hasShelter,
         hasRestingCampfire,
+        isActivelyWarming,
       )
       const clothesDryingAdvance = advanceClothesDrying(bodyExposure.state, now)
       const ailmentAdvance = advanceAilments(
@@ -1284,6 +1310,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       startBuilding: startBuildingAction,
       upgradeBuilding: upgradeBuildingAction,
       fuelCampfire: fuelCampfireAction,
+      setCampfireWarming: setCampfireWarmingAction,
       startDryingClothes: startDryingClothesAction,
       plantCrop: plantCropAction,
       harvestCrop: harvestCropAction,

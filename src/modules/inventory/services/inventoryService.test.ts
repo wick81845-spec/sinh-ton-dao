@@ -322,7 +322,7 @@ describe('inventoryService', () => {
     expect(unequipped.state.inventory.slots).toContainEqual({ itemId: 'item_backpack', quantity: 1 })
   })
 
-  it('moves a weapon into its dedicated equipment slot and back without losing durability', () => {
+  it('moves weapons and tools into the equipment slot and back without losing durability', () => {
     const state = {
       ...initialGameState,
       inventory: {
@@ -343,6 +343,28 @@ describe('inventoryService', () => {
     expect(stored.state.equippedWeaponId).toBeUndefined()
     expect(stored.state.inventory.slots).toContainEqual({ itemId: 'item_wooden_spear', quantity: 1 })
     expect(stored.state.itemDurability?.item_wooden_spear).toBe(15)
+
+    const rodState = {
+      ...initialGameState,
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [{ itemId: 'item_fishing_rod' as const, quantity: 1 }],
+      },
+    }
+    const equippedRod = equipWeapon(rodState, 'item_fishing_rod')
+    expect(equippedRod.ok).toBe(true)
+    if (!equippedRod.ok) throw new Error(equippedRod.message)
+    expect(equippedRod.state.equippedWeaponId).toBe('item_fishing_rod')
+    expect(equippedRod.state.inventory.slots).toEqual([])
+    expect(equippedRod.state.itemDurability?.item_fishing_rod).toBe(12)
+    const storedRod = unequipWeapon(equippedRod.state)
+    expect(storedRod.ok).toBe(true)
+    if (!storedRod.ok) throw new Error(storedRod.message)
+    expect(storedRod.state.inventory.slots).toEqual([{ itemId: 'item_fishing_rod', quantity: 1 }])
+    expect(equipWeapon({
+      ...rodState,
+      inventory: { ...rodState.inventory, slots: [{ itemId: 'item_backpack', quantity: 1 }] },
+    }, 'item_backpack')).toMatchObject({ ok: false })
   })
 
   it.each([

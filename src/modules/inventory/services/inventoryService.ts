@@ -222,21 +222,28 @@ export function equipWeapon(state: GameSnapshot, itemId: ItemId): InventoryActio
   if (state.character.status !== 'alive') return { ok: false, message: 'Bạn cần hồi sinh trước khi trang bị vũ khí.' }
   if (state.activeCombat) return { ok: false, message: 'Không thể đổi vũ khí trong khi chiến đấu.' }
   if (state.equippedWeaponId) return { ok: false, message: 'Hãy cất vũ khí đang trang bị trước.' }
-  if (itemDefinitions[itemId].equipmentSlot !== 'weapon') return { ok: false, message: 'Vật phẩm này không phải vũ khí.' }
+  if (itemDefinitions[itemId].category !== 'tool' || itemId === 'item_backpack') {
+    return { ok: false, message: 'Chỉ có thể trang bị vũ khí hoặc dụng cụ vào ô này.' }
+  }
   const removed = removeItems(state.inventory, itemId, 1)
-  if (!removed.ok) return { ok: false, message: 'Vũ khí không có trong hành trang.' }
+  if (!removed.ok) return { ok: false, message: 'Dụng cụ không có trong hành trang.' }
+  const maxDurability = itemDefinitions[itemId].maxDurability
   return {
     ok: true,
     state: {
       ...state,
       inventory: removed.container,
       equippedWeaponId: itemId,
-      itemDurability: {
-        ...state.itemDurability,
-        [itemId]: state.itemDurability?.[itemId] ?? itemDefinitions[itemId].maxDurability ?? 1,
-      },
+      ...(maxDurability
+        ? {
+          itemDurability: {
+            ...state.itemDurability,
+            [itemId]: state.itemDurability?.[itemId] ?? maxDurability,
+          },
+        }
+        : {}),
     },
-    message: `Đã trang bị ${itemDefinitions[itemId].name}.`,
+    message: `Đã đưa ${itemDefinitions[itemId].name} vào ô vũ khí / dụng cụ.`,
   }
 }
 

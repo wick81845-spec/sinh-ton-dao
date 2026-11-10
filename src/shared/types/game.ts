@@ -386,6 +386,7 @@ export interface GameSnapshot {
   livestockPens?: LivestockPen[]
   waterCollectors?: Record<string, WaterCollectorState>
   isResting?: boolean
+  isWarmingAtCampfire?: boolean
   backpackEquipped?: boolean
   equippedWeaponId?: ItemId
   campfireFuel?: Record<string, CampfireFuelState>

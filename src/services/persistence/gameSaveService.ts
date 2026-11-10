@@ -731,7 +731,8 @@ function isGameSnapshot(value: unknown): value is GameSnapshot {
   return Array.isArray(value.friendIds)
     && (equippedWeaponId === undefined
       || (isItemId(equippedWeaponId)
-        && itemDefinitions[equippedWeaponId].equipmentSlot === 'weapon'
+        && itemDefinitions[equippedWeaponId].category === 'tool'
+        && equippedWeaponId !== 'item_backpack'
         && !value.inventory.slots.some((slot) => slot.itemId === equippedWeaponId)))
     && (campfireFuel === undefined || (isRecord(campfireFuel)
       && Object.entries(campfireFuel).every(([buildingId, fuel]) => (
@@ -800,6 +801,7 @@ function isGameSnapshot(value: unknown): value is GameSnapshot {
       && new Set(value.appliedAdminCommandIds).size === value.appliedAdminCommandIds.length
     ))
     && (value.isResting === undefined || typeof value.isResting === 'boolean')
+    && (value.isWarmingAtCampfire === undefined || typeof value.isWarmingAtCampfire === 'boolean')
     && (value.ailments === undefined || (
       Array.isArray(value.ailments)
       && value.ailments.length <= 20

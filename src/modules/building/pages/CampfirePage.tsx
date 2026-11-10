@@ -17,7 +17,7 @@ import { getConstructionAvailability } from '../services/buildingService'
 const campfireFoodRecipeIds = ['recipe_roast_fish', 'recipe_roast_crab', 'recipe_roast_shrimp']
 
 export function CampfirePage() {
-  const { gameState, isLoading, error, startBuilding, fuelCampfire, queueRecipe } = useGame()
+  const { gameState, isLoading, error, startBuilding, fuelCampfire, setCampfireWarming, queueRecipe } = useGame()
   const [now, setNow] = useState(gameClock.now())
 
   useEffect(() => {
@@ -44,6 +44,8 @@ export function CampfirePage() {
   const isHomeIsland = gameState.character.currentLocationId === gameState.character.homeIslandId
   const fuelRemaining = campfire ? getCampfireRemainingMs(gameState, campfire.id, now) : 0
   const isLit = campfire ? isCampfireLitAt(gameState, campfire.id, now) : false
+  const bodyTemperature = gameState.survival.bodyTemperature ?? 37
+  const isWarming = gameState.isWarmingAtCampfire === true
   const foodRecipes = recipes.filter((recipe) => campfireFoodRecipeIds.includes(recipe.id))
   const constructionIssue = getConstructionAvailability(gameState, campfireDefinition.id)
 
@@ -117,6 +119,30 @@ export function CampfirePage() {
                 )
               })}
             </div>
+          </section>
+
+          <section className="campfire-quick-section campfire-warming-section">
+            <div className="campfire-quick-section-heading">
+              <div>
+                <span className="section-kicker">SƯỞI ẤM</span>
+                <h3>Thân nhiệt {bodyTemperature.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}°C</h3>
+              </div>
+              <button
+                className="small-action"
+                type="button"
+                disabled={!isHomeIsland || (!isWarming && (!isLit || bodyTemperature >= 37))}
+                onClick={() => setCampfireWarming(campfire.id, !isWarming)}
+              >
+                {isWarming ? 'Dừng sưởi' : 'Sưởi ấm'}
+              </button>
+            </div>
+            <p className="settings-note">
+              {isWarming
+                ? 'Đang sưởi bên lửa trại · thân nhiệt tăng nhanh hơn đến 37°C.'
+                : isLit
+                  ? 'Ngồi sưởi bên lửa đang cháy để thân nhiệt tăng nhanh hơn; lửa vẫn làm ấm thụ động khi bạn ở gần.'
+                  : 'Cần nhóm lửa trại để sưởi ấm.'}
+            </p>
           </section>
 
           <CampfireClothesDryingControl buildingId={campfire.id} now={now} />

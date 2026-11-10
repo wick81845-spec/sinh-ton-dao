@@ -69,6 +69,22 @@ describe('combatService', () => {
     expect(result.state.equippedWeaponId).toBe('item_wooden_spear')
   })
 
+  it('does not use or wear an equipped tool as a combat weapon', () => {
+    const state = {
+      ...initialGameState,
+      equippedWeaponId: 'item_fishing_rod' as const,
+      itemDurability: { item_fishing_rod: 12 },
+    }
+    const started = startCombat(state, 'encounter_pirate_patrol', 1_000)
+    if (!started.ok) throw new Error(started.message)
+    const result = attackCombat(started.state, 2_000)
+    if (!result.ok) throw new Error(result.message)
+
+    expect(result.state.activeCombat?.opponentHealth).toBe(16)
+    expect(result.state.itemDurability?.item_fishing_rod).toBe(12)
+    expect(result.state.equippedWeaponId).toBe('item_fishing_rod')
+  })
+
   it('drops all carried items on death but preserves storage, then respawns at home', () => {
     const battleState = {
       ...initialGameState,
