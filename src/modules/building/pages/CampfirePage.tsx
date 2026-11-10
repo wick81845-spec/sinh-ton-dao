@@ -3,6 +3,7 @@ import { useGame } from '../../../app/providers/useGame'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import { gameClock } from '../../../services/clock/gameClock'
 import { ItemStack } from '../../../shared/components/ItemArtwork'
+import { CampfireClothesDryingControl } from '../components/CampfireClothesDryingControl'
 import { recipes } from '../../crafting/data/recipes'
 import { getRecipeAvailability } from '../../crafting/services/craftingService'
 import { buildingDefinitions } from '../data/buildingDefinitions'
@@ -117,6 +118,8 @@ export function CampfirePage() {
               })}
             </div>
           </section>
+
+          <CampfireClothesDryingControl buildingId={campfire.id} now={now} />
 
           <section className="campfire-quick-section">
             <div className="campfire-quick-section-heading">

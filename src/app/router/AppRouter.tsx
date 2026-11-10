@@ -33,6 +33,17 @@ function RequireAuthentication({ children }: { children: ReactNode }) {
   return children
 }
 
+function RequireAdmin({ children }: { children: ReactNode }) {
+  const { isAdmin, isAdminLoading, adminError } = useAuth()
+  if (isAdminLoading) return <p className="page-state">Đang xác minh quyền quản trị…</p>
+  if (!isAdmin) {
+    return adminError
+      ? <p className="page-state error-state" role="alert">Không thể xác minh quyền quản trị: {adminError}</p>
+      : <Navigate to="/" replace />
+  }
+  return children
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
@@ -51,12 +62,14 @@ export function AppRouter() {
           <Route path="gathering" element={<GatheringPage />} />
           <Route path="crafting" element={<CraftingPage />} />
           <Route path="building" element={<BuildingPage />} />
+          <Route path="structures" element={<BuildingPage ownedOnly />} />
           <Route path="island" element={<WorldPage />} />
           <Route path="exploration" element={<ExplorationPage />} />
           <Route path="voyage" element={<VoyagePage />} />
           <Route path="social" element={<SocialPage />} />
           <Route path="combat" element={<CombatPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="admin" element={<RequireAdmin><></></RequireAdmin>} />
           <Route path="progression" element={<ProgressionPage />} />
           <Route path="market" element={<MarketPage />} />
           <Route path="updates" element={<UpdatesPage />} />

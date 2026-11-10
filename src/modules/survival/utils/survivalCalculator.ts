@@ -1,6 +1,7 @@
 import { survivalConfig } from '../data/survivalConfig'
 import type { GameSnapshot, SurvivalStats } from '../../../shared/types/game'
 import type { WeatherDefinition } from '../../world/data/weatherDefinitions'
+import { worldGameTimeScale } from '../../world/services/worldClock'
 
 const millisecondsPerHour = 60 * 60 * 1000
 const millisecondsPerMinute = 60 * 1000
@@ -53,41 +54,45 @@ export function advanceSurvival(
   restBonusMultiplier = 1,
   activityMultiplier = 1,
   isSheltered = false,
+  gameTimeScale = worldGameTimeScale,
+  seasonalThirstMultiplier = 1,
 ): SurvivalStats {
   const elapsed = Math.max(0, elapsedMilliseconds)
+  const gameElapsed = elapsed * Math.max(0, gameTimeScale)
   const hotWeather = weather !== undefined && weather.temperatureDelta >= 5
   const needMultiplier = Math.max(1, activityMultiplier)
-  const hungerDecayPerHour = survivalConfig.hunger.decayPerHour * needMultiplier
-  const thirstDecayPerHour = survivalConfig.thirst.decayPerHour
+  const hungerDecayPerHour = survivalConfig.hunger.decayPerDay / 24 * needMultiplier
+  const thirstDecayPerHour = survivalConfig.thirst.decayPerDay / 24
     * needMultiplier
+    * Math.max(0, seasonalThirstMultiplier)
     * (hotWeather && !isSheltered ? survivalConfig.hotWeatherThirstMultiplier : 1)
   const temperatureDelta = weather?.temperatureDelta ?? 0
   const extremeWeatherDamage = !isSheltered && (temperatureDelta >= 9 || temperatureDelta <= -12)
-    ? (elapsed / millisecondsPerHour) * survivalConfig.extremeWeatherDamagePerHour
+    ? (gameElapsed / millisecondsPerHour) * survivalConfig.extremeWeatherDamagePerHour
     : 0
   const hunger = Math.max(
     0,
-    stats.hunger - (elapsed / millisecondsPerHour) * hungerDecayPerHour,
+    stats.hunger - (gameElapsed / millisecondsPerHour) * hungerDecayPerHour,
   )
   const thirst = Math.max(
     0,
-    stats.thirst - (elapsed / millisecondsPerHour) * thirstDecayPerHour,
+    stats.thirst - (gameElapsed / millisecondsPerHour) * thirstDecayPerHour,
   )
   const hungerDepletedAt = stats.hunger / hungerDecayPerHour * millisecondsPerHour
   const thirstDepletedAt = stats.thirst / thirstDecayPerHour * millisecondsPerHour
-  const starvationDuration = Math.max(0, elapsed - hungerDepletedAt)
-  const dehydrationDuration = Math.max(0, elapsed - thirstDepletedAt)
+  const starvationDuration = Math.max(0, gameElapsed - hungerDepletedAt)
+  const dehydrationDuration = Math.max(0, gameElapsed - thirstDepletedAt)
   const malnutritionDuration = durationBelowThreshold(
     stats.hunger,
     survivalConfig.criticalNeedThreshold,
     hungerDecayPerHour,
-    elapsed,
+    gameElapsed,
   )
   const severeDehydrationDuration = durationBelowThreshold(
     stats.thirst,
     survivalConfig.criticalNeedThreshold,
     thirstDecayPerHour,
-    elapsed,
+    gameElapsed,
   )
   const starvationDamage = (
     malnutritionDuration * survivalConfig.health.malnutritionDamagePerHour

@@ -84,6 +84,26 @@ export async function buildApiApp(
     return { players: await adminControls.listPlayers() }
   })
 
+  app.get('/api/v1/game/admin/players/:playerId/survival', { preHandler: requireAuthentication }, async (request, reply) => {
+    if (!await requireAdmin(request, reply)) return
+    if (!adminControls) {
+      return reply.code(503).send({ error: 'admin_controls_not_configured', message: 'Công cụ quản trị cần SUPABASE_SECRET_KEY và migration mới nhất.' })
+    }
+    const params = request.params
+    const playerId = isRecord(params) && typeof params.playerId === 'string' ? params.playerId : ''
+    if (!isUuid(playerId)) {
+      return reply.code(400).send({ error: 'invalid_player', message: 'Người chơi không hợp lệ.' })
+    }
+    if (!await adminControls.playerExists(playerId)) {
+      return reply.code(404).send({ error: 'player_not_found', message: 'Không tìm thấy người chơi.' })
+    }
+    const player = await adminControls.getPlayerSurvival(playerId)
+    if (!player) {
+      return reply.code(404).send({ error: 'player_save_not_found', message: 'Người chơi chưa có save để đọc chỉ số.' })
+    }
+    return player
+  })
+
   app.put('/api/v1/game/admin/world-weather', { preHandler: requireAuthentication }, async (request, reply) => {
     if (!await requireAdmin(request, reply)) return
     if (!adminControls) {

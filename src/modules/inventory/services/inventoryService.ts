@@ -82,6 +82,30 @@ const toolRepairCosts: Partial<Record<ItemId, readonly ItemQuantity[]>> = {
     { itemId: 'item_branch', quantity: 1 },
     { itemId: 'item_plant_fiber', quantity: 1 },
   ],
+  item_fishing_rod_2: [
+    { itemId: 'item_wood', quantity: 2 },
+    { itemId: 'item_plant_fiber', quantity: 1 },
+  ],
+  item_fishing_rod_3: [
+    { itemId: 'item_wood_hard', quantity: 2 },
+    { itemId: 'item_rope', quantity: 1 },
+  ],
+  item_fishing_rod_4: [
+    { itemId: 'item_copper_ingot', quantity: 1 },
+    { itemId: 'item_wood_hard', quantity: 1 },
+  ],
+  item_fishing_rod_5: [
+    { itemId: 'item_bronze_ingot', quantity: 1 },
+    { itemId: 'item_rope', quantity: 2 },
+  ],
+  item_fishing_rod_6: [
+    { itemId: 'item_iron_ingot', quantity: 1 },
+    { itemId: 'item_wood_hard', quantity: 2 },
+  ],
+  item_fishing_rod_7: [
+    { itemId: 'item_iron_ingot', quantity: 2 },
+    { itemId: 'item_bronze_ingot', quantity: 1 },
+  ],
 }
 
 export function getCarriedWeight(container: ItemContainer): number {

@@ -25,6 +25,7 @@ import {
   type FishMeasurement,
 } from '../data/fishingConfig'
 import { fishCatalog } from '../../../data/items/fishCatalog'
+import { getBestFishingRod } from '../../../data/items/fishingRodCatalog'
 import { biomeDefinitionsById } from '../../world/data/biomeDefinitions'
 import { getIslandDefinition, worldLocations } from '../../world/data/worldDefinitions'
 import { getCurrentWeather } from '../../world/services/weatherService'
@@ -51,7 +52,7 @@ export function GatheringPage({
   asPanel?: boolean
   onOpenPanel?: (path: string, title: string) => void
 }) {
-  const { gameState, isLoading, error, startGathering, cancelGathering, finishFishing } = useGame()
+  const { gameState, isLoading, error, startGathering, cancelGathering, finishFishing, failFishing } = useGame()
   const [now, setNow] = useState(gameClock.now())
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [isFishingLocationSelected, setIsFishingLocationSelected] = useState(false)
@@ -122,11 +123,11 @@ export function GatheringPage({
     setFishingOutcome({ type: 'caught', itemId, measurement })
     setFishingNotice({ itemId, measurement })
   }, [])
-  const onFishEscaped = useCallback(() => {
+  const onFishEscaped = useCallback((reason?: 'rod-damaged') => {
     setFishingOutcome({ type: 'escaped' })
     setFishingNotice(null)
-    cancelGathering()
-  }, [cancelGathering])
+    failFishing(reason === 'rod-damaged')
+  }, [failFishing])
   const closeFishingOutcome = useCallback(() => {
     setFishingOutcome(null)
     setFishingNotice(null)
@@ -164,6 +165,7 @@ export function GatheringPage({
   const currentWorldLocation = worldLocations.find((location) => location.islandId === gameState.character.currentLocationId)
   const currentPositionName = currentWorldLocation?.name ?? currentIsland?.name ?? 'Vị trí chưa xác định'
   const currentFishingZone = fishingZoneDefinitions.find((entry) => entry.id === currentIsland?.oceanZoneId)
+  const currentFishingRod = getBestFishingRod(gameState)
   const shelter = gameState.buildings.find((building) => (
     building.definitionId === 'building_shelter'
     && building.status === 'completed'
@@ -242,21 +244,26 @@ export function GatheringPage({
     return (
       <div className="gathering-page gathering-map-preview">
         {isFishingActive && active ? (
-          <FishingMinigame
-            key={active.startedAt}
-            startedAt={active.startedAt}
-            fishingSkillLevel={skillLevelForExperience(gameState.character.skillExperience?.gathering ?? 0)}
-            sceneImage={currentFishingZone?.image ?? ''}
-            sceneName={currentFishingZone?.name ?? 'Vùng câu cá'}
-            method={activeFishingMethod}
-            staminaCost={fishingActivity.staminaCost}
-            fishPool={activeFishingFish}
-            lootPool={activeFishingLoot}
-            onFinish={finishFishing}
-            onCancel={cancelGathering}
-            onCaught={onFishCaught}
-            onEscaped={onFishEscaped}
-          />
+          <div className="fishing-session-backdrop">
+            <div className="fishing-session-dialog" role="dialog" aria-modal="true" aria-label="Câu cá">
+              <FishingMinigame
+                key={active.startedAt}
+                startedAt={active.startedAt}
+                fishingSkillLevel={skillLevelForExperience(gameState.character.skillExperience?.gathering ?? 0)}
+                sceneImage={currentFishingZone?.image ?? ''}
+                sceneName={currentFishingZone?.name ?? 'Vùng câu cá'}
+                method={activeFishingMethod}
+                staminaCost={fishingActivity.staminaCost}
+                fishPool={activeFishingFish}
+                lootPool={activeFishingLoot}
+                rod={currentFishingRod}
+                onFinish={finishFishing}
+                onCancel={cancelGathering}
+                onCaught={onFishCaught}
+                onEscaped={onFishEscaped}
+              />
+            </div>
+          </div>
         ) : (
           <>
             <section className="gathering-map-stage" aria-label="Bản đồ các điểm thu hoạch">
@@ -373,7 +380,7 @@ export function GatheringPage({
                 <div className="gathering-map-player-line">
                   <strong>{gameState.character.name}</strong>
                   <span>Cấp {gameState.character.level}</span>
-                  {gameState.isResting && <span className="gathering-map-resting-indicator">Đang nghỉ tại {shelterLabel}</span>}
+                  {gameState.isResting && <span className="gathering-map-resting-indicator">Đang nghỉ ngơi tại {shelterLabel}</span>}
                 </div>
                 <div className="gathering-map-survival-stats" aria-label="Thông số sinh tồn hiện tại">
                   {([
@@ -430,13 +437,9 @@ export function GatheringPage({
                     <span aria-hidden="true">⚒</span>
                     <span><strong>Chế tạo</strong></span>
                   </button>
-                  <button type="button" aria-label="Quản lý công trình" onClick={() => onOpenPanel?.('/building', 'Công trình trên đảo')}>
-                    <span aria-hidden="true">⌂</span>
-                    <span><strong>Xây dựng</strong></span>
-                  </button>
                   <button type="button" aria-label={gameState.isResting ? 'Mở bảng để dừng nghỉ' : shelterActionLabel} onClick={() => onOpenPanel?.('/survival', gameState.isResting ? `Đang nghỉ tại ${shelterLabel}` : shelterActionLabel)}>
                     <span aria-hidden="true">⛺</span>
-                    <span><strong>{gameState.isResting ? 'Đang nghỉ' : shelterActionLabel}</strong></span>
+                    <span><strong>{gameState.isResting ? `Đang nghỉ ngơi tại ${shelterLabel}` : shelterActionLabel}</strong></span>
                   </button>
                 </div>
               )}
@@ -546,10 +549,24 @@ export function GatheringPage({
                   </div>
                   {isFishingLocationSelected
                     ? (
-                      <>
+                      <div className="gathering-map-fishing-notes">
                         {fishingIssue && !active && <small className="activity-blocked">{fishingIssue}</small>}
+                        {!currentFishingRod && !active && onOpenPanel && (
+                          <button
+                            className="small-action"
+                            type="button"
+                            onClick={() => onOpenPanel?.('/crafting', 'Chế tạo cần câu')}
+                          >
+                            Chế tạo cần câu
+                          </button>
+                        )}
+                        {currentFishingRod && !active && (
+                          <small className="gathering-map-rod-status">
+                            Đang dùng {currentFishingRod.name} · độ bền {currentFishingRod.durability}/{currentFishingRod.maxDurability}
+                          </small>
+                        )}
                         {spearFishingIssue && !active && <small className="activity-blocked">{spearFishingIssue}</small>}
-                      </>
+                      </div>
                     )
                     : selectedGatheringIssue && !active && <small className="activity-blocked">{selectedGatheringIssue}</small>}
                 </div>
@@ -590,21 +607,26 @@ export function GatheringPage({
         <div className="stamina-chip">ϟ <strong>{gameState.survival.stamina.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%</strong> thể lực</div>
       </div>
       {isFishingActive && active && (
-        <FishingMinigame
-          key={active.startedAt}
-          startedAt={active.startedAt}
-          fishingSkillLevel={skillLevelForExperience(gameState.character.skillExperience?.gathering ?? 0)}
-          sceneImage={currentFishingZone?.image ?? ''}
-          sceneName={currentFishingZone?.name ?? 'Vùng câu cá'}
-          method={activeFishingMethod}
-          staminaCost={fishingActivity.staminaCost}
-          fishPool={activeFishingFish}
-          lootPool={activeFishingLoot}
-          onFinish={finishFishing}
-          onCancel={cancelGathering}
-          onCaught={onFishCaught}
-          onEscaped={onFishEscaped}
-        />
+        <div className="fishing-session-backdrop">
+          <div className="fishing-session-dialog" role="dialog" aria-modal="true" aria-label="Câu cá">
+            <FishingMinigame
+              key={active.startedAt}
+              startedAt={active.startedAt}
+              fishingSkillLevel={skillLevelForExperience(gameState.character.skillExperience?.gathering ?? 0)}
+              sceneImage={currentFishingZone?.image ?? ''}
+              sceneName={currentFishingZone?.name ?? 'Vùng câu cá'}
+              method={activeFishingMethod}
+              staminaCost={fishingActivity.staminaCost}
+              fishPool={activeFishingFish}
+              lootPool={activeFishingLoot}
+              rod={currentFishingRod}
+              onFinish={finishFishing}
+              onCancel={cancelGathering}
+              onCaught={onFishCaught}
+              onEscaped={onFishEscaped}
+            />
+          </div>
+        </div>
       )}
 
       {!isFishingActive && fishingOutcome?.type === 'caught' && (
@@ -728,8 +750,14 @@ export function GatheringPage({
                   <span>{activitySettings.durationSeconds} giây</span>
                   <span>{isSpearFishing ? 'Cá nhỏ ven bờ × 1' : 'Cá ngẫu nhiên × 1'}</span>
                   {isSpearFishing && <span>Cần có lao đánh cá</span>}
+                  {!isSpearFishing && currentFishingRod && (
+                    <span>{currentFishingRod.name} · bền {currentFishingRod.durability}/{currentFishingRod.maxDurability}</span>
+                  )}
                 </div>
                 {issue && !active && <small className="activity-blocked">{issue}</small>}
+                {!isSpearFishing && !currentFishingRod && !active && (
+                  <small className="activity-blocked">Chế tạo cần câu ở mục Chế tạo trước khi câu cá.</small>
+                )}
               </div>
               <button
                 className="gather-button"

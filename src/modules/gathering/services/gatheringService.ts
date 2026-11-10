@@ -23,6 +23,7 @@ import {
 import { islandDefinitions } from '../../world/data/worldDefinitions'
 import { getFishingLootDefinition } from '../../../data/items/fishingLootCatalog'
 import { fishCatalog } from '../../../data/items/fishCatalog'
+import { getBestFishingRod } from '../../../data/items/fishingRodCatalog'
 
 export type GatheringActionResult =
   | { ok: true; state: GameSnapshot; message: string }
@@ -59,6 +60,9 @@ function getFishingIssue(state: GameSnapshot, activityId: string): string | null
   }
   const actionName = method === 'spear' ? 'đánh cá' : 'câu cá'
   if (state.survival.stamina < fishingActivity.staminaCost) return `Không đủ thể lực để ${actionName}.`
+  if (method === 'rod' && !getBestFishingRod(state)) {
+    return 'Bạn cần chế tạo một cần câu còn sử dụng được trước khi câu cá.'
+  }
 
   const island = islandDefinitions.find((entry) => entry.id === state.character.currentLocationId)
   if (!island) return 'Không tìm thấy vùng biển để câu cá.'
@@ -233,6 +237,35 @@ export function cancelGathering(state: GameSnapshot): GameSnapshot {
   return { ...state, activeGathering: null }
 }
 
+export function failFishing(state: GameSnapshot, rodDamaged: boolean): GatheringActionResult {
+  if (!state.activeGathering || !isFishingActivityId(state.activeGathering.activityId)) {
+    return { ok: false, message: 'Bạn chưa bắt đầu hoạt động đánh cá.' }
+  }
+  if (!rodDamaged || getFishingMethod(state.activeGathering.activityId) !== 'rod') {
+    return {
+      ok: true,
+      state: { ...state, activeGathering: null },
+      message: 'Cá đã thoát mất.',
+    }
+  }
+  const rod = getBestFishingRod(state)
+  if (!rod) {
+    return {
+      ok: true,
+      state: { ...state, activeGathering: null },
+      message: 'Cá đã thoát mất.',
+    }
+  }
+  const toolUse = degradeItemDurability(state, rod.itemId)
+  return {
+    ok: true,
+    state: { ...toolUse.state, activeGathering: null },
+    message: toolUse.broke
+      ? `${rod.name} đã gãy trong lúc cá vùng vẫy.`
+      : `Cá đã thoát; ${rod.name} bị hư, độ bền còn ${toolUse.remaining}/${rod.maxDurability}.`,
+  }
+}
+
 export function completeGathering(
   state: GameSnapshot,
   now: number,
@@ -276,6 +309,14 @@ export function completeGathering(
     if (!method) {
       return { status: 'failed', state: { ...state, activeGathering: null }, message: 'Phương pháp đánh cá chưa được cấu hình đúng.' }
     }
+    const rod = method === 'rod' ? getBestFishingRod(state) : undefined
+    if (method === 'rod' && !rod) {
+      return {
+        status: 'failed',
+        state: { ...state, activeGathering: null },
+        message: 'Bạn cần chế tạo một cần câu còn sử dụng được trước khi câu cá.',
+      }
+    }
     const island = islandDefinitions.find((entry) => entry.id === state.character.currentLocationId)
     if (!island) {
       return { status: 'failed', state: { ...state, activeGathering: null }, message: 'Không tìm thấy vùng biển để câu cá.' }
@@ -309,11 +350,18 @@ export function completeGathering(
     if (!inventoryResult.ok) {
       return { status: 'failed', state: { ...state, activeGathering: null }, message: inventoryResult.message }
     }
-    const toolItemId = method === 'spear' ? 'item_fishing_spear' : 'item_fishing_rod'
+    const toolItemId = method === 'spear' ? 'item_fishing_spear' : rod?.itemId
+    if (!toolItemId) {
+      return {
+        status: 'failed',
+        state: { ...state, activeGathering: null },
+        message: 'Bạn cần chế tạo một cần câu còn sử dụng được trước khi câu cá.',
+      }
+    }
     const toolUse = hasItemOrEquipped(state, toolItemId)
       ? degradeItemDurability({ ...state, inventory: inventoryResult.container }, toolItemId)
       : { state: { ...state, inventory: inventoryResult.container }, remaining: 0, broke: false }
-    const toolName = method === 'spear' ? 'Lao đánh cá' : 'Cần câu'
+    const toolName = method === 'spear' ? 'Lao đánh cá' : rod?.name ?? 'Cần câu'
     const toolMessage = hasItemOrEquipped(state, toolItemId)
       ? toolUse.broke
         ? ` ${toolName} đã hỏng.`

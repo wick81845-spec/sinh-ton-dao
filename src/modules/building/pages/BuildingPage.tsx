@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useGame } from '../../../app/providers/useGame'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import { gameClock } from '../../../services/clock/gameClock'
@@ -6,6 +7,7 @@ import { buildingDefinitions, getConstructionAvailability, getUpgradeAvailabilit
 import { campfireFuelOptions, getCampfireRemainingMs } from '../services/campfireService'
 import { ItemStack } from '../../../shared/components/ItemArtwork'
 import { cropDefinitions, getCropPlantAvailability } from '../services/farmService'
+import { CampfireClothesDryingControl } from '../components/CampfireClothesDryingControl'
 
 function formatCost(cost: { itemId: keyof typeof itemDefinitions; quantity: number }[]) {
   return (
@@ -15,7 +17,7 @@ function formatCost(cost: { itemId: keyof typeof itemDefinitions; quantity: numb
   )
 }
 
-export function BuildingPage() {
+export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
   const {
     gameState,
     isLoading,
@@ -30,6 +32,8 @@ export function BuildingPage() {
     raiseGoat,
     collectGoatMilk,
     collectRainwater,
+    startResting,
+    stopResting,
   } = useGame()
   const [now, setNow] = useState(gameClock.now())
 
@@ -43,16 +47,25 @@ export function BuildingPage() {
 
   return (
     <div className="building-page">
-      <div className="page-title-row">
+      {ownedOnly && (
+        <div className="page-title-row">
+          <div>
+            <span className="section-kicker">CĂN CỨ · CÔNG TRÌNH ĐÃ DỰNG</span>
+            <h1>Công trình</h1>
+            <p>Chọn công trình đã xây để sử dụng và quản lý tại từng đảo.</p>
+          </div>
+        </div>
+      )}
+      {!ownedOnly && <div className="page-title-row">
         <div>
           <span className="section-kicker">ĐẢO NHÀ · PHÁT TRIỂN CĂN CỨ</span>
           <h1>Xây dựng</h1>
           <p>Dựng công trình và nâng cấp căn cứ trên đảo nhà.</p>
         </div>
         <div className="stamina-chip"><strong>{gameState.constructionQueue.length} / 2</strong> việc xây dựng</div>
-      </div>
+      </div>}
 
-      {gameState.constructionQueue.length > 0 && (
+      {!ownedOnly && gameState.constructionQueue.length > 0 && (
         <section className="construction-queue" aria-label="Tiến độ xây dựng">
           <div className="section-heading">
             <div>
@@ -86,42 +99,46 @@ export function BuildingPage() {
         </section>
       )}
 
-      <div className="section-heading building-section-heading">
-        <div>
-          <span className="section-kicker">CÔNG TRÌNH CÓ THỂ DỰNG</span>
-          <h2>Phát triển đảo nhà</h2>
-        </div>
-      </div>
-      <section className="building-grid" aria-label="Công trình có thể xây">
-        {buildingDefinitions.map((definition) => {
-          const issue = getConstructionAvailability(gameState, definition.id)
-          return (
-            <article className="building-card" key={definition.id}>
-              <span className="building-emblem" aria-hidden="true">⌂</span>
-              <span className="section-kicker">TỐI ĐA CẤP {definition.maxLevel}</span>
-              <h3>{definition.name}</h3>
-              <p>{definition.description}</p>
-              <div className="building-spec">
-                <span>Chi phí</span>
-                <strong>{formatCost(definition.constructionCost)}</strong>
-              </div>
-              <div className="building-spec">
-                <span>Thời gian</span>
-                <strong>{definition.constructionDurationSeconds} giây</strong>
-              </div>
-              {issue && <small className="activity-blocked">{issue}</small>}
-              <button
-                className="gather-button building-action"
-                type="button"
-                disabled={Boolean(issue)}
-                onClick={() => startBuilding(definition.id)}
-              >
-                {issue ? 'Chưa thể xây' : 'Xây công trình'}
-              </button>
-            </article>
-          )
-        })}
-      </section>
+      {!ownedOnly && (
+        <>
+          <div className="section-heading building-section-heading">
+            <div>
+              <span className="section-kicker">CÔNG TRÌNH CÓ THỂ DỰNG</span>
+              <h2>Phát triển đảo nhà</h2>
+            </div>
+          </div>
+          <section className="building-grid" aria-label="Công trình có thể xây">
+            {buildingDefinitions.map((definition) => {
+              const issue = getConstructionAvailability(gameState, definition.id)
+              return (
+                <article className="building-card" key={definition.id}>
+                  <span className="building-emblem" aria-hidden="true">⌂</span>
+                  <span className="section-kicker">TỐI ĐA CẤP {definition.maxLevel}</span>
+                  <h3>{definition.name}</h3>
+                  <p>{definition.description}</p>
+                  <div className="building-spec">
+                    <span>Chi phí</span>
+                    <strong>{formatCost(definition.constructionCost)}</strong>
+                  </div>
+                  <div className="building-spec">
+                    <span>Thời gian</span>
+                    <strong>{definition.constructionDurationSeconds} giây</strong>
+                  </div>
+                  {issue && <small className="activity-blocked">{issue}</small>}
+                  <button
+                    className="gather-button building-action"
+                    type="button"
+                    disabled={Boolean(issue)}
+                    onClick={() => startBuilding(definition.id)}
+                  >
+                    {issue ? 'Chưa thể xây' : 'Xây công trình'}
+                  </button>
+                </article>
+              )
+            })}
+          </section>
+        </>
+      )}
 
       <div className="section-heading building-section-heading">
         <div>
@@ -130,7 +147,11 @@ export function BuildingPage() {
         </div>
       </div>
       {gameState.buildings.length === 0
-        ? <p className="empty-buildings">Chưa có công trình nào. Hãy dựng công trình đầu tiên trên đảo nhà.</p>
+        ? (
+          <p className="empty-buildings">
+            Chưa có công trình nào. <Link to="/building">Đến xây dựng công trình đầu tiên.</Link>
+          </p>
+        )
         : (
           <section className="owned-building-list" aria-label="Công trình đã xây dựng">
             {gameState.buildings.map((building) => {
@@ -140,6 +161,8 @@ export function BuildingPage() {
               const upgradeCost = definition.upgradeCosts[nextLevel]
               const issue = getUpgradeAvailability(gameState, building.id)
               const isCampfire = building.definitionId === 'building_campfire'
+              const isShelter = building.definitionId === 'building_shelter'
+              const isAtBuilding = building.islandId === gameState.character.currentLocationId
               const isGardenBed = building.definitionId === 'building_garden_bed'
               const farmPlot = gameState.farmPlots?.find((plot) => plot.buildingId === building.id)
               const crop = farmPlot && cropDefinitions.find((entry) => entry.id === farmPlot.cropId)
@@ -161,6 +184,7 @@ export function BuildingPage() {
                     <span className="section-kicker">{building.status === 'completed' ? 'ĐÃ HOÀN THÀNH' : 'ĐANG THI CÔNG'}</span>
                     <h3>{definition.name}</h3>
                     <p>Cấp {building.level} / {definition.maxLevel} · Độ bền {building.health} / {definition.maxHealth}</p>
+                    {ownedOnly && <p>{isAtBuilding ? 'Đảo hiện tại' : 'Đảo khác'} · {building.islandId}</p>}
                     {isCampfire && building.status === 'completed' && (
                       <p role="status">
                         {fuelRemaining > 0
@@ -180,7 +204,7 @@ export function BuildingPage() {
                             <button
                               className="small-action"
                               type="button"
-                              disabled={now < farmPlot.readyAt}
+                              disabled={!isAtBuilding || now < farmPlot.readyAt}
                               onClick={() => harvestCrop(farmPlot.id)}
                             >
                               Thu hoạch
@@ -194,7 +218,7 @@ export function BuildingPage() {
                               className="small-action"
                               type="button"
                               key={cropOption.id}
-                              disabled={Boolean(issue)}
+                              disabled={!isAtBuilding || Boolean(issue)}
                               title={issue ?? undefined}
                               onClick={() => plantCrop(building.id, cropOption.id)}
                             >
@@ -205,13 +229,28 @@ export function BuildingPage() {
                         })}
                     </div>
                   )}
+                  {isShelter && building.status === 'completed' && (
+                    <div className="owned-building-upgrade" aria-label="Nghỉ ngơi tại lều">
+                      <p>{gameState.isResting && isAtBuilding
+                        ? `Đang nghỉ ngơi tại ${definition.name} · Cấp ${building.level}`
+                        : `Nơi nghỉ ngơi · Cấp ${building.level}`}</p>
+                      <button
+                        className="small-action"
+                        type="button"
+                        disabled={!isAtBuilding || (!gameState.isResting && gameState.survival.stamina >= 100)}
+                        onClick={() => (gameState.isResting && isAtBuilding ? stopResting() : startResting())}
+                      >
+                        {gameState.isResting && isAtBuilding ? 'Dừng nghỉ' : 'Nghỉ ngơi tại lều'}
+                      </button>
+                    </div>
+                  )}
                   {chickenCoop && building.status === 'completed' && (
                     <div className="owned-building-upgrade" aria-label="Quản lý chuồng gà">
                       <p>Gà nuôi: {livestock?.chickenCount ?? 0} / 3</p>
                       <button
                         className="small-action"
                         type="button"
-                        disabled={chickenQuantity < 1 || (livestock?.chickenCount ?? 0) >= 3}
+                        disabled={!isAtBuilding || chickenQuantity < 1 || (livestock?.chickenCount ?? 0) >= 3}
                         onClick={() => raiseChicken(building.id)}
                       >
                         Nuôi gà con · có {chickenQuantity}
@@ -220,7 +259,7 @@ export function BuildingPage() {
                         <button
                           className="small-action"
                           type="button"
-                          disabled={now < (livestock.nextEggAt ?? now)}
+                          disabled={!isAtBuilding || now < (livestock.nextEggAt ?? now)}
                           onClick={() => collectEggs(building.id)}
                         >
                           {(livestock.nextEggAt ?? now) > now
@@ -236,7 +275,7 @@ export function BuildingPage() {
                       <button
                         className="small-action"
                         type="button"
-                        disabled={goatQuantity < 1 || (livestock?.goatCount ?? 0) >= 2}
+                        disabled={!isAtBuilding || goatQuantity < 1 || (livestock?.goatCount ?? 0) >= 2}
                         onClick={() => raiseGoat(building.id)}
                       >
                         Nuôi dê con · có {goatQuantity}
@@ -245,7 +284,7 @@ export function BuildingPage() {
                         <button
                           className="small-action"
                           type="button"
-                          disabled={now < (livestock?.nextMilkAt ?? now)}
+                          disabled={!isAtBuilding || now < (livestock?.nextMilkAt ?? now)}
                           onClick={() => collectGoatMilk(building.id)}
                         >
                           {(livestock?.nextMilkAt ?? now) > now
@@ -261,7 +300,7 @@ export function BuildingPage() {
                       <button
                         className="small-action"
                         type="button"
-                        disabled={(gameState.waterCollectors?.[building.id]?.storedUnits ?? 0) === 0}
+                        disabled={!isAtBuilding || (gameState.waterCollectors?.[building.id]?.storedUnits ?? 0) === 0}
                         onClick={() => collectRainwater(building.id)}
                       >
                         Thu nước mưa
@@ -289,6 +328,25 @@ export function BuildingPage() {
                       })}
                     </div>
                   )}
+                  {ownedOnly
+                    && building.status === 'completed'
+                    && isAtBuilding
+                    && ['building_workbench', 'building_kiln', 'building_drying_rack', 'building_cooking_stove', 'building_smokehouse'].includes(building.definitionId)
+                    && <Link className="small-action" to="/crafting">Mở chế biến tại công trình</Link>}
+                  {ownedOnly
+                    && building.status === 'completed'
+                    && !isAtBuilding
+                    && ['building_workbench', 'building_kiln', 'building_drying_rack', 'building_cooking_stove', 'building_smokehouse'].includes(building.definitionId)
+                    && <small className="activity-blocked">Đến đảo này để sử dụng công trình.</small>}
+                  {ownedOnly
+                    && building.definitionId === 'building_storage'
+                    && building.status === 'completed'
+                    && (isAtBuilding
+                      ? <Link className="small-action" to="/inventory">Mở kho chứa</Link>
+                      : <small className="activity-blocked">Đến đảo này để mở kho chứa.</small>)}
+                  {isCampfire && ownedOnly && building.status === 'completed' && (
+                    <CampfireClothesDryingControl buildingId={building.id} now={now} />
+                  )}
                   {upgradeCost && (
                     <div className="owned-building-upgrade">
                       <small>{formatCost(upgradeCost)}</small>
@@ -309,7 +367,7 @@ export function BuildingPage() {
             })}
           </section>
         )}
-      <p className="inventory-note">Vật liệu bị trừ khi bắt đầu xây hoặc nâng cấp. Mỗi công trình chỉ nhận một dự án tại một thời điểm.</p>
+      {!ownedOnly && <p className="inventory-note">Vật liệu bị trừ khi bắt đầu xây hoặc nâng cấp. Mỗi công trình chỉ nhận một dự án tại một thời điểm.</p>}
     </div>
   )
 }

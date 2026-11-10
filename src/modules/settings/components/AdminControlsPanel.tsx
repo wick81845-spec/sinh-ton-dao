@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
 import {
   loadAdminPlayers,
+  loadAdminPlayerSurvival,
   loadRemoteWorldSettings,
   queueAdminSurvivalCommand,
   updateGlobalWeather,
 } from '../../../services/persistence/remoteAdminControlClient'
-import type { AdminPlayerSummary, AdminSurvivalCommand } from '../../../shared/types/admin'
+import type {
+  AdminPlayerSummary,
+  AdminPlayerSurvivalSummary,
+  AdminSurvivalCommand,
+} from '../../../shared/types/admin'
 import type { SurvivalAilmentId } from '../../../shared/types/game'
 import { weatherDefinitions } from '../../world/data/weatherDefinitions'
 
@@ -20,6 +25,11 @@ const survivalFields = [
 
 type SurvivalField = typeof survivalFields[number]['key']
 type SurvivalFieldValues = Record<SurvivalField, string>
+type PlayerSurvivalResult = {
+  playerId: string
+  summary: AdminPlayerSurvivalSummary | null
+  failed: boolean
+}
 
 const ailmentOptions: { id: SurvivalAilmentId; label: string }[] = [
   { id: 'bleeding', label: 'Chảy máu' },
@@ -58,6 +68,7 @@ const emptyValues: SurvivalFieldValues = {
 export function AdminControlsPanel({ accessToken }: { accessToken: string }) {
   const [players, setPlayers] = useState<AdminPlayerSummary[]>([])
   const [playerId, setPlayerId] = useState('')
+  const [playerSurvivalResult, setPlayerSurvivalResult] = useState<PlayerSurvivalResult | null>(null)
   const [weatherId, setWeatherId] = useState('')
   const [values, setValues] = useState<SurvivalFieldValues>(emptyValues)
   const [replaceAilments, setReplaceAilments] = useState(false)
@@ -68,6 +79,10 @@ export function AdminControlsPanel({ accessToken }: { accessToken: string }) {
   const [savingSurvival, setSavingSurvival] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const playerSurvival = playerSurvivalResult?.playerId === playerId
+    ? playerSurvivalResult.summary
+    : null
+  const loadingPlayerSurvival = Boolean(playerId && playerSurvivalResult?.playerId !== playerId)
 
   useEffect(() => {
     let active = true
@@ -88,6 +103,20 @@ export function AdminControlsPanel({ accessToken }: { accessToken: string }) {
     })
     return () => { active = false }
   }, [accessToken])
+
+  useEffect(() => {
+    if (!playerId) return
+    let active = true
+    void loadAdminPlayerSurvival(accessToken, playerId).then((summary) => {
+      if (active) setPlayerSurvivalResult({ playerId, summary, failed: false })
+    }).catch((loadError: unknown) => {
+      if (!active) return
+      console.error('Không thể tải chỉ số người chơi.', loadError)
+      setPlayerSurvivalResult({ playerId, summary: null, failed: true })
+      setError(loadError instanceof Error ? loadError.message : 'Không thể tải chỉ số người chơi.')
+    })
+    return () => { active = false }
+  }, [accessToken, playerId])
 
   async function saveWeather(): Promise<void> {
     setSavingWeather(true)
@@ -177,12 +206,65 @@ export function AdminControlsPanel({ accessToken }: { accessToken: string }) {
           <div className="admin-player-control">
             <label>
               <span>Người chơi</span>
-              <select value={playerId} onChange={(event) => setPlayerId(event.target.value)}>
+              <select
+                value={playerId}
+                onChange={(event) => {
+                  setPlayerId(event.target.value)
+                  setValues(emptyValues)
+                  setReplaceAilments(false)
+                  setAilments([])
+                  setError(null)
+                  setNotice(null)
+                }}
+              >
+                {players.length === 0 && <option value="">Không có người chơi</option>}
                 {players.map((player) => (
                   <option key={player.id} value={player.id}>{player.displayName} · @{player.username}</option>
                 ))}
               </select>
             </label>
+            <section className="admin-player-current-stats" aria-live="polite" aria-label="Chỉ số hiện tại của người chơi">
+              <div className="admin-player-current-heading">
+                <strong>Chỉ số hiện tại</strong>
+                {playerSurvival && (
+                  <span className={playerSurvival.status === 'alive' ? 'is-alive' : 'is-dead'}>
+                    {playerSurvival.status === 'alive' ? 'Đang sống' : 'Đã mất'}
+                  </span>
+                )}
+              </div>
+              {loadingPlayerSurvival
+                ? <p className="account-state">Đang tải chỉ số người chơi…</p>
+                : playerSurvival
+                  ? (
+                    <>
+                      <div className="admin-player-current-grid">
+                        {survivalFields.map((field) => {
+                          const currentValue = playerSurvival.survival[field.key]
+                          return (
+                            <div key={field.key}>
+                              <span>{field.label}</span>
+                              <strong>{currentValue === undefined
+                                ? '—'
+                                : `${Number(currentValue).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}${field.key === 'bodyTemperature' ? '°C' : '%'}`}</strong>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <p className="settings-note">
+                        Trạng thái: {playerSurvival.ailments.length
+                          ? playerSurvival.ailments.map((ailment) => (
+                            ailmentOptions.find((option) => option.id === ailment.id)?.label ?? ailment.id
+                          )).join(' · ')
+                          : 'Không có bệnh hoặc chấn thương'}
+                      </p>
+                    </>
+                  )
+                  : <p className="settings-note">
+                    {playerSurvivalResult?.playerId === playerId && playerSurvivalResult.failed
+                      ? 'Không thể tải chỉ số người chơi.'
+                      : 'Người chơi chưa có save để đọc chỉ số.'}
+                  </p>}
+            </section>
             <div className="admin-survival-fields">
               {survivalFields.map((field) => (
                 <label key={field.key}>
@@ -193,7 +275,9 @@ export function AdminControlsPanel({ accessToken }: { accessToken: string }) {
                     max={field.max}
                     step={field.step}
                     value={values[field.key]}
-                    placeholder="Không đổi"
+                    placeholder={playerSurvival
+                      ? `Hiện tại ${playerSurvival.survival[field.key] ?? '—'}`
+                      : 'Không đổi'}
                     onChange={(event) => setValues((current) => ({ ...current, [field.key]: event.target.value }))}
                   />
                 </label>

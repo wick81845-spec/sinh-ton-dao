@@ -726,6 +726,7 @@ function isGameSnapshot(value: unknown): value is GameSnapshot {
   if (!Array.isArray(playerInventories) || !playerInventories.every(isSocialPlayerInventory)) return false
   const playerInventoryIds = playerInventories.map((entry) => entry.playerId)
   const campfireFuel = value.campfireFuel
+  const clothesDrying = value.clothesDrying
   const equippedWeaponId = value.equippedWeaponId
   return Array.isArray(value.friendIds)
     && (equippedWeaponId === undefined
@@ -746,6 +747,19 @@ function isGameSnapshot(value: unknown): value is GameSnapshot {
         && isFiniteNumber(fuel.lastUpdatedAt)
         && fuel.lastUpdatedAt >= 0
       ))))
+    && (clothesDrying === undefined || clothesDrying === null || (
+      isRecord(clothesDrying)
+      && typeof clothesDrying.buildingId === 'string'
+      && value.buildings.some((building) => (
+        building.id === clothesDrying.buildingId
+        && building.definitionId === 'building_campfire'
+        && building.status === 'completed'
+      ))
+      && isFiniteNumber(clothesDrying.startedAt)
+      && clothesDrying.startedAt >= 0
+      && isFiniteNumber(clothesDrying.completesAt)
+      && clothesDrying.completesAt > clothesDrying.startedAt
+    ))
     && (value.weather === undefined || isValidWeatherState(value.weather))
     && (value.randomWorldEvents === undefined || (
       Array.isArray(value.randomWorldEvents)

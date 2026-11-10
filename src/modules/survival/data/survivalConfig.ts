@@ -7,8 +7,8 @@ export const survivalConfig = {
     severeDehydrationDamagePerHour: 1,
     restRecoveryPerHour: 1,
   },
-  hunger: { max: 100, decayPerHour: 6 },
-  thirst: { max: 100, decayPerHour: 9 },
+  hunger: { max: 100, decayPerDay: 35 },
+  thirst: { max: 100, decayPerDay: 60 },
   activityNeedMultiplier: 1.5,
   stamina: {
     max: 100,

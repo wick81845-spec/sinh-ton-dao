@@ -15,6 +15,7 @@ import {
 import { getFishingLootDefinition, type FishingLootEntry } from '../../../data/items/fishingLootCatalog'
 import type { FishingActionResult } from '../../../app/providers/gameContext'
 import { gameClock } from '../../../services/clock/gameClock'
+import type { FishingRodDefinition } from '../../../data/items/fishingRodCatalog'
 
 interface FishingMinigameProps {
   startedAt: number
@@ -25,10 +26,11 @@ interface FishingMinigameProps {
   staminaCost: number
   fishPool: FishDefinition[]
   lootPool: FishingLootEntry[]
+  rod?: FishingRodDefinition & { durability: number }
   onFinish(castPower: number, caughtItemId: ItemId): FishingActionResult
   onCancel(): void
   onCaught(itemId: ItemId): void
-  onEscaped(): void
+  onEscaped(reason?: 'rod-damaged'): void
 }
 
 function getBiteDelay(startedAt: number): number {
@@ -45,6 +47,7 @@ function FishingScene({
   fightProfile,
   catchKind,
   method,
+  rod,
 }: {
   phase: FishingPhase
   fighting: boolean
@@ -53,6 +56,7 @@ function FishingScene({
   fightProfile: FishFightProfile | null
   catchKind: FishingCatch['kind'] | null
   method: FishingMethod
+  rod?: FishingRodDefinition & { durability: number }
 }) {
   return (
     <div className={`fishing-scene fishing-scene-${phase}${fightProfile ? ` fish-${fightProfile.movement}` : ''}${fighting ? ' is-fighting' : ''}`}>
@@ -75,8 +79,8 @@ function FishingScene({
       <div className="fishing-current-rod">
         {method === 'spear'
           ? <span aria-hidden="true">↗</span>
-          : <img src="/assets/fishing/rods/rod-1.png" alt="" />}
-        <span>{method === 'spear' ? 'Lao đánh cá' : 'Cần tre tự chế'}</span>
+          : <img src={rod?.image ?? '/assets/fishing/rods/rod-1.png'} alt="" />}
+        <span>{method === 'spear' ? 'Lao đánh cá' : rod?.name ?? 'Cần câu'}</span>
       </div>
     </div>
   )
@@ -91,6 +95,7 @@ export function FishingMinigame({
   staminaCost,
   fishPool,
   lootPool,
+  rod,
   onFinish,
   onCancel,
   onCaught,
@@ -160,7 +165,7 @@ export function FishingMinigame({
         return
       }
       if (phaseRef.current === 'bite') {
-        if (castAtRef.current !== null && currentTime - castAtRef.current - getBiteDelay(startedAt) > 1_250) {
+        if (castAtRef.current !== null && currentTime - castAtRef.current - getBiteDelay(startedAt) > 850) {
           phaseRef.current = 'escaped'
           setError(method === 'spear' ? 'Bạn phóng lao chậm quá, cá đã bơi mất.' : 'Bạn giật cần chậm quá, cá đã nhả mồi.')
           onEscapedRef.current()
@@ -175,19 +180,21 @@ export function FishingMinigame({
       const cyclePosition = hookedElapsed % profile.fightCycleMs
       const fighting = cyclePosition >= profile.fightCycleMs - profile.fightDurationMs
       setIsFighting(fighting)
+      const rodTensionScale = method === 'rod' ? 1 - (rod?.tensionResistance ?? 0) : 1
+      const rodReelSpeed = method === 'rod' ? rod?.reelSpeed ?? 1 : 1
       const fishStrength = profile.force * (0.65 + fishStaminaRef.current / 100 * 0.55)
 
       if (holdingRef.current) {
-        tensionRef.current += fighting ? 4.1 * fishStrength : 0.55 * profile.force
+        tensionRef.current += fighting ? 5.2 * fishStrength * rodTensionScale : 0.75 * profile.force
         if (!fighting) {
           const tiredFishBonus = 1 + (1 - fishStaminaRef.current / 100) * 0.3
-          progressRef.current += 2.4 * profile.reelSpeed * tiredFishBonus
+          progressRef.current += 1.8 * profile.reelSpeed * rodReelSpeed * tiredFishBonus
           fishStaminaRef.current = Math.max(0, fishStaminaRef.current - 0.04)
         } else if (fishStaminaRef.current <= 15) {
-          progressRef.current += 0.7 * profile.reelSpeed
+          progressRef.current += 0.45 * profile.reelSpeed * rodReelSpeed
         }
       } else {
-        tensionRef.current -= fighting ? 5.2 * (0.8 + profile.force * 0.2) : 1.5
+        tensionRef.current -= fighting ? 4.7 * (0.8 + profile.force * 0.2) : 1.1
         if (fighting) {
           progressRef.current = Math.max(0, progressRef.current - 0.08 * profile.force)
           fishStaminaRef.current = Math.max(0, fishStaminaRef.current - profile.tireRate * 0.1)
@@ -202,7 +209,7 @@ export function FishingMinigame({
       if (tensionRef.current >= 100) {
         phaseRef.current = 'escaped'
         setError(method === 'spear' ? 'Cá vùng vẫy thoát khỏi mũi lao!' : 'Dây câu đứt mất rồi! Cá đã thoát.')
-        onEscapedRef.current()
+        onEscapedRef.current(method === 'rod' && Math.random() < 0.45 ? 'rod-damaged' : undefined)
         return
       }
       if (progressRef.current >= 100) {
@@ -227,7 +234,7 @@ export function FishingMinigame({
     }, 100)
 
     return () => window.clearInterval(timer)
-  }, [method, startedAt])
+  }, [method, rod?.reelSpeed, rod?.tensionResistance, startedAt])
 
   function finishCatch(itemId: ItemId) {
     if (finishStartedRef.current) return
@@ -349,7 +356,7 @@ export function FishingMinigame({
           <span className="section-kicker">
             {method === 'spear'
               ? 'ĐÁNH CÁ BẰNG LAO · CHỈ BẮT CÁ NHỎ Ở VÙNG VEN BỜ VÀ RẠN SAN HÔ'
-              : `KỸ NĂNG THU THẬP CẤP ${fishingSkillLevel} · TĂNG CƠ HỘI CÁ HIẾM, GIÚP KÉO CÁ DỄ HƠN`}
+              : `KỸ NĂNG THU THẬP CẤP ${fishingSkillLevel} · ${rod?.name ?? 'Cần câu'} · ĐỘ BỀN ${rod?.durability ?? 0}/${rod?.maxDurability ?? 0}`}
           </span>
           <h2>{phase === 'casting'
             ? method === 'spear' ? 'Lấy đà phóng lao' : 'Lấy đà ném mồi'
@@ -374,6 +381,7 @@ export function FishingMinigame({
         fightProfile={fightProfile}
         catchKind={catchKind}
         method={method}
+        rod={rod}
       />
 
       <div className="fishing-game-status">
@@ -399,7 +407,7 @@ export function FishingMinigame({
           : phase === 'waiting'
             ? 'Đừng rời mắt khỏi phao.'
             : phase === 'bite'
-              ? 'Cửa sổ móc cá rất ngắn!'
+              ? 'Chỉ có chưa đầy một giây để giật cần!'
               : `Thời gian còn ${Math.max(0, Math.ceil((startedAt + 45_000 - now) / 1000))} giây`}</span>
       </div>
 

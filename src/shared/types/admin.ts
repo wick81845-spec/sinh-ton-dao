@@ -1,9 +1,16 @@
-import type { SurvivalAilment } from './game'
+import type { SurvivalAilment, SurvivalStats } from './game'
 
 export interface AdminPlayerSummary {
   id: string
   username: string
   displayName: string
+}
+
+export interface AdminPlayerSurvivalSummary {
+  survival: SurvivalStats
+  ailments: SurvivalAilment[]
+  status: 'alive' | 'dead'
+  currentLocationId: string
 }
 
 export interface GlobalGameSettings {

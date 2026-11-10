@@ -17,6 +17,7 @@ import { RandomWorldEventWidget } from '../../modules/world/components/RandomWor
 import { TutorialGuide } from '../../modules/onboarding/components/TutorialGuide'
 import { CombatPage } from '../../modules/combat/pages/CombatPage'
 import { SettingsPage } from '../../modules/settings/pages/SettingsPage'
+import { AdminPage } from '../../modules/settings/pages/AdminPage'
 import { ProgressionPage } from '../../modules/progression/pages/ProgressionPage'
 import { MarketPage } from '../../modules/economy/pages/MarketPage'
 import { UpdatesPage } from '../../modules/updates/pages/UpdatesPage'
@@ -32,7 +33,7 @@ import { avatarOptions, isGameBackground } from '../../modules/settings/settings
 import { applyGameBackground, isStoredImage, prepareImageUpload } from '../../modules/settings/imagePreferences'
 import { getCurrentWeather } from '../../modules/world/services/weatherService'
 import { weatherSeverityLabels } from '../../modules/world/data/weatherDefinitions'
-import { getWorldClock } from '../../modules/world/services/worldClock'
+import { getWorldClock, getWorldWeatherAtTime } from '../../modules/world/services/worldClock'
 import { isMarketAvailableAt } from '../../modules/economy/data/marketDefinitions'
 import { gatheringActivities } from '../../modules/gathering/data/gatheringConfig'
 import { explorationTasks } from '../../modules/exploration/data/explorationConfig'
@@ -56,6 +57,7 @@ const gameNavigation = [
   { id: 'character', label: 'Nhân vật', icon: '◉', path: '/character' },
   { id: 'world', label: 'Bản đồ', icon: '⌖', path: '/island' },
   { id: 'inventory', label: 'Túi đồ', icon: '▤', path: '/inventory' },
+  { id: 'structures', label: 'Công trình', icon: '⌂', path: '/structures' },
 ]
 
 const activityPanelLinks = [
@@ -87,6 +89,7 @@ const panelContentByPath: Record<string, () => ReactNode> = {
   '/gathering': () => <GatheringPage asPanel />,
   '/crafting': () => <CraftingPage />,
   '/building': () => <BuildingPage />,
+  '/structures': () => <BuildingPage ownedOnly />,
   '/campfire': () => null,
   '/island': () => <WorldPage />,
   '/exploration': () => <ExplorationPage />,
@@ -94,6 +97,7 @@ const panelContentByPath: Record<string, () => ReactNode> = {
   '/social': () => <SocialPage />,
   '/combat': () => <CombatPage />,
   '/settings': () => <SettingsPage />,
+  '/admin': () => <AdminPage />,
   '/progression': () => <ProgressionPage />,
   '/market': () => <MarketPage />,
   '/updates': () => <UpdatesPage />,
@@ -103,7 +107,7 @@ const panelContentByPath: Record<string, () => ReactNode> = {
 export function GameLayout() {
   const { pathname } = useLocation()
   const { gameState, error, notice, clearNotice } = useGame()
-  const { configured, session } = useAuth()
+  const { configured, session, isAdmin } = useAuth()
   const { status: worldPresenceStatus, players, maxPlayers } = useWorldPresence()
   const { theme, themeReady, toggleTheme } = useThemePreference()
   const avatarInputRef = useRef<HTMLInputElement>(null)
@@ -132,14 +136,25 @@ export function GameLayout() {
     : undefined
   const currentWeather = gameState ? getCurrentWeather(gameState) : undefined
   const worldClock = getWorldClock(worldTimeNow)
+  const weatherAtGameTime = currentWeather
+    ? getWorldWeatherAtTime(currentWeather, worldTimeNow)
+    : undefined
   const playerLevel = gameState?.character.level ?? 1
   const isActivityLocked = (item: typeof activityPanelLinks[number]) => (
     (item.requiredLevel !== undefined && playerLevel < item.requiredLevel)
     || (item.path === '/market' && !isMarketAvailableAt(gameState?.character.currentLocationId ?? ''))
   )
   const displayTemperature = gameState
-    ? gameState.survival.temperature + (currentWeather?.temperatureDelta ?? 0)
+    ? gameState.survival.temperature + (weatherAtGameTime?.temperatureDelta ?? 0)
     : 28
+  const shelterRestingAt = gameState?.buildings.find((building) => (
+    building.definitionId === 'building_shelter'
+    && building.status === 'completed'
+    && building.islandId === gameState.character.currentLocationId
+  ))
+  const shelterRestingName = shelterRestingAt
+    ? buildingDefinitions.find((building) => building.id === shelterRestingAt.definitionId)?.name
+    : undefined
   const ongoingActivities: OngoingActivity[] = gameState
     ? [
       ...(gameState.activeCombat ? [{
@@ -176,6 +191,13 @@ export function GameLayout() {
         path: '/building',
         completesAt: job.completesAt,
       })),
+      ...(gameState.clothesDrying ? [{
+        id: 'clothes-drying',
+        label: 'Đang phơi quần áo',
+        icon: '♨',
+        path: '/campfire',
+        completesAt: gameState.clothesDrying.completesAt,
+      }] : []),
       ...(gameState.shipConstruction ? [{
         id: 'ship-construction',
         label: 'Đang đóng thuyền',
@@ -194,7 +216,7 @@ export function GameLayout() {
         })),
       ...(gameState.isResting ? [{
         id: 'resting',
-        label: 'Đang nghỉ ngơi',
+        label: `Đang nghỉ ngơi tại ${shelterRestingName ?? 'lều'}`,
         icon: '☾',
         path: '/survival',
       }] : []),
@@ -409,6 +431,14 @@ export function GameLayout() {
             <span>{displayTemperature}°</span>
             <small>{currentWeather?.name ?? 'Thời tiết ổn định'}</small>
           </div>
+          <div
+            className="world-season-pill"
+            title={`${worldClock.season.name} · ngày ${worldClock.season.day} / 7`}
+            aria-label={`${worldClock.season.name}, ngày ${worldClock.season.day} trong mùa`}
+          >
+            <span aria-hidden="true">{worldClock.season.icon}</span>
+            <small>{worldClock.season.name} · {worldClock.season.day}/7</small>
+          </div>
         </div>
 
         <div className="sidebar-bottom">
@@ -579,6 +609,18 @@ export function GameLayout() {
             </button>
           )
         })}
+        {isAdmin && session && (
+          <button
+            className={`game-side-rail-button game-side-rail-admin${activePanel?.path === '/admin' ? ' is-open' : ''}`}
+            type="button"
+            aria-label="Quản trị"
+            aria-pressed={activePanel?.path === '/admin'}
+            title="Quản trị"
+            onClick={() => setActivePanel({ path: '/admin', title: 'Quản trị' })}
+          >
+            <span aria-hidden="true">⌘</span>
+          </button>
+        )}
         <button
           className="game-side-rail-button game-side-rail-theme"
           type="button"

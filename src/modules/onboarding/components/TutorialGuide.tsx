@@ -28,8 +28,14 @@ export function TutorialGuide() {
     if (!gameState?.tutorialIntroCompleted) return
     inferTutorialProgress(gameState)
       .filter((stepId) => !savedStepIds.includes(stepId))
-      .forEach(completeTutorialStep)
+      .forEach((stepId) => completeTutorialStep(stepId, false))
   }, [completeTutorialStep, gameState, savedStepIds])
+
+  useEffect(() => {
+    if (currentStep?.requiredLevel && gameState && gameState.character.level >= currentStep.requiredLevel) {
+      completeTutorialStep(currentStep.id, false)
+    }
+  }, [completeTutorialStep, currentStep, gameState])
 
   useEffect(() => {
     if (!currentStep) return
@@ -44,6 +50,7 @@ export function TutorialGuide() {
       }),
       gameEventBus.on('technology:researched', ({ technologyId }) => {
         if (technologyId === 'tech_basic_tools') completeIfCurrent('research-basic-tools')
+        if (technologyId === 'tech_island_settlement') completeIfCurrent('research-island-settlement')
       }),
       gameEventBus.on('building:completed', ({ buildingId }) => {
         const definitionId = gameState?.buildings.find((building) => building.id === buildingId)?.definitionId
@@ -124,6 +131,9 @@ export function TutorialGuide() {
           <span className="tutorial-step-label">MỤC TIÊU TIẾP THEO</span>
           <h2>{currentStep.title}</h2>
           <p>{currentStep.description}</p>
+          {currentStep.experienceReward > 0 && (
+            <p className="tutorial-step-reward">Thưởng hoàn thành: +{currentStep.experienceReward} XP</p>
+          )}
           <Link className="tutorial-guide-action" to={currentStep.destination} onClick={() => setIsOpen(false)}>
             {currentStep.actionLabel}<span aria-hidden="true">↗</span>
           </Link>

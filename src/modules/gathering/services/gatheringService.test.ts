@@ -8,6 +8,7 @@ import {
 } from '../data/fishingConfig'
 import {
   completeGathering,
+  failFishing,
   getGatheringAvailability,
   refreshResourceNodes,
   startGathering,
@@ -31,6 +32,14 @@ const stateWithAxe = {
   inventory: {
     ...exploredState.inventory,
     slots: [...exploredState.inventory.slots, { itemId: 'item_wooden_axe' as const, quantity: 1 }],
+  },
+}
+
+const stateWithFishingRod = {
+  ...initialGameState,
+  inventory: {
+    ...initialGameState.inventory,
+    slots: [...initialGameState.inventory.slots, { itemId: 'item_fishing_rod' as const, quantity: 1 }],
   },
 }
 
@@ -298,7 +307,7 @@ describe('gatheringService', () => {
   })
 
   it('awards the fish fought in the minigame and rejects fish from other zones', () => {
-    const started = startGathering(initialGameState, 'shore-fishing', 1000)
+    const started = startGathering(stateWithFishingRod, 'shore-fishing', 1000)
     if (!started.ok) throw new Error(started.message)
 
     const caught = completeGathering(started.state, 2000, 60, 'item_sardine')
@@ -314,7 +323,7 @@ describe('gatheringService', () => {
   })
 
   it('awards ocean trash and rejects salvage unavailable in the current zone', () => {
-    const started = startGathering(initialGameState, 'shore-fishing', 1000)
+    const started = startGathering(stateWithFishingRod, 'shore-fishing', 1000)
     if (!started.ok) throw new Error(started.message)
 
     const caughtTrash = completeGathering(started.state, 2000, 60, 'item_glass_bottle')
@@ -364,11 +373,11 @@ describe('gatheringService', () => {
   })
 
   it('runs a timed fishing activity and adds one fish only when it completes', () => {
-    const started = startGathering(initialGameState, 'shore-fishing', 1000)
+    const started = startGathering(stateWithFishingRod, 'shore-fishing', 1000)
     if (!started.ok) throw new Error(started.message)
 
     expect(started.state.activeGathering?.completesAt).toBe(61_000)
-    expect(started.state.inventory.slots).toEqual(initialGameState.inventory.slots)
+    expect(started.state.inventory.slots).toEqual(stateWithFishingRod.inventory.slots)
 
     const random = vi.spyOn(Math, 'random').mockReturnValue(0)
     const completed = completeGathering(started.state, 8000)
@@ -384,21 +393,38 @@ describe('gatheringService', () => {
     expect(completed.state.resourceNodes).toEqual(initialGameState.resourceNodes)
   })
 
+  it('requires a crafted fishing rod before starting rod fishing', () => {
+    expect(startGathering(initialGameState, 'shore-fishing', 1000)).toMatchObject({
+      ok: false,
+      message: 'Bạn cần chế tạo một cần câu còn sử dụng được trước khi câu cá.',
+    })
+  })
+
   it('wears a crafted fishing rod when it catches a fish', () => {
-    const state = {
-      ...initialGameState,
-      inventory: {
-        ...initialGameState.inventory,
-        slots: [...initialGameState.inventory.slots, { itemId: 'item_fishing_rod' as const, quantity: 1 }],
-      },
-    }
-    const started = startGathering(state, 'shore-fishing', 1_000)
+    const started = startGathering(stateWithFishingRod, 'shore-fishing', 1_000)
     if (!started.ok) throw new Error(started.message)
     const completed = completeGathering(started.state, 8_000, 60, 'item_anchovy')
     expect(completed.status).toBe('completed')
     if (completed.status !== 'completed') throw new Error('Fishing should complete.')
     expect(completed.state.itemDurability?.item_fishing_rod).toBe(11)
-    expect(completed.message).toContain('Độ bền cần câu: 11/12')
+    expect(completed.message).toContain('Độ bền cần câu thô: 11/12')
+  })
+
+  it('can damage or break a rod when a fish snaps the line', () => {
+    const wornState = {
+      ...stateWithFishingRod,
+      itemDurability: { item_fishing_rod: 1 },
+    }
+    const started = startGathering(wornState, 'shore-fishing', 1_000)
+    if (!started.ok) throw new Error(started.message)
+
+    const failed = failFishing(started.state, true)
+    expect(failed.ok).toBe(true)
+    if (!failed.ok) throw new Error(failed.message)
+    expect(failed.state.activeGathering).toBeNull()
+    expect(failed.state.inventory.slots.some((slot) => slot.itemId === 'item_fishing_rod')).toBe(false)
+    expect(failed.state.itemDurability?.item_fishing_rod).toBeUndefined()
+    expect(failed.message).toContain('đã gãy')
   })
 
   it('requires a fishing spear, limits its catches to small coastal fish, and wears it down', () => {
@@ -441,6 +467,7 @@ describe('gatheringService', () => {
   it('catches a fish from the current biome and ocean zone', () => {
     const state = {
       ...initialGameState,
+      inventory: stateWithFishingRod.inventory,
       weather: { weatherId: 'sunny', locationId: 'island_001', changedAt: 0, changesAt: 300_000 },
       activeGathering: { activityId: 'shore-fishing', startedAt: 1_000, completesAt: 9_000 },
     }
@@ -467,8 +494,8 @@ describe('gatheringService', () => {
     const fullInventory = {
       ...initialGameState,
       inventory: {
-        ...initialGameState.inventory,
-        maxSlots: initialGameState.inventory.slots.length,
+        ...stateWithFishingRod.inventory,
+        maxSlots: stateWithFishingRod.inventory.slots.length,
       },
     }
     expect(startGathering(fullInventory, 'shore-fishing', 1000)).toMatchObject({

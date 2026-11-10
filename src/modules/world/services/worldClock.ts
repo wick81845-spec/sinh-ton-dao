@@ -1,9 +1,22 @@
 export const worldDayDurationMs = 30 * 60 * 1000
+export const worldGameTimeScale = 24 * 60 * 60 * 1000 / worldDayDurationMs
+export const worldDaysPerSeason = 7
 const gameMinutesPerDay = 24 * 60
 const gameMillisecondsPerMinute = worldDayDurationMs / gameMinutesPerDay
+const seasonsPerYear = 4
+const worldDaysPerYear = worldDaysPerSeason * seasonsPerYear
 
 export type WorldTimePhaseId = 'dawn' | 'day' | 'afternoon' | 'sunset' | 'night' | 'pre-dawn'
 export type WorldLightLevel = 'day' | 'dusk' | 'night' | 'dawn'
+
+export interface WorldSeason {
+  id: 'spring' | 'summer' | 'autumn' | 'winter'
+  name: string
+  icon: string
+  day: number
+  temperatureDelta: number
+  thirstMultiplier: number
+}
 
 export interface WorldClockState {
   time: string
@@ -13,6 +26,7 @@ export interface WorldClockState {
   lightLevel: WorldLightLevel
   minutesUntilNextPhase: number
   temperatureDelta: number
+  season: WorldSeason
 }
 
 const phaseBoundaries = [180, 360, 540, 900, 1080, 1260]
@@ -33,6 +47,24 @@ const phaseDetails: Readonly<Record<WorldTimePhaseId, { name: string; icon: stri
   sunset: { name: 'Hoàng hôn', icon: '🌇' },
   night: { name: 'Ban đêm', icon: '☾' },
   'pre-dawn': { name: 'Rạng sáng', icon: '🌄' },
+}
+
+const seasonDetails = [
+  { id: 'spring', name: 'Mùa xuân', icon: '🌱', temperatureDelta: 0, thirstMultiplier: 1 },
+  { id: 'summer', name: 'Mùa hè', icon: '☀', temperatureDelta: 3, thirstMultiplier: 1.2 },
+  { id: 'autumn', name: 'Mùa thu', icon: '🍂', temperatureDelta: -1, thirstMultiplier: 1 },
+  { id: 'winter', name: 'Mùa đông', icon: '❄', temperatureDelta: -3, thirstMultiplier: 0.9 },
+] as const
+
+export function getWorldSeason(timestamp: number): WorldSeason {
+  const dayIndex = Math.floor(timestamp / worldDayDurationMs)
+  const dayOfYear = ((dayIndex % worldDaysPerYear) + worldDaysPerYear) % worldDaysPerYear
+  const seasonIndex = Math.floor(dayOfYear / worldDaysPerSeason)
+  const season = seasonDetails[seasonIndex]
+  return {
+    ...season,
+    day: dayOfYear % worldDaysPerSeason + 1,
+  }
 }
 
 export function getWorldClock(timestamp: number): WorldClockState {
@@ -58,6 +90,7 @@ export function getWorldClock(timestamp: number): WorldClockState {
         ? -2
         : 0
   const details = phaseDetails[phaseId]
+  const season = getWorldSeason(timestamp)
 
   return {
     time: `${String(gameHour).padStart(2, '0')}:${String(gameMinuteOfHour).padStart(2, '0')}`,
@@ -66,7 +99,8 @@ export function getWorldClock(timestamp: number): WorldClockState {
     icon: details.icon,
     lightLevel,
     minutesUntilNextPhase,
-    temperatureDelta,
+    temperatureDelta: temperatureDelta + season.temperatureDelta,
+    season,
   }
 }
 

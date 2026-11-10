@@ -7,7 +7,7 @@ import { BodyStatusPanel } from '../components/BodyStatusPanel'
 import { getCurrentWeather } from '../../world/services/weatherService'
 import { isSurvivorResting } from '../utils/survivalCalculator'
 import { gameClock } from '../../../services/clock/gameClock'
-import { getWorldWeatherAtTime } from '../../world/services/worldClock'
+import { getWorldSeason, getWorldWeatherAtTime } from '../../world/services/worldClock'
 import { buildingDefinitions } from '../../building/data/buildingDefinitions'
 
 function getStatStatus(stat: SurvivalStatName, value: number): string {
@@ -49,6 +49,7 @@ export function SurvivalPage() {
     || gameState.constructionQueue.length > 0
     || gameState.voyages.some((voyage) => voyage.status === 'departed' || voyage.status === 'traveling'))
   const weather = getWorldWeatherAtTime(getCurrentWeather(gameState), gameClock.now())
+  const season = getWorldSeason(gameClock.now())
   const shelter = gameState.buildings.find((building) => (
     building.definitionId === 'building_shelter'
     && building.status === 'completed'
@@ -124,15 +125,24 @@ export function SurvivalPage() {
       />
 
       <p className="survival-rule-note">
-        Đói giảm {survivalConfig.hunger.decayPerHour} điểm/giờ, khát giảm {survivalConfig.thirst.decayPerHour} điểm/giờ; khi làm hoạt động nặng, hai nhu cầu tụt nhanh hơn {Math.round((survivalConfig.activityNeedMultiplier - 1) * 100)}%
+        Một ngày game dài 30 phút ngoài đời. Đói giảm {survivalConfig.hunger.decayPerDay} điểm/ngày game ({(survivalConfig.hunger.decayPerDay / 24).toFixed(2)} điểm/giờ game), khát giảm {survivalConfig.thirst.decayPerDay} điểm/ngày game ({(survivalConfig.thirst.decayPerDay / 24).toFixed(2)} điểm/giờ game);
+        khi làm hoạt động nặng, hai nhu cầu tụt nhanh hơn {Math.round((survivalConfig.activityNeedMultiplier - 1) * 100)}%
         {weather && weather.temperatureDelta >= 5
           ? ` (tăng ${Math.round((survivalConfig.hotWeatherThirstMultiplier - 1) * 100)}% khi trời nóng)`
           : ''}.
+        <span>
+          {' '}{season.name} ngày {season.day}/7:{' '}
+          {season.thirstMultiplier !== 1
+            ? `nhu cầu nước ${season.thirstMultiplier > 1 ? 'tăng' : 'giảm'} ${Math.round(Math.abs(season.thirstMultiplier - 1) * 100)}%, `
+            : ''}
+          nhiệt độ theo mùa {season.temperatureDelta > 0 ? '+' : ''}{season.temperatureDelta}°C.
+        </span>
+        Mùa đổi sau mỗi 7 ngày game.
         Sức lực chỉ hồi khi nghỉ ngơi (không có hoạt động, chế tạo, xây dựng hoặc di chuyển), tối đa {survivalConfig.stamina.recoveryPerMinute} điểm/phút; đói, khát hoặc sức khỏe thấp làm chậm hồi phục.
         Lều lá cấp 1 tăng hồi phục 25%, nâng cấp cấp 2 tăng 40% và che chắn tác động khát do nắng nóng.
         Mưa làm tích lũy độ ướt, còn mưa lạnh kéo thân nhiệt xuống; hãy trú trong lều hoặc hong khô trước khi quá lạnh.
-        Khi đói hoặc khát dưới {survivalConfig.needWarningThreshold}%, hồi thể lực chậm hơn; khi dưới {survivalConfig.criticalNeedThreshold}, sức khỏe giảm lần lượt {survivalConfig.health.malnutritionDamagePerHour} và {survivalConfig.health.severeDehydrationDamagePerHour} điểm/giờ;
-        khi cạn, mất lần lượt {survivalConfig.health.starvationDamagePerHour} và {survivalConfig.health.dehydrationDamagePerHour} điểm/giờ.
+        Khi đói hoặc khát dưới {survivalConfig.needWarningThreshold}%, hồi thể lực chậm hơn; khi dưới {survivalConfig.criticalNeedThreshold}, sức khỏe giảm lần lượt {survivalConfig.health.malnutritionDamagePerHour} và {survivalConfig.health.severeDehydrationDamagePerHour} điểm/giờ game;
+        khi cạn, mất lần lượt {survivalConfig.health.starvationDamagePerHour} và {survivalConfig.health.dehydrationDamagePerHour} điểm/giờ game.
       </p>
     </div>
   )

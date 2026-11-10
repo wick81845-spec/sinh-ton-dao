@@ -19,9 +19,10 @@ export interface GameContextValue {
   beginTutorial(): GameActionResult
   startResting(): GameActionResult
   stopResting(): GameActionResult
-  completeTutorialStep(stepId: string): void
+  completeTutorialStep(stepId: string, grantExperience?: boolean): void
   startGathering(activityId: string): GameActionResult
   finishFishing(castPower: number, caughtItemId: ItemId): FishingActionResult
+  failFishing(rodDamaged: boolean): GameActionResult
   cancelGathering(): void
   transferToStorage(itemId: ItemId, quantity: number): GameActionResult
   transferToInventory(itemId: ItemId, quantity: number): GameActionResult
@@ -39,6 +40,7 @@ export interface GameContextValue {
   startBuilding(definitionId: string): GameActionResult
   upgradeBuilding(buildingId: string): GameActionResult
   fuelCampfire(buildingId: string, fuelItemId: ItemId): GameActionResult
+  startDryingClothes(buildingId: string): GameActionResult
   plantCrop(buildingId: string, cropId: CropId): GameActionResult
   harvestCrop(plotId: string): GameActionResult
   raiseChicken(buildingId: string): GameActionResult

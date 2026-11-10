@@ -1,6 +1,7 @@
-import type { FishItemId, FishingLootItemId, ItemId, SurvivalAilmentId } from '../../shared/types/game'
+import type { FishItemId, FishingLootItemId, FishingRodItemId, ItemId, SurvivalAilmentId } from '../../shared/types/game'
 import { fishCatalog } from './fishCatalog'
 import { fishingLootCatalog } from './fishingLootCatalog'
+import { fishingRodCatalog } from './fishingRodCatalog'
 
 export interface ItemDefinition {
   name: string
@@ -27,7 +28,7 @@ export interface ItemDefinition {
 
 type StaticItemId = Exclude<
   ItemId,
-  FishItemId | Exclude<FishingLootItemId, 'item_rope'>
+  FishItemId | FishingRodItemId | Exclude<FishingLootItemId, 'item_rope'>
 >
 
 const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
@@ -547,19 +548,6 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
     equipmentSlot: 'weapon',
     weaponDamageBonus: 8,
   },
-  item_fishing_rod: {
-    name: 'Cần câu thô',
-    description: 'Cần câu đơn giản bằng gỗ và sợi thực vật; hao mòn mỗi lần câu cá.',
-    category: 'tool',
-    maxStack: 1,
-    weight: 0.8,
-    icon: '╱',
-    image: '/assets/resources/wooden-axe.svg',
-    tone: 'wood',
-    usable: false,
-    tradable: true,
-    maxDurability: 12,
-  },
   item_rope: {
     name: 'Dây bện',
     description: 'Dây chắc bện từ sợi thực vật, dùng trong chế tạo và dựng công trình.',
@@ -963,6 +951,23 @@ const fishItemDefinitions = Object.fromEntries(fishCatalog.map((fish) => [
   },
 ])) as Record<FishItemId, ItemDefinition>
 
+const fishingRodItemDefinitions = Object.fromEntries(fishingRodCatalog.map((rod) => [
+  rod.itemId,
+  {
+    name: rod.name,
+    description: rod.description,
+    category: 'tool',
+    maxStack: 1,
+    weight: 0.8,
+    icon: '╱',
+    image: rod.image,
+    tone: 'wood',
+    usable: false,
+    tradable: true,
+    maxDurability: rod.maxDurability,
+  },
+])) as Record<FishingRodItemId, ItemDefinition>
+
 const fishingLootItemDefinitions = Object.fromEntries(fishingLootCatalog.map((loot) => [
   loot.itemId,
   {
@@ -982,5 +987,6 @@ const fishingLootItemDefinitions = Object.fromEntries(fishingLootCatalog.map((lo
 export const itemDefinitions: Record<ItemId, ItemDefinition> = {
   ...staticItemDefinitions,
   ...fishItemDefinitions,
+  ...fishingRodItemDefinitions,
   ...fishingLootItemDefinitions,
 }

@@ -22,7 +22,8 @@
 }
 
 .gathering-navigation-preview .map-world-info .world-clock-pill,
-.gathering-navigation-preview .map-world-info .weather-pill {
+.gathering-navigation-preview .map-world-info .weather-pill,
+.gathering-navigation-preview .map-world-info .world-season-pill {
   color: #e7efd9;
 }
 
@@ -32,7 +33,8 @@
 }
 
 .gathering-navigation-preview .map-world-info .world-clock-pill small,
-.gathering-navigation-preview .map-world-info .weather-pill small {
+.gathering-navigation-preview .map-world-info .weather-pill small,
+.gathering-navigation-preview .map-world-info .world-season-pill small {
   color: #bdcfb8;
 }
 
@@ -715,6 +717,12 @@
   color: #647d70;
   font-size: 12px;
   line-height: 1.45;
+}
+
+.tutorial-guide-card > .tutorial-step-reward {
+  margin-top: -5px;
+  color: #287c75;
+  font-weight: 750;
 }
 
 .tutorial-guide-action {
@@ -1953,7 +1961,56 @@
 }
 
 .gathering-map-dock.is-fishing .gathering-map-actions {
-  grid-row: 1;
+  grid-column: 1 / -1;
+  grid-row: auto;
+  width: 100%;
+}
+
+.gathering-map-dock.is-fishing {
+  width: min(420px, calc(100% - 32px));
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  row-gap: 9px;
+  padding: 12px 40px 12px 14px;
+}
+
+.gathering-map-dock.is-fishing .gathering-map-selected {
+  grid-column: 1 / -1;
+}
+
+.gathering-map-dock.is-fishing .gathering-map-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.gathering-map-dock.is-fishing .gathering-map-fishing-action {
+  min-width: 0;
+  min-height: 40px;
+  padding: 7px 8px;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+}
+
+.gathering-map-dock.is-fishing .gathering-map-fishing-notes {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 5px;
+  min-width: 0;
+}
+
+.gathering-map-dock.is-fishing .gathering-map-fishing-notes .activity-blocked,
+.gathering-map-dock.is-fishing .gathering-map-rod-status {
+  grid-column: auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
+.gathering-map-dock.is-fishing .gathering-map-fishing-notes .small-action {
+  justify-self: start;
+  max-width: 100%;
 }
 
 .gathering-map-buttons {
@@ -2166,7 +2223,9 @@
   }
 
   .gathering-map-dock.is-fishing {
-    width: min(340px, calc(100% - 24px));
+    width: min(360px, calc(100% - 24px));
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px 36px 10px 11px;
   }
 
   .gathering-map-selected > img {
@@ -2185,8 +2244,21 @@
   }
 
   .gathering-map-dock.is-fishing .gathering-map-buttons {
-    grid-column: 2;
-    grid-row: 1;
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .gathering-map-dock.is-fishing .gathering-map-fishing-action {
+    min-height: 38px;
+    gap: 5px;
+    padding: 6px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .gathering-map-dock.is-fishing .gathering-map-buttons {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -2608,14 +2680,16 @@
   }
 
   .gathering-navigation-preview .map-world-info .world-clock-pill,
-  .gathering-navigation-preview .map-world-info .weather-pill {
+  .gathering-navigation-preview .map-world-info .weather-pill,
+  .gathering-navigation-preview .map-world-info .world-season-pill {
     gap: 4px;
     padding: 4px 7px;
     font-size: 10px;
   }
 
   .gathering-navigation-preview .map-world-info .world-clock-pill small,
-  .gathering-navigation-preview .map-world-info .weather-pill small {
+  .gathering-navigation-preview .map-world-info .weather-pill small,
+  .gathering-navigation-preview .map-world-info .world-season-pill small {
     font-size: 8px;
   }
 

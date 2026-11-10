@@ -327,6 +327,23 @@
   font-size: 9px;
 }
 
+.world-season-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  border-radius: 999px;
+  color: var(--sea-dark);
+  background: color-mix(in srgb, var(--paper) 86%, var(--sea-soft));
+  font-size: 10px;
+}
+
+.world-season-pill small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
 .world-clock-pill {
   display: flex;
   min-width: 90px;
@@ -3096,6 +3113,13 @@ p {
   background: #fff;
 }
 
+.campfire-drying-status {
+  margin: 0;
+  color: #647d70;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
 .campfire-quick-section-heading {
   display: flex;
   align-items: center;
@@ -3210,7 +3234,8 @@ p {
 }
 
 :root[data-theme="dark"] .campfire-quick-heading p,
-:root[data-theme="dark"] .campfire-food-copy > small {
+:root[data-theme="dark"] .campfire-food-copy > small,
+:root[data-theme="dark"] .campfire-drying-status {
   color: #a4bbad;
 }
 
@@ -6701,6 +6726,36 @@ body {
     radial-gradient(ellipse at 100% 0%, rgb(183 201 147 / 14%), transparent 36%),
     linear-gradient(145deg, var(--paper), color-mix(in srgb, var(--paper) 91%, #e1ece0));
   box-shadow: 0 12px 30px rgb(46 73 58 / 9%);
+}
+
+.fishing-session-backdrop {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(10px, 2vw, 24px);
+  background: rgb(17 30 27 / 68%);
+  backdrop-filter: blur(5px);
+}
+
+.fishing-session-dialog {
+  width: min(660px, 100%);
+  max-height: min(94dvh, 860px);
+  overflow: auto;
+  border: 1px solid rgb(230 237 215 / 60%);
+  border-radius: 18px;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 35%);
+}
+
+.fishing-session-dialog .fishing-game-panel {
+  margin: 0;
+  padding: 18px;
+}
+
+.fishing-session-backdrop .fishing-session-dialog .fishing-game-panel .fishing-scene {
+  height: clamp(155px, 30vh, 245px);
+  min-height: 155px;
 }
 
 .fishing-game-heading {
@@ -10753,6 +10808,12 @@ body {
   min-height: 210px;
 }
 
+.gathering-map-rod-status {
+  color: #647d67;
+  font-size: 11px;
+  font-weight: 650;
+}
+
 .gathering-page .stamina-chip {
   padding: 6px 9px;
   font-size: 10px;
@@ -11113,6 +11174,69 @@ body {
   background: color-mix(in srgb, var(--sea-soft) 26%, var(--paper));
 }
 
+.admin-player-current-stats {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+}
+
+.admin-player-current-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.admin-player-current-heading > span {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #69a875 14%, var(--paper));
+  color: #438350;
+  font-size: 10px;
+}
+
+.admin-player-current-heading > .is-dead {
+  background: color-mix(in srgb, #ba625b 14%, var(--paper));
+  color: #aa514a;
+}
+
+.admin-player-current-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.admin-player-current-grid > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--sea-soft) 22%, var(--paper));
+}
+
+.admin-player-current-grid span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.admin-player-current-grid strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+}
+
+.admin-player-current-stats .settings-note {
+  margin: 0;
+}
+
 .admin-weather-control > label,
 .admin-player-control > label:not(.admin-ailment-toggle),
 .admin-severity-control {
@@ -11202,6 +11326,10 @@ body {
   }
 
   .admin-survival-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-player-current-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

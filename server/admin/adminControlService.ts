@@ -1,16 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
 import type {
   AdminPlayerSummary,
+  AdminPlayerSurvivalSummary,
   AdminSurvivalCommand,
   GlobalGameSettings,
   PendingAdminCommand,
 } from '../../src/shared/types/admin.js'
 import { parseAdminSurvivalCommand } from './adminSurvivalCommand.js'
+import { isValidGameSnapshot } from '../../src/services/persistence/gameSaveService.js'
 import type { ApiConfig } from '../config.js'
 import type { Database, Json } from '../database.types.js'
 
 export interface AdminControlService {
   listPlayers(): Promise<AdminPlayerSummary[]>
+  getPlayerSurvival(playerId: string): Promise<AdminPlayerSurvivalSummary | null>
   playerExists(playerId: string): Promise<boolean>
   getGlobalSettings(): Promise<GlobalGameSettings>
   setGlobalWeather(weatherId: string | null, adminId: string): Promise<GlobalGameSettings>
@@ -52,6 +55,26 @@ export function createSupabaseAdminControlService(config: ApiConfig): AdminContr
         .maybeSingle()
       if (error) throw error
       return data !== null
+    },
+
+    async getPlayerSurvival(playerId) {
+      const { data, error } = await adminClient
+        .from('player_game_states')
+        .select('schema_version, state')
+        .eq('player_id', playerId)
+        .maybeSingle()
+      if (error) throw error
+      if (!data || data.schema_version !== 5) return null
+      if (!isValidGameSnapshot(data.state)) {
+        throw new Error(`Save của người chơi ${playerId} không hợp lệ.`)
+      }
+      const { survival, ailments = [], character } = data.state
+      return {
+        survival,
+        ailments,
+        status: character.status,
+        currentLocationId: character.currentLocationId,
+      }
     },
 
     async getGlobalSettings() {

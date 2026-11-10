@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getWeatherDefinition } from '../data/weatherDefinitions'
-import { getWorldClock, getWorldWeatherAtTime, worldDayDurationMs } from './worldClock'
+import { getWorldClock, getWorldSeason, getWorldWeatherAtTime, worldDayDurationMs, worldDaysPerSeason } from './worldClock'
 
 const timestampAtGameMinute = (minute: number) => minute * worldDayDurationMs / (24 * 60)
 
@@ -26,5 +26,20 @@ describe('worldClock', () => {
     expect(getWorldWeatherAtTime(hotWeather, timestampAtGameMinute(12 * 60))?.temperatureDelta).toBe(7)
     expect(getWorldWeatherAtTime(hotWeather, timestampAtGameMinute(0))?.temperatureDelta).toBe(3)
     expect(getWorldWeatherAtTime(undefined, 0)).toBeUndefined()
+  })
+
+  it('changes seasons every seven game days and applies seasonal climate effects', () => {
+    const firstSummerDay = worldDayDurationMs * worldDaysPerSeason
+    const firstWinterDay = worldDayDurationMs * worldDaysPerSeason * 3
+
+    expect(getWorldSeason(0)).toMatchObject({ name: 'Mùa xuân', day: 1, thirstMultiplier: 1 })
+    expect(getWorldSeason(firstSummerDay)).toMatchObject({ name: 'Mùa hè', day: 1, thirstMultiplier: 1.2 })
+    expect(getWorldSeason(firstSummerDay * 2)).toMatchObject({ name: 'Mùa thu', day: 1 })
+    expect(getWorldSeason(firstWinterDay)).toMatchObject({ name: 'Mùa đông', day: 1, thirstMultiplier: 0.9 })
+    expect(getWorldSeason(worldDayDurationMs * worldDaysPerSeason * 4).name).toBe('Mùa xuân')
+    expect(getWorldWeatherAtTime(
+      getWeatherDefinition('cloudy'),
+      firstSummerDay + worldDayDurationMs / 2,
+    )?.temperatureDelta).toBe(5)
   })
 })

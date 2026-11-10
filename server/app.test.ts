@@ -215,6 +215,7 @@ describe('backend API foundation', () => {
   it('requires a server-verified admin profile for global weather and player adjustments', async () => {
     const adminControls: AdminControlService = {
       listPlayers: vi.fn().mockResolvedValue([]),
+      getPlayerSurvival: vi.fn().mockResolvedValue(null),
       playerExists: vi.fn().mockResolvedValue(true),
       getGlobalSettings: vi.fn().mockResolvedValue({ weatherId: null, updatedAt: null }),
       setGlobalWeather: vi.fn(),
@@ -240,9 +241,22 @@ describe('backend API foundation', () => {
       headers: { authorization: 'Bearer valid-admin-token-1234567890' },
       payload: { health: 65, wetness: 80, ailments: [{ id: 'hypothermia', elapsedMs: 0, severity: 'moderate' }] },
     })
+    const playerStats = await app.inject({
+      method: 'GET',
+      url: '/api/v1/game/admin/players/9fb61632-9e1f-4380-9a64-05553612b353/survival',
+      headers: { authorization: '******' },
+    })
+
+    const authenticatedPlayerStats = await app.inject({
+      method: 'GET',
+      url: '/api/v1/game/admin/players/9fb61632-9e1f-4380-9a64-05553612b353/survival',
+      headers: { authorization: 'Bearer valid-admin-token-1234567890' },
+    })
 
     expect(weather.statusCode).toBe(403)
     expect(survival.statusCode).toBe(403)
+    expect(playerStats.statusCode).toBe(401)
+    expect(authenticatedPlayerStats.statusCode).toBe(403)
     expect(adminControls.setGlobalWeather).not.toHaveBeenCalled()
     expect(adminControls.createSurvivalCommand).not.toHaveBeenCalled()
   })
@@ -251,6 +265,12 @@ describe('backend API foundation', () => {
     const adminProfile = { ...profile, is_admin: true }
     const adminControls: AdminControlService = {
       listPlayers: vi.fn().mockResolvedValue([]),
+      getPlayerSurvival: vi.fn().mockResolvedValue({
+        survival: initialGameState.survival,
+        ailments: [],
+        status: 'alive',
+        currentLocationId: 'island_001',
+      }),
       playerExists: vi.fn().mockResolvedValue(true),
       getGlobalSettings: vi.fn().mockResolvedValue({ weatherId: null, updatedAt: null }),
       setGlobalWeather: vi.fn().mockResolvedValue({ weatherId: 'thunderstorm', updatedAt: '2026-11-11T12:00:00.000Z' }),
@@ -276,17 +296,35 @@ describe('backend API foundation', () => {
       headers: { authorization: 'Bearer valid-admin-token-1234567890' },
       payload: { health: 65, wetness: 80, ailments: [{ id: 'hypothermia', elapsedMs: 0, severity: 'moderate' }] },
     })
+    const playerStats = await app.inject({
+      method: 'GET',
+      url: '/api/v1/game/admin/players/9fb61632-9e1f-4380-9a64-05553612b353/survival',
+      headers: { authorization: '******' },
+    })
     const invalid = await app.inject({
       method: 'POST',
       url: '/api/v1/game/admin/players/9fb61632-9e1f-4380-9a64-05553612b353/survival',
       headers: { authorization: 'Bearer valid-admin-token-1234567890' },
       payload: { health: 101 },
     })
+    const authenticatedPlayerStats = await app.inject({
+      method: 'GET',
+      url: '/api/v1/game/admin/players/9fb61632-9e1f-4380-9a64-05553612b353/survival',
+      headers: { authorization: 'Bearer valid-admin-token-1234567890' },
+    })
 
     expect(weather.statusCode).toBe(200)
     expect(weather.json()).toMatchObject({ weatherId: 'thunderstorm' })
     expect(adminControls.setGlobalWeather).toHaveBeenCalledWith('thunderstorm', profile.id)
     expect(survival.statusCode).toBe(202)
+    expect(playerStats.statusCode).toBe(401)
+    expect(authenticatedPlayerStats.statusCode).toBe(200)
+    expect(authenticatedPlayerStats.json()).toMatchObject({
+      survival: initialGameState.survival,
+      ailments: [],
+      status: 'alive',
+      currentLocationId: 'island_001',
+    })
     expect(adminControls.createSurvivalCommand).toHaveBeenCalledWith(
       '9fb61632-9e1f-4380-9a64-05553612b353',
       profile.id,

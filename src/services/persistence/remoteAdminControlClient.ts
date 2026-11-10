@@ -1,5 +1,6 @@
 import type {
   AdminPlayerSummary,
+  AdminPlayerSurvivalSummary,
   AdminSurvivalCommand,
   GlobalGameSettings,
   PendingAdminCommand,
@@ -26,6 +27,20 @@ export async function loadAdminPlayers(accessToken: string): Promise<AdminPlayer
     throw new Error('Danh sách người chơi từ máy chủ không hợp lệ.')
   }
   return payload.players
+}
+
+export async function loadAdminPlayerSurvival(
+  accessToken: string,
+  playerId: string,
+): Promise<AdminPlayerSurvivalSummary> {
+  const payload = await request(
+    `/api/v1/game/admin/players/${encodeURIComponent(playerId)}/survival`,
+    accessToken,
+  )
+  if (!isAdminPlayerSurvivalSummary(payload)) {
+    throw new Error('Chỉ số sinh tồn người chơi từ máy chủ không hợp lệ.')
+  }
+  return payload
 }
 
 export async function updateGlobalWeather(
@@ -112,6 +127,31 @@ function isAdminPlayer(value: unknown): value is AdminPlayerSummary {
 function isWeatherId(value: unknown): value is string | null {
   return value === null
     || (typeof value === 'string' && weatherDefinitions.some((weather) => weather.id === value))
+}
+
+function isWithinRange(value: unknown, min: number, max: number): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
+}
+
+function isAdminPlayerSurvivalSummary(value: unknown): value is AdminPlayerSurvivalSummary {
+  if (!isRecord(value) || !isRecord(value.survival) || !Array.isArray(value.ailments)
+    || (value.status !== 'alive' && value.status !== 'dead')
+    || typeof value.currentLocationId !== 'string') return false
+  const survival = value.survival
+  return isWithinRange(survival.health, 0, 100)
+    && isWithinRange(survival.hunger, 0, 100)
+    && isWithinRange(survival.thirst, 0, 100)
+    && isWithinRange(survival.stamina, 0, 100)
+    && isWithinRange(survival.temperature, -100, 100)
+    && (survival.bodyTemperature === undefined || isWithinRange(survival.bodyTemperature, 0, 100))
+    && (survival.wetness === undefined || isWithinRange(survival.wetness, 0, 100))
+    && Array.isArray(survival.conditions)
+    && survival.conditions.every((condition) => typeof condition === 'string')
+    && value.ailments.every((ailment) => (
+      isRecord(ailment)
+      && typeof ailment.id === 'string'
+      && isWithinRange(ailment.elapsedMs, 0, Number.MAX_SAFE_INTEGER)
+    ))
 }
 
 const ailmentIds: readonly string[] = [

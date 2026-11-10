@@ -110,6 +110,15 @@ export type FishingLootItemId =
   | 'item_ship_cable'
   | 'item_ship_bell'
 
+export type FishingRodItemId =
+  | 'item_fishing_rod'
+  | 'item_fishing_rod_2'
+  | 'item_fishing_rod_3'
+  | 'item_fishing_rod_4'
+  | 'item_fishing_rod_5'
+  | 'item_fishing_rod_6'
+  | 'item_fishing_rod_7'
+
 export type ItemId =
   | 'item_wood'
   | 'item_wood_soft'
@@ -151,7 +160,7 @@ export type ItemId =
   | 'item_honey'
   | 'item_wooden_axe'
   | 'item_wooden_spear'
-  | 'item_fishing_rod'
+  | FishingRodItemId
   | 'item_cooked_fish'
   | 'item_roasted_crab'
   | 'item_roasted_shrimp'
@@ -204,6 +213,12 @@ export interface ItemContainer {
 export interface CampfireFuelState {
   remainingMs: number
   lastUpdatedAt: number
+}
+
+export interface ClothesDryingState {
+  buildingId: string
+  startedAt: number
+  completesAt: number
 }
 
 export interface ResourceNodeState {
@@ -374,6 +389,7 @@ export interface GameSnapshot {
   backpackEquipped?: boolean
   equippedWeaponId?: ItemId
   campfireFuel?: Record<string, CampfireFuelState>
+  clothesDrying?: ClothesDryingState | null
   weather?: WeatherState
   inventory: ItemContainer
   itemDurability?: Partial<Record<ItemId, number>>
