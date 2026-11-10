@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { GameSnapshot, ItemId } from '../../shared/types/game'
+import type { CropId, GameSnapshot, ItemId } from '../../shared/types/game'
 
 export type GameActionResult =
   | { ok: true; message: string }
@@ -39,6 +39,13 @@ export interface GameContextValue {
   startBuilding(definitionId: string): GameActionResult
   upgradeBuilding(buildingId: string): GameActionResult
   fuelCampfire(buildingId: string, fuelItemId: ItemId): GameActionResult
+  plantCrop(buildingId: string, cropId: CropId): GameActionResult
+  harvestCrop(plotId: string): GameActionResult
+  raiseChicken(buildingId: string): GameActionResult
+  collectEggs(buildingId: string): GameActionResult
+  raiseGoat(buildingId: string): GameActionResult
+  collectGoatMilk(buildingId: string): GameActionResult
+  collectRainwater(buildingId: string): GameActionResult
   startExploration(taskId: string): GameActionResult
   buildShip(definitionId: string): GameActionResult
   startVoyage(destinationId: string): GameActionResult

@@ -47,6 +47,11 @@ export function SurvivalPage() {
     || gameState.constructionQueue.length > 0
     || gameState.voyages.some((voyage) => voyage.status === 'departed' || voyage.status === 'traveling'))
   const weather = getWorldWeatherAtTime(getCurrentWeather(gameState), gameClock.now())
+  const shelter = gameState.buildings.find((building) => (
+    building.definitionId === 'building_shelter'
+    && building.status === 'completed'
+    && building.islandId === gameState.character.currentLocationId
+  ))
 
   return (
     <div className="survival-page">
@@ -75,7 +80,7 @@ export function SurvivalPage() {
           <strong>{isResting ? 'Đang nghỉ ngơi' : 'Sức lực chỉ hồi khi nghỉ'}</strong>
           <p>
             {isResting
-              ? `Đang hồi tối đa ${survivalConfig.stamina.recoveryPerMinute} điểm thể lực mỗi phút.`
+              ? `Đang hồi tối đa ${survivalConfig.stamina.recoveryPerMinute} điểm thể lực mỗi phút${shelter ? ` · Lều cấp ${shelter.level} tăng hiệu quả nghỉ ${shelter.level === 1 ? 25 : 40}%` : ''}.`
               : gameState.character.status !== 'alive'
                 ? 'Bạn cần hồi sinh trước khi nghỉ ngơi.'
               : isBusy
@@ -103,6 +108,8 @@ export function SurvivalPage() {
         appearance={gameState.character.appearance ?? 'male'}
         weather={weather}
         isResting={isResting}
+        shelterLevel={shelter?.level ?? 0}
+        ailments={gameState.ailments}
       />
 
       <p className="survival-rule-note">
@@ -111,6 +118,7 @@ export function SurvivalPage() {
           ? ` (tăng ${Math.round((survivalConfig.hotWeatherThirstMultiplier - 1) * 100)}% khi trời nóng)`
           : ''}.
         Sức lực chỉ hồi khi nghỉ ngơi (không có hoạt động, chế tạo, xây dựng hoặc di chuyển), tối đa {survivalConfig.stamina.recoveryPerMinute} điểm/phút; đói, khát hoặc sức khỏe thấp làm chậm hồi phục.
+        Lều lá cấp 1 tăng hồi phục 25%, nâng cấp cấp 2 tăng 40% và che chắn tác động khát do nắng nóng.
         Khi đói hoặc khát dưới {survivalConfig.needWarningThreshold}%, hồi thể lực chậm hơn; khi dưới {survivalConfig.criticalNeedThreshold}, sức khỏe giảm lần lượt {survivalConfig.health.malnutritionDamagePerHour} và {survivalConfig.health.severeDehydrationDamagePerHour} điểm/giờ;
         khi cạn, mất lần lượt {survivalConfig.health.starvationDamagePerHour} và {survivalConfig.health.dehydrationDamagePerHour} điểm/giờ.
       </p>

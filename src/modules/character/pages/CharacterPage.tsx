@@ -12,6 +12,11 @@ export function CharacterPage() {
   const { character } = gameState
   const homeIsland = getIslandDefinition(character.homeIslandId)
   const currentIsland = getIslandDefinition(character.currentLocationId)
+  const shelter = gameState.buildings.find((building) => (
+    building.definitionId === 'building_shelter'
+    && building.status === 'completed'
+    && building.islandId === character.currentLocationId
+  ))
 
   return (
     <div className="character-page">
@@ -42,6 +47,8 @@ export function CharacterPage() {
         characterName={character.name}
         appearance={character.appearance ?? 'male'}
         weather={getCurrentWeather(gameState)}
+        shelterLevel={shelter?.level ?? 0}
+        ailments={gameState.ailments}
       />
 
       <section className="character-details">

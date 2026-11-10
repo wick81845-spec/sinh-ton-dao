@@ -18,6 +18,7 @@ export const survivalConfig = {
     lowHealthRecoveryMultiplier: 0.5,
   },
   hotWeatherThirstMultiplier: 1.5,
+  extremeWeatherDamagePerHour: 2,
   warningThreshold: 25,
   needWarningThreshold: 50,
   criticalNeedThreshold: 10,

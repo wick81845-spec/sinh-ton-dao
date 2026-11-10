@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { initialGameState, newPlayerGameState } from '../../../data/mockGameState'
-import { completeConstructions, getUpgradeAvailability, startConstruction, upgradeBuilding } from './buildingService'
+import { addItems } from '../../inventory/services/inventoryService'
+import { completeConstructions, getShelterRestBonusMultiplier, getUpgradeAvailability, startConstruction, upgradeBuilding } from './buildingService'
 
 function stateWithWorkbenchMaterials() {
   return {
@@ -54,5 +55,101 @@ describe('buildingService', () => {
     expect(campfire.ok).toBe(true)
     const shelter = startConstruction(newPlayerGameState, 'building_shelter', 1_000)
     expect(shelter.ok).toBe(true)
+  })
+
+  it('improves rest recovery by shelter level and only applies it on that island', () => {
+    const levelOne = {
+      ...initialGameState,
+      buildings: [{
+        id: 'shelter-1',
+        definitionId: 'building_shelter',
+        islandId: initialGameState.character.currentLocationId,
+        level: 1,
+        health: 180,
+        status: 'completed' as const,
+      }],
+    }
+    expect(getShelterRestBonusMultiplier(initialGameState)).toBe(1)
+    expect(getShelterRestBonusMultiplier(levelOne)).toBe(1.25)
+    expect(getShelterRestBonusMultiplier({
+      ...levelOne,
+      buildings: levelOne.buildings.map((building) => ({ ...building, level: 2 })),
+    })).toBe(1.4)
+    expect(getShelterRestBonusMultiplier({
+      ...levelOne,
+      buildings: levelOne.buildings.map((building) => ({ ...building, level: 3 })),
+    })).toBe(1.55)
+    expect(getShelterRestBonusMultiplier({
+      ...levelOne,
+      buildings: levelOne.buildings.map((building) => ({ ...building, level: 4 })),
+    })).toBe(1.7)
+    expect(getShelterRestBonusMultiplier({
+      ...levelOne,
+      character: { ...levelOne.character, currentLocationId: 'island_002' },
+    })).toBe(1)
+  })
+
+  it('builds a drying rack from early-game materials', () => {
+    const state = {
+      ...newPlayerGameState,
+      inventory: {
+        ...newPlayerGameState.inventory,
+        slots: [
+          ...newPlayerGameState.inventory.slots,
+          { itemId: 'item_branch' as const, quantity: 4 },
+          { itemId: 'item_plant_fiber' as const, quantity: 3 },
+        ],
+      },
+    }
+    expect(startConstruction(state, 'building_drying_rack', 1_000).ok).toBe(true)
+  })
+
+  it('gates advanced shelter upgrades by level, technology, and island discovery', () => {
+    const shelter = {
+      id: 'shelter-1',
+      definitionId: 'building_shelter',
+      islandId: initialGameState.character.homeIslandId,
+      level: 2,
+      health: 180,
+      status: 'completed' as const,
+    }
+    const state = { ...initialGameState, buildings: [shelter] }
+    expect(getUpgradeAvailability(state, shelter.id)).toContain('cấp 5')
+
+    const levelReady = {
+      ...state,
+      character: { ...state.character, level: 5 },
+    }
+    expect(getUpgradeAvailability(levelReady, shelter.id)).toContain('công nghệ')
+
+    const researched = {
+      ...levelReady,
+      character: {
+        ...levelReady.character,
+        researchedTechnologyIds: ['tech_island_settlement'],
+      },
+    }
+    expect(getUpgradeAvailability(researched, shelter.id)).toContain('Đảo Rừng Dạt')
+
+    let inventory = researched.inventory
+    for (const [itemId, quantity] of [
+      ['item_wood_hard', 4],
+      ['item_wood_plank', 12],
+      ['item_plant_fiber', 8],
+    ] as const) {
+      const added = addItems(inventory, itemId, quantity)
+      if (!added.ok) throw new Error(added.message)
+      inventory = added.container
+    }
+    const ready = {
+      ...researched,
+      discoveredIslandIds: [...researched.discoveredIslandIds, 'island_002'],
+      inventory,
+    }
+    expect(getUpgradeAvailability(ready, shelter.id)).toBeNull()
+    const upgrading = upgradeBuilding(ready, shelter.id, 1_000)
+    if (!upgrading.ok) throw new Error(upgrading.message)
+    expect(completeConstructions(upgrading.state, 36_000).state.buildings[0])
+      .toMatchObject({ level: 3, status: 'completed' })
   })
 })

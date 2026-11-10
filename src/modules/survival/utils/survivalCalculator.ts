@@ -52,6 +52,7 @@ export function advanceSurvival(
   weather?: WeatherDefinition,
   restBonusMultiplier = 1,
   activityMultiplier = 1,
+  isSheltered = false,
 ): SurvivalStats {
   const elapsed = Math.max(0, elapsedMilliseconds)
   const hotWeather = weather !== undefined && weather.temperatureDelta >= 5
@@ -59,7 +60,11 @@ export function advanceSurvival(
   const hungerDecayPerHour = survivalConfig.hunger.decayPerHour * needMultiplier
   const thirstDecayPerHour = survivalConfig.thirst.decayPerHour
     * needMultiplier
-    * (hotWeather ? survivalConfig.hotWeatherThirstMultiplier : 1)
+    * (hotWeather && !isSheltered ? survivalConfig.hotWeatherThirstMultiplier : 1)
+  const temperatureDelta = weather?.temperatureDelta ?? 0
+  const extremeWeatherDamage = !isSheltered && (temperatureDelta >= 9 || temperatureDelta <= -12)
+    ? (elapsed / millisecondsPerHour) * survivalConfig.extremeWeatherDamagePerHour
+    : 0
   const hunger = Math.max(
     0,
     stats.hunger - (elapsed / millisecondsPerHour) * hungerDecayPerHour,
@@ -121,7 +126,7 @@ export function advanceSurvival(
     ...stats,
     health: roundStat(Math.max(0, Math.min(
       survivalConfig.health.max,
-      stats.health - starvationDamage - dehydrationDamage + healthRecovery,
+      stats.health - starvationDamage - dehydrationDamage - extremeWeatherDamage + healthRecovery,
     ))),
     hunger: roundStat(hunger),
     thirst: roundStat(thirst),

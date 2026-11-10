@@ -1,5 +1,5 @@
 import { survivalConfig } from '../data/survivalConfig'
-import type { SurvivalStats } from '../../../shared/types/game'
+import type { SurvivalAilment, SurvivalStats } from '../../../shared/types/game'
 import type { WeatherDefinition } from '../../world/data/weatherDefinitions'
 
 export type BodyStatusSeverity = 'mild' | 'moderate' | 'severe' | 'positive'
@@ -18,8 +18,70 @@ export function getBodyStatusEffects(
   stats: SurvivalStats,
   weather?: WeatherDefinition,
   isResting = true,
+  shelterLevel = 0,
+  ailments: SurvivalAilment[] = [],
 ): BodyStatusEffect[] {
   const effects: BodyStatusEffect[] = []
+
+  for (const ailment of ailments) {
+    if (ailment.id === 'bleeding') {
+      effects.push({
+        id: 'bleeding',
+        name: 'Vết thương đang chảy máu',
+        severity: 'severe',
+        appearance: 'Có vết thương cần được băng bó',
+        cause: 'Bị thương trong chiến đấu',
+        impact: 'Mất sức khỏe theo thời gian; nếu không chữa, vết thương có thể nhiễm trùng.',
+        icon: '✚',
+      })
+    } else if (ailment.id === 'infection') {
+      effects.push({
+        id: 'infection',
+        name: 'Nhiễm trùng vết thương',
+        severity: 'severe',
+        appearance: 'Vết thương viêm đỏ, cơ thể suy yếu',
+        cause: 'Vết thương không được xử lý kịp thời',
+        impact: 'Tiếp tục mất sức khỏe cho đến khi dùng thuốc đắp thảo mộc.',
+        icon: '!',
+      })
+    } else if (ailment.id === 'poisoning') {
+      effects.push({
+        id: 'poisoning',
+        name: 'Ngộ độc thực phẩm',
+        severity: 'severe',
+        appearance: 'Buồn nôn, chóng mặt và suy nhược',
+        cause: 'Ăn phải nấm độc',
+        impact: 'Mất sức khỏe theo thời gian; dùng thuốc giải độc để hồi phục.',
+        icon: '☠',
+      })
+    } else if (ailment.id === 'heatstroke') {
+      const heatstrokeActive = ailment.elapsedMs >= 10 * 60 * 1000
+      effects.push({
+        id: 'heatstroke',
+        name: heatstrokeActive ? 'Say nắng' : 'Nguy cơ say nắng',
+        severity: heatstrokeActive ? 'severe' : 'moderate',
+        appearance: heatstrokeActive ? 'Mặt đỏ, choáng váng vì nóng' : 'Đổ mồ hôi nhiều, cơ thể quá nóng',
+        cause: 'Phơi ngoài trời nắng nóng cực độ khi không có nơi trú',
+        impact: heatstrokeActive
+          ? 'Mất sức khỏe khi tiếp tục phơi nóng; uống nước sạch để điều trị.'
+          : 'Tiếp xúc kéo dài có thể gây say nắng; hãy tìm nơi trú.',
+        icon: '☀',
+      })
+    } else {
+      const hypothermiaActive = ailment.elapsedMs >= 10 * 60 * 1000
+      effects.push({
+        id: 'hypothermia',
+        name: hypothermiaActive ? 'Hạ thân nhiệt' : 'Nguy cơ hạ thân nhiệt',
+        severity: hypothermiaActive ? 'severe' : 'moderate',
+        appearance: hypothermiaActive ? 'Run rẩy dữ dội, cơ thể lạnh buốt' : 'Run rẩy, co người giữ ấm',
+        cause: 'Phơi ngoài trời lạnh cực độ khi không có nơi trú',
+        impact: hypothermiaActive
+          ? 'Mất sức khỏe khi tiếp tục phơi lạnh; uống trà nóng để điều trị.'
+          : 'Tiếp xúc kéo dài có thể gây hạ thân nhiệt; hãy tìm nơi trú.',
+        icon: '❄',
+      })
+    }
+  }
 
   if (stats.hunger < survivalConfig.needWarningThreshold) {
     const starving = stats.hunger === 0
@@ -146,29 +208,41 @@ export function getBodyStatusEffects(
     })
   }
 
-  if (weather && weather.temperatureDelta >= 5) {
+  if (shelterLevel > 0) {
+    effects.push({
+      id: 'sheltered',
+      name: 'Đang trú trong lều',
+      severity: 'positive',
+      appearance: 'Có nơi nghỉ được che chắn khỏi thời tiết',
+      cause: `Lều lá cấp ${shelterLevel}`,
+      impact: `Tăng ${Math.round((0.25 + Math.max(0, shelterLevel - 1) * 0.15) * 100)}% hồi phục khi nghỉ và giảm tác động thời tiết cực đoan.`,
+      icon: '⌂',
+    })
+  }
+
+  if (shelterLevel === 0 && weather && weather.temperatureDelta >= 5) {
     effects.push({
       id: 'overheated',
       name: weather.temperatureDelta >= 9 ? 'Nắng nóng cực độ' : 'Nóng',
       severity: weather.temperatureDelta >= 9 ? 'severe' : 'moderate',
       appearance: 'Đổ mồ hôi, mặt đỏ vì nắng nóng',
       cause: weather.name,
-      impact: `Khát giảm nhanh hơn ${Math.round((survivalConfig.hotWeatherThirstMultiplier - 1) * 100)}% khi trời nóng.`,
+      impact: `Khát giảm nhanh hơn ${Math.round((survivalConfig.hotWeatherThirstMultiplier - 1) * 100)}%; phơi nắng cực độ lâu có thể gây say nắng.`,
       icon: '☀',
     })
-  } else if (weather && weather.temperatureDelta <= -7) {
+  } else if (shelterLevel === 0 && weather && weather.temperatureDelta <= -7) {
     effects.push({
       id: 'cold-weather',
       name: weather.temperatureDelta <= -12 ? 'Rét đậm' : 'Rét lạnh',
       severity: weather.temperatureDelta <= -12 ? 'severe' : 'moderate',
       appearance: 'Run rẩy, co người giữ ấm',
       cause: weather.name,
-      impact: 'Ảnh hưởng của rét được thể hiện bằng trạng thái thời tiết.',
+      impact: 'Phơi lạnh cực độ lâu có thể gây hạ thân nhiệt.',
       icon: '❄',
     })
   }
 
-  if (weather && ['drizzle', 'moderate_rain', 'heavy_rain', 'tropical_shower', 'thunderstorm', 'lightning_storm'].includes(weather.id)) {
+  if (shelterLevel === 0 && weather && ['drizzle', 'moderate_rain', 'heavy_rain', 'tropical_shower', 'thunderstorm', 'lightning_storm'].includes(weather.id)) {
     effects.push({
       id: 'rain-wet',
       name: 'Đang gặp mưa',

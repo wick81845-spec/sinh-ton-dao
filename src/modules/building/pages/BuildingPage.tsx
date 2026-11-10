@@ -5,6 +5,7 @@ import { gameClock } from '../../../services/clock/gameClock'
 import { buildingDefinitions, getConstructionAvailability, getUpgradeAvailability } from '../services/buildingService'
 import { campfireFuelOptions, getCampfireRemainingMs } from '../services/campfireService'
 import { ItemStack } from '../../../shared/components/ItemArtwork'
+import { cropDefinitions, getCropPlantAvailability } from '../services/farmService'
 
 function formatCost(cost: { itemId: keyof typeof itemDefinitions; quantity: number }[]) {
   return (
@@ -15,7 +16,21 @@ function formatCost(cost: { itemId: keyof typeof itemDefinitions; quantity: numb
 }
 
 export function BuildingPage() {
-  const { gameState, isLoading, error, startBuilding, upgradeBuilding, fuelCampfire } = useGame()
+  const {
+    gameState,
+    isLoading,
+    error,
+    startBuilding,
+    upgradeBuilding,
+    fuelCampfire,
+    plantCrop,
+    harvestCrop,
+    raiseChicken,
+    collectEggs,
+    raiseGoat,
+    collectGoatMilk,
+    collectRainwater,
+  } = useGame()
   const [now, setNow] = useState(gameClock.now())
 
   useEffect(() => {
@@ -125,6 +140,19 @@ export function BuildingPage() {
               const upgradeCost = definition.upgradeCosts[nextLevel]
               const issue = getUpgradeAvailability(gameState, building.id)
               const isCampfire = building.definitionId === 'building_campfire'
+              const isGardenBed = building.definitionId === 'building_garden_bed'
+              const farmPlot = gameState.farmPlots?.find((plot) => plot.buildingId === building.id)
+              const crop = farmPlot && cropDefinitions.find((entry) => entry.id === farmPlot.cropId)
+              const chickenCoop = building.definitionId === 'building_chicken_coop'
+              const goatPen = building.definitionId === 'building_goat_pen'
+              const isRainCollector = building.definitionId === 'building_rain_collector'
+              const livestock = gameState.livestockPens?.find((pen) => pen.buildingId === building.id)
+              const chickenQuantity = gameState.inventory.slots
+                .filter((slot) => slot.itemId === 'item_chicken')
+                .reduce((total, slot) => total + slot.quantity, 0)
+              const goatQuantity = gameState.inventory.slots
+                .filter((slot) => slot.itemId === 'item_goat')
+                .reduce((total, slot) => total + slot.quantity, 0)
               const fuelRemaining = getCampfireRemainingMs(gameState, building.id, now)
               return (
                 <article className="owned-building" key={building.id}>
@@ -141,6 +169,105 @@ export function BuildingPage() {
                       </p>
                     )}
                   </div>
+                  {isGardenBed && building.status === 'completed' && (
+                    <div className="owned-building-upgrade" aria-label="Quản lý luống trồng">
+                      {farmPlot && crop
+                        ? (
+                          <>
+                            <p>{crop.name} · {now >= farmPlot.readyAt
+                              ? 'Sẵn sàng thu hoạch'
+                              : `Còn ${Math.ceil((farmPlot.readyAt - now) / 60_000)} phút`}</p>
+                            <button
+                              className="small-action"
+                              type="button"
+                              disabled={now < farmPlot.readyAt}
+                              onClick={() => harvestCrop(farmPlot.id)}
+                            >
+                              Thu hoạch
+                            </button>
+                          </>
+                        )
+                        : cropDefinitions.map((cropOption) => {
+                          const issue = getCropPlantAvailability(gameState, building.id, cropOption.id)
+                          return (
+                            <button
+                              className="small-action"
+                              type="button"
+                              key={cropOption.id}
+                              disabled={Boolean(issue)}
+                              title={issue ?? undefined}
+                              onClick={() => plantCrop(building.id, cropOption.id)}
+                            >
+                              Gieo {cropOption.name} · cần {itemDefinitions[cropOption.seedItemId].name}
+                              {issue ? ` · ${issue}` : ''}
+                            </button>
+                          )
+                        })}
+                    </div>
+                  )}
+                  {chickenCoop && building.status === 'completed' && (
+                    <div className="owned-building-upgrade" aria-label="Quản lý chuồng gà">
+                      <p>Gà nuôi: {livestock?.chickenCount ?? 0} / 3</p>
+                      <button
+                        className="small-action"
+                        type="button"
+                        disabled={chickenQuantity < 1 || (livestock?.chickenCount ?? 0) >= 3}
+                        onClick={() => raiseChicken(building.id)}
+                      >
+                        Nuôi gà con · có {chickenQuantity}
+                      </button>
+                      {livestock && (
+                        <button
+                          className="small-action"
+                          type="button"
+                          disabled={now < (livestock.nextEggAt ?? now)}
+                          onClick={() => collectEggs(building.id)}
+                        >
+                          {(livestock.nextEggAt ?? now) > now
+                            ? `Trứng dự kiến sau ${Math.ceil(((livestock.nextEggAt ?? now) - now) / 60_000)} phút`
+                            : 'Thu trứng'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {goatPen && building.status === 'completed' && (
+                    <div className="owned-building-upgrade" aria-label="Quản lý chuồng dê">
+                      <p>Dê nuôi: {livestock?.goatCount ?? 0} / 2</p>
+                      <button
+                        className="small-action"
+                        type="button"
+                        disabled={goatQuantity < 1 || (livestock?.goatCount ?? 0) >= 2}
+                        onClick={() => raiseGoat(building.id)}
+                      >
+                        Nuôi dê con · có {goatQuantity}
+                      </button>
+                      {(livestock?.goatCount ?? 0) > 0 && (
+                        <button
+                          className="small-action"
+                          type="button"
+                          disabled={now < (livestock?.nextMilkAt ?? now)}
+                          onClick={() => collectGoatMilk(building.id)}
+                        >
+                          {(livestock?.nextMilkAt ?? now) > now
+                            ? `Sữa dê dự kiến sau ${Math.ceil(((livestock?.nextMilkAt ?? now) - now) / 60_000)} phút`
+                            : 'Thu sữa dê'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {isRainCollector && building.status === 'completed' && (
+                    <div className="owned-building-upgrade" aria-label="Máng hứng nước mưa">
+                      <p>Nước mưa dự trữ: {gameState.waterCollectors?.[building.id]?.storedUnits ?? 0} / 10</p>
+                      <button
+                        className="small-action"
+                        type="button"
+                        disabled={(gameState.waterCollectors?.[building.id]?.storedUnits ?? 0) === 0}
+                        onClick={() => collectRainwater(building.id)}
+                      >
+                        Thu nước mưa
+                      </button>
+                    </div>
+                  )}
                   {isCampfire && building.status === 'completed' && (
                     <div className="owned-building-upgrade">
                       {campfireFuelOptions.map(({ itemId, durationMs }) => {

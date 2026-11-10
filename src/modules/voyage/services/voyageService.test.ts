@@ -4,6 +4,8 @@ import { getGatheringAvailability } from '../../gathering/services/gatheringServ
 import { completeShipConstruction, startShipConstruction } from '../../ship/services/shipService'
 import { getRecipeAvailability } from '../../crafting/services/craftingService'
 import { getShipConstructionAvailability } from '../../ship/services/shipService'
+import { addItems } from '../../inventory/services/inventoryService'
+import { isValidGameSnapshot } from '../../../services/persistence/gameSaveService'
 import { advanceVoyages, getVoyageAvailability, startVoyage } from './voyageService'
 
 describe('voyageService', () => {
@@ -89,5 +91,55 @@ describe('voyageService', () => {
     const trip = startVoyage(adverse, 'island_002', 20_000)
     if (!trip.ok) throw new Error(trip.message)
     expect(trip.state.voyages[0].completesAt).toBe(41_000)
+  })
+
+  it('upgrades a raft to a faster sailboat and shortens voyage time', () => {
+    const raft = startShipConstruction({
+      ...initialGameState,
+      character: { ...initialGameState.character, researchedTechnologyIds: ['tech_seafaring'] },
+    }, 'ship_raft', 1_000)
+    if (!raft.ok) throw new Error(raft.message)
+    const raftReady = completeShipConstruction(raft.state, 11_000).state
+    let inventory = raftReady.inventory
+    for (const [itemId, quantity] of [
+      ['item_wood_plank', 16],
+      ['item_wood_hard', 6],
+      ['item_rope', 8],
+      ['item_ship_parts', 3],
+    ] as const) {
+      const added = addItems(inventory, itemId, quantity)
+      if (!added.ok) throw new Error(added.message)
+      inventory = added.container
+    }
+
+    const readyForUpgrade = {
+      ...raftReady,
+      character: {
+        ...raftReady.character,
+        level: 8,
+        researchedTechnologyIds: ['tech_seafaring', 'tech_ocean_frontier'],
+      },
+      discoveredIslandIds: [...raftReady.discoveredIslandIds, 'island_008'],
+      inventory,
+    }
+    expect(getShipConstructionAvailability(readyForUpgrade, 'ship_sailboat')).toBeNull()
+    const upgrade = startShipConstruction(readyForUpgrade, 'ship_sailboat', 12_000)
+    if (!upgrade.ok) throw new Error(upgrade.message)
+    expect(upgrade.state.shipConstruction?.upgradeShipId).toBe(raftReady.ships[0].id)
+    expect(isValidGameSnapshot(upgrade.state)).toBe(true)
+
+    const upgraded = completeShipConstruction(upgrade.state, 57_000).state
+    expect(upgraded.ships).toHaveLength(1)
+    expect(upgraded.ships[0]).toMatchObject({
+      id: raftReady.ships[0].id,
+      definitionId: 'ship_sailboat',
+      health: 180,
+      status: 'docked',
+    })
+
+    const readyToSail = { ...upgraded, discoveredIslandIds: ['island_001', 'island_002', 'island_008'] }
+    const trip = startVoyage(readyToSail, 'island_002', 60_000)
+    if (!trip.ok) throw new Error(trip.message)
+    expect(trip.state.voyages[0].completesAt).toBe(69_100)
   })
 })

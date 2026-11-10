@@ -1,6 +1,7 @@
 import { islandDefinitions, getIslandDefinition } from '../../world/data/worldDefinitions'
 import type { GameSnapshot, Voyage } from '../../../shared/types/game'
 import { getCurrentWeather } from '../../world/services/weatherService'
+import { getShipDefinition } from '../../ship/data/shipDefinitions'
 
 export type VoyageActionResult =
   | { ok: true; state: GameSnapshot; message: string }
@@ -57,6 +58,7 @@ export function startVoyage(state: GameSnapshot, destinationId: string, now: num
     status: 'departed',
     startedAt: now,
     completesAt: now + destination.travelDurationSeconds
+      * (getShipDefinition(ship.definitionId)?.travelTimeMultiplier ?? 1)
       * (getCurrentWeather(state)?.severity === 'adverse' ? 1.5 : 1)
       * 1000,
     arrivedAt: null,

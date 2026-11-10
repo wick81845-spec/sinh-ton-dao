@@ -16,6 +16,7 @@ describe('combatService', () => {
     const firstTurn = attackCombat(started.state, 2_000)
     if (!firstTurn.ok) throw new Error(firstTurn.message)
     expect(firstTurn.state.survival.health).toBe(89)
+    expect(firstTurn.state.ailments).toEqual([{ id: 'bleeding', elapsedMs: 0 }])
     const result = attackCombat(firstTurn.state, 3_000)
     if (!result.ok) throw new Error(result.message)
 
@@ -88,6 +89,7 @@ describe('combatService', () => {
     if (!respawn.ok) throw new Error(respawn.message)
     expect(respawn.state.character).toMatchObject({ status: 'alive', currentLocationId: initialGameState.character.homeIslandId })
     expect(respawn.state.survival.health).toBe(60)
+    expect(respawn.state.ailments).toEqual([])
     expect(respawn.state.storage).toEqual(initialGameState.storage)
     expect(respawn.state.inventory.slots).toHaveLength(0)
   })

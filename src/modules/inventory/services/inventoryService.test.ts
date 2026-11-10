@@ -13,6 +13,28 @@ import {
   unequipBackpack,
   unequipWeapon,
 } from './inventoryService'
+import type { ItemId, ItemQuantity } from '../../../shared/types/game'
+
+function createRepairState(itemId: ItemId, materials: readonly ItemQuantity[], equipped = false) {
+  const slots = [
+    ...materials.map((material) => ({ ...material })),
+    ...(equipped ? [] : [{ itemId, quantity: 1 }]),
+  ]
+  return {
+    ...initialGameState,
+    inventory: { ...initialGameState.inventory, slots },
+    ...(equipped ? { equippedWeaponId: itemId } : {}),
+    itemDurability: { ...initialGameState.itemDurability, [itemId]: 1 },
+    buildings: [{
+      id: 'workbench-1',
+      definitionId: 'building_workbench',
+      islandId: initialGameState.character.currentLocationId,
+      level: 1,
+      health: 100,
+      status: 'completed' as const,
+    }],
+  }
+}
 
 describe('inventoryService', () => {
   it('moves an item stack between containers without mutating the inputs', () => {
@@ -148,6 +170,81 @@ describe('inventoryService', () => {
     expect(result.state.survival).toMatchObject({ hunger: 96, thirst: 86, health: 72 })
   })
 
+  it('uses a medicinal poultice to cure injuries even when health is full', () => {
+    const state = {
+      ...initialGameState,
+      ailments: [
+        { id: 'bleeding' as const, elapsedMs: 30_000 },
+        { id: 'infection' as const, elapsedMs: 60_000 },
+      ],
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [{ itemId: 'item_medicinal_poultice' as const, quantity: 1 }],
+      },
+    }
+
+    const result = consumeItem(state, 'item_medicinal_poultice')
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error(result.message)
+    expect(result.state.ailments).toEqual([])
+    expect(result.state.survival.health).toBe(initialGameState.survival.health)
+    expect(result.state.inventory.slots).toEqual([])
+  })
+
+  it('causes poisoning from poisonous mushrooms and allows treatment with an antidote', () => {
+    const state = {
+      ...initialGameState,
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [{ itemId: 'item_poisonous_mushroom' as const, quantity: 1 }],
+      },
+    }
+    const poisoned = consumeItem(state, 'item_poisonous_mushroom')
+    expect(poisoned.ok).toBe(true)
+    if (!poisoned.ok) throw new Error(poisoned.message)
+    expect(poisoned.state.ailments).toEqual([{ id: 'poisoning', elapsedMs: 0 }])
+    expect(poisoned.message).toContain('ngộ độc')
+
+    const treated = consumeItem({
+      ...poisoned.state,
+      inventory: {
+        ...poisoned.state.inventory,
+        slots: [{ itemId: 'item_herbal_antidote' as const, quantity: 1 }],
+      },
+    }, 'item_herbal_antidote')
+    expect(treated.ok).toBe(true)
+    if (!treated.ok) throw new Error(treated.message)
+    expect(treated.state.ailments).toEqual([])
+    expect(treated.message).toContain('ngộ độc')
+  })
+
+  it('treats heatstroke with boiled water and hypothermia with warm tea', () => {
+    const state = {
+      ...initialGameState,
+      ailments: [
+        { id: 'heatstroke' as const, elapsedMs: 10 * 60 * 1000 },
+        { id: 'hypothermia' as const, elapsedMs: 10 * 60 * 1000 },
+      ],
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [
+          { itemId: 'item_clean_water' as const, quantity: 1 },
+          { itemId: 'item_warm_tea' as const, quantity: 1 },
+        ],
+      },
+    }
+    const cooled = consumeItem(state, 'item_clean_water')
+    expect(cooled.ok).toBe(true)
+    if (!cooled.ok) throw new Error(cooled.message)
+    expect(cooled.state.ailments).toEqual([{ id: 'hypothermia', elapsedMs: 10 * 60 * 1000 }])
+
+    const warmed = consumeItem(cooled.state, 'item_warm_tea')
+    expect(warmed.ok).toBe(true)
+    if (!warmed.ok) throw new Error(warmed.message)
+    expect(warmed.state.ailments).toEqual([])
+  })
+
   it('lets a new survivor discard an unwanted stack', () => {
     const result = discardItems(newPlayerGameState, 'item_wild_fruit', 3)
 
@@ -228,25 +325,87 @@ describe('inventoryService', () => {
     expect(stored.state.itemDurability?.item_wooden_spear).toBe(15)
   })
 
-  it('repairs a damaged equipped weapon at the workbench using materials', () => {
-    const state = {
-      ...initialGameState,
-      equippedWeaponId: 'item_wooden_spear' as const,
-      itemDurability: { item_wooden_spear: 4 },
-      buildings: [{
-        id: 'workbench-1',
-        definitionId: 'building_workbench',
-        islandId: initialGameState.character.currentLocationId,
-        level: 1,
-        health: 100,
-        status: 'completed' as const,
-      }],
-    }
-    const repaired = repairItem(state, 'item_wooden_spear')
+  it.each([
+    {
+      itemId: 'item_wooden_axe',
+      maximum: 20,
+      equipped: true,
+      materials: [{ itemId: 'item_wood', quantity: 2 }, { itemId: 'item_stone', quantity: 1 }],
+    },
+    {
+      itemId: 'item_wooden_spear',
+      maximum: 15,
+      equipped: true,
+      materials: [
+        { itemId: 'item_branch', quantity: 1 },
+        { itemId: 'item_stone', quantity: 1 },
+        { itemId: 'item_rope', quantity: 1 },
+      ],
+    },
+    {
+      itemId: 'item_stone_pickaxe',
+      maximum: 30,
+      equipped: false,
+      materials: [
+        { itemId: 'item_rough_stone', quantity: 2 },
+        { itemId: 'item_branch', quantity: 1 },
+        { itemId: 'item_rope', quantity: 1 },
+      ],
+    },
+    {
+      itemId: 'item_copper_axe',
+      maximum: 60,
+      equipped: false,
+      materials: [
+        { itemId: 'item_copper_ingot', quantity: 1 },
+        { itemId: 'item_branch', quantity: 1 },
+        { itemId: 'item_rope', quantity: 1 },
+      ],
+    },
+    {
+      itemId: 'item_iron_axe',
+      maximum: 100,
+      equipped: false,
+      materials: [
+        { itemId: 'item_iron_ingot', quantity: 1 },
+        { itemId: 'item_branch', quantity: 1 },
+        { itemId: 'item_rope', quantity: 1 },
+      ],
+    },
+    {
+      itemId: 'item_fishing_rod',
+      maximum: 12,
+      equipped: false,
+      materials: [{ itemId: 'item_branch', quantity: 1 }, { itemId: 'item_plant_fiber', quantity: 1 }],
+    },
+  ] as const)(
+    'repairs $itemId at the workbench using its own materials',
+    ({ itemId, maximum, equipped, materials }) => {
+    const state = createRepairState(itemId, materials, equipped)
+    const repaired = repairItem(state, itemId)
     expect(repaired.ok).toBe(true)
     if (!repaired.ok) throw new Error(repaired.message)
-    expect(repaired.state.itemDurability?.item_wooden_spear).toBe(15)
-    expect(repaired.state.inventory.slots.find((slot) => slot.itemId === 'item_wood')?.quantity).toBe(10)
-    expect(repaired.state.inventory.slots.find((slot) => slot.itemId === 'item_stone')?.quantity).toBe(7)
+    expect(repaired.state.itemDurability?.[itemId]).toBe(maximum)
+    for (const material of materials) {
+      expect(repaired.state.inventory.slots.find((slot) => slot.itemId === material.itemId)).toBeUndefined()
+    }
+    if (equipped) expect(repaired.state.equippedWeaponId).toBe(itemId)
+    else expect(repaired.state.inventory.slots).toContainEqual({ itemId, quantity: 1 })
+    },
+  )
+
+  it('reports the missing metal needed to repair an axe without consuming anything', () => {
+    const state = createRepairState('item_iron_axe', [
+      { itemId: 'item_branch', quantity: 1 },
+      { itemId: 'item_rope', quantity: 1 },
+    ])
+    const repaired = repairItem(state, 'item_iron_axe')
+
+    expect(repaired).toEqual({ ok: false, message: 'Không đủ nguyên liệu để sửa: Thỏi sắt.' })
+    expect(state.inventory.slots).toEqual([
+      { itemId: 'item_branch', quantity: 1 },
+      { itemId: 'item_rope', quantity: 1 },
+      { itemId: 'item_iron_axe', quantity: 1 },
+    ])
   })
 })

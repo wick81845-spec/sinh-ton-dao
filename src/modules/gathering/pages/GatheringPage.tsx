@@ -46,6 +46,12 @@ const gatheringMapMarkers: Record<string, { left: string; top: string; icon: str
   'fallen-tree': { left: '53%', top: '22%', icon: '▥' },
   'freshwater-stream': { left: '32%', top: '47%', icon: '≈' },
   'tidal-rocks': { left: '83%', top: '72%', icon: '◈' },
+  'iron-deposit': { left: '72%', top: '31%', icon: '◆' },
+  'copper-deposit': { left: '57%', top: '39%', icon: '◆' },
+  'tin-deposit': { left: '65%', top: '51%', icon: '◆' },
+  'coal-seam': { left: '46%', top: '43%', icon: '⬟' },
+  'riverbank-clay': { left: '33%', top: '58%', icon: '⬡' },
+  'old-growth-forest': { left: '55%', top: '25%', icon: '♧' },
 }
 
 function FishingBetaRoadmap() {
@@ -182,12 +188,10 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
     ? getFishingLootAvailableAt(currentIsland.oceanZoneId)
       .filter((loot) => addItems(gameState.inventory, loot.itemId, 1).ok)
     : []
-  const homeIsland = getIslandDefinition(gameState.character.homeIslandId)
-  const isAtHomeIsland = gameState.character.currentLocationId === homeIsland?.id
-  const homeFishingZone = fishingZoneDefinitions.find((entry) => entry.id === homeIsland?.oceanZoneId)
-  const islandResourceNodes = homeIsland
+  const islandFishingZone = fishingZoneDefinitions.find((entry) => entry.id === currentIsland?.oceanZoneId)
+  const islandResourceNodes = currentIsland
     ? resourceNodeDefinitions.filter((node) =>
-      getResourceDefinition(node.resourceId)?.sources.biomes.includes(homeIsland.biomeId))
+      getResourceDefinition(node.resourceId)?.sources.biomes.includes(currentIsland.biomeId))
     : []
   const selectedNode = islandResourceNodes.find((node) => node.id === selectedNodeId)
     ?? islandResourceNodes[0]
@@ -202,15 +206,11 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
     ? { name: 'Thu thập quanh đây' }
     : active && gatheringActivities.find((activity) => activity.id === active.activityId)
   const selectedGatheringIssue = selectedGatheringActivity
-    ? !isAtHomeIsland
-      ? 'Hãy quay về đảo khởi đầu để thu hoạch tại địa điểm này.'
-      : getGatheringAvailability(gameState, selectedGatheringActivity.id, now)
+    ? getGatheringAvailability(gameState, selectedGatheringActivity.id, now)
     : 'Điểm này chưa có hoạt động thu hoạch.'
   const randomGatheringIssue = getGatheringAvailability(gameState, randomGatheringActivityId, now)
   const fishingIssue = getGatheringAvailability(gameState, fishingActivity.id, now)
-  const mapFishingIssue = !isAtHomeIsland
-    ? 'Hãy quay về đảo khởi đầu để câu cá tại đây.'
-    : fishingIssue
+  const mapFishingIssue = fishingIssue
   const progress = active
     ? Math.max(0, Math.min(100, ((now - active.startedAt) / (active.completesAt - active.startedAt)) * 100))
     : 0
@@ -280,10 +280,10 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                     transform: `translate(calc(-50% + ${mapOffset.x}px), calc(-50% + ${mapOffset.y}px)) scale(${mapZoom})`,
                   }}
                 >
-                  <img className="gathering-island-art" src="/assets/gathering/island-map.png" alt="" />
+                  <img className="gathering-island-art" src={currentIsland?.artwork ?? '/assets/gathering/island-map.png'} alt="" />
                   <div className="gathering-map-marker-list">
                     {islandResourceNodes.map((node) => {
-                      const position = gatheringMapMarkers[node.id]
+                      const position = gatheringMapMarkers[node.id] ?? { left: '50%', top: '50%', icon: '◆' }
                       const nodeState = gameState.resourceNodes.find((entry) => entry.nodeId === node.id)
                       const isSelected = selectedNodeId === node.id
                       const lockReason = getNodeUnlockIssue(gameState, node.id)
@@ -312,7 +312,7 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                       className="gathering-map-fishing-marker"
                       type="button"
                       style={{ left: '18%', top: '87%' }}
-                      aria-label={`Câu cá tại ${homeFishingZone?.name ?? 'vùng biển đảo nhà'}`}
+                      aria-label={`Câu cá tại ${islandFishingZone?.name ?? 'vùng biển hiện tại'}`}
                       aria-pressed={isFishingLocationSelected}
                       onClick={() => {
                         setSelectedNodeId(null)
@@ -322,7 +322,7 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                       <span className="gathering-map-fishing-icon" aria-hidden="true">🎣</span>
                       <span className="gathering-marker-copy">
                         <strong>Điểm câu cá</strong>
-                        <small>{homeFishingZone?.name ?? 'Vùng biển đảo nhà'}</small>
+                        <small>{islandFishingZone?.name ?? 'Vùng biển hiện tại'}</small>
                       </span>
                     </button>
                   </div>
@@ -330,9 +330,9 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
               </div>
 
               <aside className="gathering-map-location-card">
-                <span className="gathering-map-kicker">ĐẢO KHỞI ĐẦU</span>
-                <h1>{gameState.character.homeIslandName ?? homeIsland?.name ?? 'Đảo khởi đầu'}</h1>
-                <p>{homeIsland?.description ?? 'Khám phá các điểm tài nguyên quanh đảo.'}</p>
+                <span className="gathering-map-kicker">ĐẢO HIỆN TẠI</span>
+                <h1>{currentIsland?.name ?? 'Vùng đất chưa xác định'}</h1>
+                <p>{currentIsland?.description ?? 'Khám phá các điểm tài nguyên quanh đảo.'}</p>
                 <div className="gathering-map-player">
                   <span className="gathering-map-player-icon" aria-hidden="true">♙</span>
                   <span>
@@ -380,7 +380,7 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                     </span>
                     <h2>{isFishingLocationSelected ? 'Câu cá ven bờ' : selectedNode.name}</h2>
                     {isFishingLocationSelected
-                      ? <p>{homeFishingZone?.name ?? 'Vùng biển đảo nhà'}</p>
+                      ? <p>{islandFishingZone?.name ?? 'Vùng biển hiện tại'}</p>
                       : (
                         <>
                           <small>

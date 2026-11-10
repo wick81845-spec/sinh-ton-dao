@@ -5,6 +5,7 @@ import { combatEncounters, combatRules, type CombatEncounterDefinition } from '.
 import { getMockPlayer } from '../../social/data/playerDirectory'
 import { getSurvivalConditions } from '../../survival/utils/survivalCalculator'
 import { awardExperience } from '../../progression/services/progressionService'
+import { inflictCombatWound } from '../../survival/services/ailmentService'
 
 export type CombatActionResult =
   | { ok: true; state: GameSnapshot; message: string }
@@ -163,23 +164,24 @@ export function attackCombat(state: GameSnapshot, now: number): CombatActionResu
     )
   }
 
-  const health = Math.max(0, state.survival.health - encounter.attackDamage)
+  const hitState = encounter.attackDamage > 0 ? inflictCombatWound(attackedState) : attackedState
+  const health = Math.max(0, hitState.survival.health - encounter.attackDamage)
   if (health === 0) {
     const droppedItems = [
-      ...attackedState.inventory.slots.map((slot) => ({ itemId: slot.itemId, quantity: slot.quantity })),
-      ...(attackedState.equippedWeaponId
-        ? [{ itemId: attackedState.equippedWeaponId, quantity: 1 }]
+      ...hitState.inventory.slots.map((slot) => ({ itemId: slot.itemId, quantity: slot.quantity })),
+      ...(hitState.equippedWeaponId
+        ? [{ itemId: hitState.equippedWeaponId, quantity: 1 }]
         : []),
     ]
-    const itemDurability = { ...attackedState.itemDurability }
-    if (attackedState.equippedWeaponId) delete itemDurability[attackedState.equippedWeaponId]
+    const itemDurability = { ...hitState.itemDurability }
+    if (hitState.equippedWeaponId) delete itemDurability[hitState.equippedWeaponId]
     const result = finishCombat(
       {
-        ...attackedState,
-        inventory: { ...attackedState.inventory, slots: [] },
+        ...hitState,
+        inventory: { ...hitState.inventory, slots: [] },
         equippedWeaponId: undefined,
         itemDurability,
-        survival: { ...state.survival, health: 0 },
+        survival: { ...hitState.survival, health: 0 },
         activeCombat: { ...active, opponentHealth, rounds },
       },
       encounter,
@@ -197,8 +199,8 @@ export function attackCombat(state: GameSnapshot, now: number): CombatActionResu
   return {
     ok: true,
     state: {
-      ...attackedState,
-      survival: { ...state.survival, health, conditions: getSurvivalConditions({ ...state.survival, health }) },
+      ...hitState,
+      survival: { ...hitState.survival, health, conditions: getSurvivalConditions({ ...hitState.survival, health }) },
       activeCombat: { ...active, opponentHealth, rounds },
     },
     message: `Bạn gây ${playerDamage} sát thương; đối thủ còn ${opponentHealth} máu.${durabilityMessage}`,
@@ -226,6 +228,7 @@ export function respawnCharacter(state: GameSnapshot): CombatActionResult {
       ...state,
       character: { ...state.character, status: 'alive', currentLocationId: state.character.homeIslandId },
       survival: { ...survival, conditions: getSurvivalConditions(survival) },
+      ailments: [],
       activeCombat: null,
       activeGathering: null,
       activeExploration: null,

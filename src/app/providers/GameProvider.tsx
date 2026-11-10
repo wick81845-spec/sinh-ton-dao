@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { newPlayerGameState } from '../../data/mockGameState'
-import { completeConstructions, startConstruction, upgradeBuilding } from '../../modules/building/services/buildingService'
+import { completeConstructions, getShelterRestBonusMultiplier, startConstruction, upgradeBuilding } from '../../modules/building/services/buildingService'
 import { advanceCampfireFuel, fuelCampfire as addCampfireFuel } from '../../modules/building/services/campfireService'
+import { harvestCrop as harvestFarmCrop, plantCrop as plantFarmCrop } from '../../modules/building/services/farmService'
+import {
+  collectEggs as collectChickenEggs,
+  collectGoatMilk as collectLivestockMilk,
+  raiseChicken as raiseFarmChicken,
+  raiseGoat as raiseFarmGoat,
+} from '../../modules/building/services/livestockService'
+import { advanceRainCollection, collectRainwater as collectCollectedRainwater } from '../../modules/building/services/waterCollectionService'
 import { attackCombat as resolveCombatTurn, retreatCombat as retreatFromCombat, respawnCharacter as respawn, startCombat } from '../../modules/combat/services/combatService'
 import { completeCrafting, queueRecipe } from '../../modules/crafting/services/craftingService'
 import { completeExploration, startExploration } from '../../modules/exploration/services/explorationService'
@@ -22,6 +30,7 @@ import { buyMarketItem as buyMarket, sellMarketItem as sellMarket } from '../../
 import { addFriend as addSocialFriend, proposeTrade as createTradeOffer, resolveTrade as resolveSocialTrade, returnToHomeIsland, visitPlayerIsland as visitIsland } from '../../modules/social/services/socialService'
 import { completeShipConstruction, startShipConstruction } from '../../modules/ship/services/shipService'
 import { advanceSurvival, isSurvivorBusy, isSurvivorResting } from '../../modules/survival/utils/survivalCalculator'
+import { advanceAilments } from '../../modules/survival/services/ailmentService'
 import { survivalConfig } from '../../modules/survival/data/survivalConfig'
 import { researchTechnology as researchTech } from '../../modules/progression/services/technologyService'
 import { advanceWeather, createWeatherState } from '../../modules/world/services/weatherService'
@@ -36,7 +45,7 @@ import {
 } from '../../modules/world/services/randomWorldEventService'
 import { advanceVoyages, startVoyage } from '../../modules/voyage/services/voyageService'
 import { shouldShowTutorialIntro, tutorialSteps } from '../../modules/onboarding/tutorialSteps'
-import type { GameSnapshot, ItemId } from '../../shared/types/game'
+import type { CropId, GameSnapshot, ItemId } from '../../shared/types/game'
 import { gameClock } from '../../services/clock/gameClock'
 import { gameEventBus } from '../../services/events/gameEvents'
 import { createGameSaveService } from '../../services/persistence/gameSaveService'
@@ -169,6 +178,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
       { ...currentState, isResting: true },
       'Bạn bắt đầu nghỉ ngơi. Sức lực sẽ hồi phục cho đến khi bạn tiếp tục hành trình.',
     )
+  }, [commitState])
+
+  const collectRainwaterAction = useCallback((buildingId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = collectCollectedRainwater(currentState, buildingId)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
   }, [commitState])
 
   const stopResting = useCallback((): GameActionResult => {
@@ -447,6 +467,72 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const currentState = stateRef.current
     if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
     const result = addCampfireFuel(currentState, buildingId, fuelItemId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const plantCropAction = useCallback((buildingId: string, cropId: CropId): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = plantFarmCrop(currentState, buildingId, cropId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const harvestCropAction = useCallback((plotId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = harvestFarmCrop(currentState, plotId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const raiseChickenAction = useCallback((buildingId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = raiseFarmChicken(currentState, buildingId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const collectEggsAction = useCallback((buildingId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = collectChickenEggs(currentState, buildingId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const raiseGoatAction = useCallback((buildingId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = raiseFarmGoat(currentState, buildingId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const collectGoatMilkAction = useCallback((buildingId: string): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = collectLivestockMilk(currentState, buildingId, gameClock.now())
     if (!result.ok) {
       setNotice(result.message)
       return result
@@ -767,30 +853,37 @@ export function GameProvider({ children }: { children: ReactNode }) {
         && building.islandId === stateAfterFire.character.currentLocationId
         && (stateAfterFire.campfireFuel?.[building.id]?.remainingMs ?? 0) > 0
       ))
-      const hasShelter = stateAfterFire.buildings.some((building) => (
-        building.definitionId === 'building_shelter'
-        && building.status === 'completed'
-        && building.islandId === stateAfterFire.character.currentLocationId
-      ))
-      const restBonusMultiplier = 1 + (hasRestingCampfire ? 0.25 : 0) + (hasShelter ? 0.25 : 0)
+      const shelterMultiplier = getShelterRestBonusMultiplier(stateAfterFire)
+      const hasShelter = shelterMultiplier > 1
+      const campfireMultiplier = hasRestingCampfire ? 1.25 : 1
+      const restBonusMultiplier = 1 + (shelterMultiplier - 1) + (campfireMultiplier - 1)
       const freshness = initializeFoodFreshness(stateAfterFire, now)
       const spoilage = spoilExpiredFood(freshness.state, now)
       const stateAfterFood = spoilage.state
-      const survival = stateAfterFood.character.status === 'alive'
+      const survivalWeather = getWorldWeatherAtTime(
+        stateAfterFood.weather ? getWeatherDefinition(stateAfterFood.weather.weatherId) : undefined,
+        now,
+      )
+      const baseSurvival = stateAfterFood.character.status === 'alive'
         ? advanceSurvival(
           stateAfterFood.survival,
           now - previousTick,
           isSurvivorResting(stateAfterFood),
-          getWorldWeatherAtTime(
-            stateAfterFood.weather ? getWeatherDefinition(stateAfterFood.weather.weatherId) : undefined,
-            now,
-          ),
+          survivalWeather,
           restBonusMultiplier,
           isSurvivorBusy(stateAfterFood) ? survivalConfig.activityNeedMultiplier : 1,
+          hasShelter,
         )
         : stateAfterFood.survival
+      const ailmentAdvance = advanceAilments(
+        { ...stateAfterFood, survival: baseSurvival },
+        now - previousTick,
+        survivalWeather,
+        hasShelter,
+      )
+      const survival = ailmentAdvance.state.survival
       let nextState: GameSnapshot = {
-        ...stateAfterFood,
+        ...ailmentAdvance.state,
         survival,
         character: stateAfterFood.character.status === 'alive' && survival.health === 0
           ? { ...stateAfterFood.character, status: 'dead' }
@@ -798,10 +891,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
         resourceNodes: refreshResourceNodes(stateAfterFood.resourceNodes, now),
       }
       if (stateAfterFood.character.status === 'alive' && survival.health === 0) {
-        setNotice('Bạn đã gục ngã do thiếu thức ăn hoặc nước uống.')
+        setNotice('Bạn đã gục ngã do sức khỏe cạn kiệt.')
         gameEventBus.emit('character:died', { characterId: currentState.character.id })
       }
-      let shouldPersist = freshness.changed || spoilage.changed || fireAdvance.extinguishedBuildingIds.length > 0
+      let shouldPersist = freshness.changed
+        || spoilage.changed
+        || fireAdvance.extinguishedBuildingIds.length > 0
+        || ailmentAdvance.changed
       if (spoilage.changed) {
         setNotice(`${spoilage.spoiledQuantity} phần thức ăn đã ôi thiu.`)
       }
@@ -816,6 +912,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
       } else {
         nextState = weatherResult.state
       }
+
+      const currentWeather = nextState.weather
+        ? getWeatherDefinition(nextState.weather.weatherId)
+        : undefined
+      const rainCollection = advanceRainCollection(
+        nextState,
+        now - previousTick,
+        currentWeather?.id && nextState.weather?.locationId === nextState.character.currentLocationId
+          ? currentWeather
+          : undefined,
+      )
+      nextState = rainCollection.state
+      if (rainCollection.changed) shouldPersist = true
 
       const randomEventResult = advanceRandomWorldEvents(nextState, now)
       if (randomEventResult.changed) {
@@ -962,6 +1071,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
       startBuilding: startBuildingAction,
       upgradeBuilding: upgradeBuildingAction,
       fuelCampfire: fuelCampfireAction,
+      plantCrop: plantCropAction,
+      harvestCrop: harvestCropAction,
+      raiseChicken: raiseChickenAction,
+      collectEggs: collectEggsAction,
+      raiseGoat: raiseGoatAction,
+      collectGoatMilk: collectGoatMilkAction,
+      collectRainwater: collectRainwaterAction,
       startExploration: startExplorationAction,
       buildShip: buildShipAction,
       startVoyage: startVoyageAction,

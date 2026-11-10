@@ -92,6 +92,7 @@ export function ProgressionPage() {
                     ))}
                   </div>
                   {prerequisites.length > 0 && <small className="technology-prerequisite">Tiên quyết: {prerequisites.join(' · ')}</small>}
+                  {technology.requiredDiscoveryId && <small className="technology-prerequisite">Cần khám phá: {technology.requiredDiscoveryId === 'island_004' ? 'Đảo Mạch Đá' : 'Tàn Tích San Hô'}</small>}
                 </div>
                 <div className="technology-action">
                   <small>{researched ? 'Đã nghiên cứu' : issue ?? 'Sẵn sàng nghiên cứu'}</small>

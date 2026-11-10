@@ -66,7 +66,9 @@ export function VoyagePage() {
         <section className="gathering-progress" aria-live="polite">
           <div className="progress-heading">
             <div>
-              <span className="section-kicker">ĐANG ĐÓNG THUYỀN</span>
+              <span className="section-kicker">
+                {shipDefinition.upgradeFromDefinitionId ? 'ĐANG NÂNG CẤP THUYỀN' : 'ĐANG ĐÓNG THUYỀN'}
+              </span>
               <h2>{shipDefinition.name}</h2>
             </div>
             <span className="crafting-time">{Math.max(0, Math.ceil((shipJob.completesAt - now) / 1000))} giây</span>
@@ -101,7 +103,7 @@ export function VoyagePage() {
         </div>
       </div>
       {!ship && !shipJob
-        ? shipDefinitions.map((definition) => {
+        ? shipDefinitions.filter((definition) => !definition.upgradeFromDefinitionId).map((definition) => {
           const issue = getShipConstructionAvailability(gameState, definition.id)
           return (
             <article className="ship-card" key={definition.id}>
@@ -134,6 +136,37 @@ export function VoyagePage() {
             </div>
           </article>
         )}
+      {ship && shipDefinitions
+        .filter((definition) => definition.upgradeFromDefinitionId === ship.definitionId)
+        .map((definition) => {
+          const issue = getShipConstructionAvailability(gameState, definition.id)
+          return (
+            <article className="ship-card" key={definition.id}>
+              <div className="building-emblem" aria-hidden="true">≈</div>
+              <div className="ship-card-copy">
+                <span className="section-kicker">NÂNG CẤP PHƯƠNG TIỆN</span>
+                <h3>{definition.name}</h3>
+                <p>{definition.description}</p>
+                <div className="activity-requirements">
+                  {definition.constructionCost.map((cost) => (
+                    <ItemStack key={cost.itemId} itemId={cost.itemId} quantity={cost.quantity} />
+                  ))}
+                  <span>{definition.constructionDurationSeconds} giây</span>
+                  <span>Thời gian hành trình ×{definition.travelTimeMultiplier}</span>
+                </div>
+                {issue && <small className="activity-blocked">{issue}</small>}
+              </div>
+              <button
+                className="gather-button"
+                type="button"
+                disabled={Boolean(issue)}
+                onClick={() => buildShip(definition.id)}
+              >
+                {issue ? 'Chưa thể nâng cấp' : 'Nâng cấp thuyền'}
+              </button>
+            </article>
+          )
+        })}
 
       <div className="section-heading voyage-section-heading">
         <div>

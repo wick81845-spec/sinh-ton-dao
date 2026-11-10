@@ -1,4 +1,4 @@
-import type { SurvivalStats } from '../../../shared/types/game'
+import type { SurvivalAilment, SurvivalStats } from '../../../shared/types/game'
 import { getBodyStatusEffects } from '../services/bodyStatusService'
 import type { WeatherDefinition } from '../../world/data/weatherDefinitions'
 
@@ -9,14 +9,16 @@ const severityLabels = {
   positive: 'Tốt',
 } as const
 
-export function BodyStatusPanel({ stats, characterName, appearance, weather, isResting = true }: {
+export function BodyStatusPanel({ stats, characterName, appearance, weather, isResting = true, shelterLevel = 0, ailments = [] }: {
   stats: SurvivalStats
   characterName: string
   appearance: 'male' | 'female'
   weather?: WeatherDefinition
   isResting?: boolean
+  shelterLevel?: number
+  ailments?: SurvivalAilment[]
 }) {
-  const effects = getBodyStatusEffects(stats, weather, isResting)
+  const effects = getBodyStatusEffects(stats, weather, isResting, shelterLevel, ailments)
   const weatherEffectIds = ['overheated', 'cold-weather', 'rain-wet']
   const prioritizedEffects = [...effects].sort((left, right) => {
     const leftWeather = weatherEffectIds.includes(left.id) ? 0 : 1

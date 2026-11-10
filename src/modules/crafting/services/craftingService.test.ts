@@ -3,6 +3,7 @@ import { initialGameState, newPlayerGameState } from '../../../data/mockGameStat
 import { completeConstructions, startConstruction } from '../../building/services/buildingService'
 import { completeCrafting, getRecipeAvailability, queueRecipe } from './craftingService'
 import { researchTechnology } from '../../progression/services/technologyService'
+import { consumeItem } from '../../inventory/services/inventoryService'
 
 function gameWithWorkbench() {
   const preparedState = {
@@ -100,6 +101,138 @@ describe('craftingService', () => {
     if (!queued.ok) throw new Error(queued.message)
     expect(completeCrafting(queued.state, 11_000).state.inventory.slots)
       .toContainEqual({ itemId: 'item_cooked_fish', quantity: 1, expiresAt: expect.any(Number) })
+  })
+
+  it('prepares an herbal antidote at a fueled campfire', () => {
+    const state = {
+      ...initialGameState,
+      character: {
+        ...initialGameState.character,
+        level: 2,
+        researchedTechnologyIds: ['tech_water_safety'],
+      },
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [
+          { itemId: 'item_wild_herb' as const, quantity: 2 },
+          { itemId: 'item_clean_water' as const, quantity: 1 },
+        ],
+      },
+      buildings: [{
+        id: 'campfire-1',
+        definitionId: 'building_campfire',
+        islandId: initialGameState.character.homeIslandId,
+        level: 1,
+        health: 80,
+        status: 'completed' as const,
+      }],
+      campfireFuel: { 'campfire-1': { remainingMs: 60_000, lastUpdatedAt: 1_000 } },
+    }
+
+    expect(getRecipeAvailability(state, 'recipe_herbal_antidote', 1_000)).toBeNull()
+    const queued = queueRecipe(state, 'recipe_herbal_antidote', 1_000)
+    if (!queued.ok) throw new Error(queued.message)
+    const completed = completeCrafting(queued.state, 15_000)
+    expect(completed.status).toBe('completed')
+    expect(completed.state.inventory.slots).toContainEqual({
+      itemId: 'item_herbal_antidote',
+      quantity: 1,
+    })
+  })
+
+  it('preserves fresh goat milk as cheese at the cooking stove', () => {
+    const state = {
+      ...initialGameState,
+      character: {
+        ...initialGameState.character,
+        level: 4,
+        researchedTechnologyIds: ['tech_food_preservation'],
+      },
+      discoveredIslandIds: [...initialGameState.discoveredIslandIds, 'island_002'],
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [
+          { itemId: 'item_goat_milk' as const, quantity: 2 },
+          { itemId: 'item_sea_salt' as const, quantity: 1 },
+        ],
+      },
+      buildings: [{
+        id: 'cooking-stove-1',
+        definitionId: 'building_cooking_stove',
+        islandId: initialGameState.character.homeIslandId,
+        level: 1,
+        health: 100,
+        status: 'completed' as const,
+      }],
+    }
+
+    expect(getRecipeAvailability(state, 'recipe_goat_cheese')).toBeNull()
+    const queued = queueRecipe(state, 'recipe_goat_cheese', 1_000)
+    if (!queued.ok) throw new Error(queued.message)
+    const completed = completeCrafting(queued.state, 26_000)
+    expect(completed.status).toBe('completed')
+    expect(completed.state.inventory.slots).toContainEqual({
+      itemId: 'item_cheese',
+      quantity: 1,
+      expiresAt: expect.any(Number),
+    })
+  })
+
+  it('gates dried fish behind the drying rack and discovery of the second island', () => {
+    const state = {
+      ...initialGameState,
+      character: { ...initialGameState.character, level: 2 },
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [{ itemId: 'item_fresh_fish' as const, quantity: 2 }],
+      },
+      buildings: [{
+        id: 'drying-rack-1',
+        definitionId: 'building_drying_rack',
+        islandId: initialGameState.character.homeIslandId,
+        level: 1,
+        health: 100,
+        status: 'completed' as const,
+      }],
+    }
+
+    expect(getRecipeAvailability(state, 'recipe_dried_fish'))
+      .toBe('Cần khám phá Đảo Rừng Dạt để học công thức này.')
+    const discovered = { ...state, discoveredIslandIds: [...state.discoveredIslandIds, 'island_002'] }
+    const queued = queueRecipe(discovered, 'recipe_dried_fish', 1_000)
+    if (!queued.ok) throw new Error(queued.message)
+    const completed = completeCrafting(queued.state, 31_000)
+    expect(completed.status).toBe('completed')
+    expect(completed.state.inventory.slots).toContainEqual({
+      itemId: 'item_dried_fish',
+      quantity: 1,
+      expiresAt: expect.any(Number),
+    })
+  })
+
+  it('crafts and uses a medicinal poultice to restore health', () => {
+    const workbenchState = gameWithWorkbench()
+    const state = {
+      ...workbenchState,
+      character: { ...workbenchState.character, level: 2 },
+      survival: { ...initialGameState.survival, health: 50 },
+      inventory: {
+        ...workbenchState.inventory,
+        slots: [
+          ...workbenchState.inventory.slots,
+          { itemId: 'item_wild_herb' as const, quantity: 2 },
+          { itemId: 'item_plant_fiber' as const, quantity: 1 },
+        ],
+      },
+    }
+    const queued = queueRecipe(state, 'recipe_medicinal_poultice', 1_000)
+    if (!queued.ok) throw new Error(queued.message)
+    const completed = completeCrafting(queued.state, 17_000)
+    expect(completed.status).toBe('completed')
+    const treated = consumeItem(completed.state, 'item_medicinal_poultice', 17_000)
+    expect(treated.ok).toBe(true)
+    if (!treated.ok) throw new Error(treated.message)
+    expect(treated.state.survival.health).toBe(62)
   })
 
   it('makes rope at hand and requires a workbench to craft tools that use it', () => {

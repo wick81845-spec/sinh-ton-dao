@@ -13,6 +13,15 @@ export interface ConstructionCompletionResult {
   completedBuildingIds: string[]
 }
 
+export function getShelterRestBonusMultiplier(state: GameSnapshot): number {
+  const shelter = state.buildings.find((building) => (
+    building.definitionId === 'building_shelter'
+    && building.status === 'completed'
+    && building.islandId === state.character.currentLocationId
+  ))
+  return shelter ? 1 + 0.25 + Math.max(0, shelter.level - 1) * 0.15 : 1
+}
+
 function getBuildingDefinition(definitionId: string): BuildingDefinition | undefined {
   return buildingDefinitions.find((definition) => definition.id === definitionId)
 }
@@ -41,6 +50,15 @@ function getBuildingIssue(state: GameSnapshot, definition: BuildingDefinition): 
   }
   if (state.character.currentLocationId !== state.character.homeIslandId) {
     return 'Bạn phải ở đảo nhà để xây dựng.'
+  }
+  if (state.character.level < (definition.requiredLevel ?? 1)) {
+    return `Cần đạt cấp ${definition.requiredLevel} để xây ${definition.name.toLocaleLowerCase('vi-VN')}.`
+  }
+  if (definition.technologyId && !(state.character.researchedTechnologyIds ?? []).includes(definition.technologyId)) {
+    return 'Cần nghiên cứu công nghệ mở khóa công trình này.'
+  }
+  if (definition.requiredDiscoveryId && !state.discoveredIslandIds.includes(definition.requiredDiscoveryId)) {
+    return `Cần khám phá ${definition.requiredDiscoveryId === 'island_004' ? 'Đảo Mạch Đá' : 'đảo mới'} để xây công trình này.`
   }
   if (state.constructionQueue.length >= constructionQueueLimit) return 'Hàng đợi xây dựng đã đầy.'
   if (!hasIngredients(state, definition.constructionCost)) return 'Không đủ nguyên liệu để xây công trình này.'
@@ -71,6 +89,18 @@ export function getUpgradeAvailability(state: GameSnapshot, buildingId: string):
   if (state.character.currentLocationId !== building.islandId) return 'Bạn không ở đúng hòn đảo.'
 
   const targetLevel = building.level + 1
+  const requirements = definition.upgradeRequirements?.[targetLevel]
+  if (requirements?.requiredLevel && state.character.level < requirements.requiredLevel) {
+    return `Cần đạt cấp ${requirements.requiredLevel} để nâng cấp ${definition.name.toLocaleLowerCase('vi-VN')}.`
+  }
+  if (requirements?.technologyId
+    && !(state.character.researchedTechnologyIds ?? []).includes(requirements.technologyId)) {
+    return 'Cần nghiên cứu công nghệ mở khóa cấp nâng cấp này.'
+  }
+  if (requirements?.requiredDiscoveryId
+    && !state.discoveredIslandIds.includes(requirements.requiredDiscoveryId)) {
+    return `Cần khám phá ${requirements.requiredDiscoveryId === 'island_002' ? 'Đảo Rừng Dạt' : 'Đảo Mạch Đá'} trước khi nâng cấp.`
+  }
   const cost = definition.upgradeCosts[targetLevel]
   const duration = definition.upgradeDurationSeconds[targetLevel]
   if (!cost || duration === undefined) return 'Chưa có cấu hình nâng cấp cho cấp này.'

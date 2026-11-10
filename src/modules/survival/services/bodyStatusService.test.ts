@@ -61,6 +61,32 @@ describe('bodyStatusService', () => {
       .toContain('rain-wet')
   })
 
+  it('shows shelter protection instead of exposed weather effects', () => {
+    const effects = getBodyStatusEffects(
+      initialGameState.survival,
+      getWeatherDefinition('extreme_heat'),
+      true,
+      2,
+    )
+    expect(effects.map((effect) => effect.id)).toContain('sheltered')
+    expect(effects.map((effect) => effect.id)).not.toContain('overheated')
+    expect(effects.find((effect) => effect.id === 'sheltered')?.impact).toContain('40%')
+  })
+
+  it('shows weather ailments and distinguishes early exposure from illness', () => {
+    const warmingUp = getBodyStatusEffects(initialGameState.survival, undefined, true, 0, [
+      { id: 'heatstroke', elapsedMs: 5 * 60 * 1000 },
+    ])
+    expect(warmingUp.find((effect) => effect.id === 'heatstroke')?.name).toBe('Nguy cơ say nắng')
+
+    const ill = getBodyStatusEffects(initialGameState.survival, undefined, true, 0, [
+      { id: 'hypothermia', elapsedMs: 11 * 60 * 1000 },
+      { id: 'poisoning', elapsedMs: 60_000 },
+    ])
+    expect(ill.map((effect) => effect.id)).toContain('poisoning')
+    expect(ill.find((effect) => effect.id === 'hypothermia')?.name).toBe('Hạ thân nhiệt')
+  })
+
   it('shows recovery only when resting with stable food and water needs', () => {
     const stats = {
       ...initialGameState.survival,

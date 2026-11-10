@@ -105,14 +105,23 @@ describe('gatheringService', () => {
     expect(completed.message).toContain('vỏ sò sắc')
   })
 
-  it('gates the eight locations by starter, exploration, and tool milestones', () => {
-    expect(resourceNodeDefinitions).toHaveLength(8)
+  it('gates gathering locations by starter, exploration, and tool milestones', () => {
+    expect(resourceNodeDefinitions).toHaveLength(14)
     expect(resourceNodeDefinitions.filter((node) => node.unlockStage === 'starter').map((node) => node.id))
       .toEqual(['shoreline', 'wild-grove', 'palm-grove'])
     expect(resourceNodeDefinitions.filter((node) => node.unlockStage === 'exploration').map((node) => node.id))
-      .toEqual(['forest-edge', 'rocky-outcrop'])
+      .toEqual(['forest-edge', 'rocky-outcrop', 'riverbank-clay'])
     expect(resourceNodeDefinitions.filter((node) => node.unlockStage === 'tool').map((node) => node.id))
-      .toEqual(['fallen-tree', 'freshwater-stream', 'tidal-rocks'])
+      .toEqual([
+        'fallen-tree',
+        'freshwater-stream',
+        'tidal-rocks',
+        'iron-deposit',
+        'copper-deposit',
+        'tin-deposit',
+        'coal-seam',
+        'old-growth-forest',
+      ])
     expect(getGatheringAvailability(initialGameState, 'collect-stones', 1000))
       .toContain('thám hiểm')
     expect(getGatheringAvailability(initialGameState, 'collect-stream-water', 1000))
@@ -123,6 +132,65 @@ describe('gatheringService', () => {
     expect(getGatheringAvailability(initialGameState, 'collect-driftwood', 1000)).toBeNull()
     expect(getGatheringAvailability(initialGameState, 'pick-wild-fruit', 1000)).toBeNull()
     expect(getGatheringAvailability(initialGameState, 'collect-palm-grove', 1000)).toBeNull()
+  })
+
+  it('lets players mine and process island minerals with a stone pickaxe', () => {
+    const mineState = {
+      ...stateWithAxe,
+      character: { ...stateWithAxe.character, currentLocationId: 'island_004' },
+      inventory: {
+        ...stateWithAxe.inventory,
+        slots: [
+          ...stateWithAxe.inventory.slots,
+          { itemId: 'item_stone_pickaxe' as const, quantity: 1 },
+        ],
+      },
+    }
+
+    expect(getGatheringAvailability(mineState, 'mine-iron-ore', 1000)).toBeNull()
+    expect(getGatheringAvailability(mineState, 'mine-copper-ore', 1000)).toBeNull()
+    expect(getGatheringAvailability(mineState, 'mine-tin-ore', 1000)).toBeNull()
+    expect(getGatheringAvailability(mineState, 'mine-coal', 1000)).toBeNull()
+
+    const withoutPickaxe = {
+      ...mineState,
+      inventory: {
+        ...mineState.inventory,
+        slots: mineState.inventory.slots.filter((slot) => slot.itemId !== 'item_stone_pickaxe'),
+      },
+    }
+    expect(getGatheringAvailability(withoutPickaxe, 'mine-iron-ore', 1000))
+      .toContain('Cuốc chim đá')
+  })
+
+  it('makes clay available on the discovered rainforest island', () => {
+    const rainforestState = {
+      ...exploredState,
+      character: { ...exploredState.character, currentLocationId: 'island_002' },
+    }
+
+    expect(getGatheringAvailability(rainforestState, 'dig-clay', 1000)).toBeNull()
+  })
+
+  it('requires an iron axe to harvest hardwood on the rainforest island', () => {
+    const rainforestState = {
+      ...stateWithAxe,
+      character: { ...stateWithAxe.character, currentLocationId: 'island_002' },
+    }
+    expect(getGatheringAvailability(rainforestState, 'chop-hardwood', 1000))
+      .toContain('Rìu sắt')
+
+    const withIronAxe = {
+      ...rainforestState,
+      inventory: {
+        ...rainforestState.inventory,
+        slots: [
+          ...rainforestState.inventory.slots,
+          { itemId: 'item_iron_axe' as const, quantity: 1 },
+        ],
+      },
+    }
+    expect(getGatheringAvailability(withIronAxe, 'chop-hardwood', 1000)).toBeNull()
   })
 
   it('regenerates one resource at a time after depletion', () => {

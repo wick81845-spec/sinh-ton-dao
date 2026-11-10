@@ -113,6 +113,19 @@ describe('advanceSurvival', () => {
 
     expect(advanceSurvival(stats, 60 * 60 * 1000, false).thirst).toBe(91)
     expect(advanceSurvival(stats, 60 * 60 * 1000, false, getWeatherDefinition('extreme_heat')).thirst).toBe(86.5)
+    expect(advanceSurvival(stats, 60 * 60 * 1000, false, getWeatherDefinition('extreme_heat'), 1, 1, true).thirst)
+      .toBe(91)
+  })
+
+  it('damages health during extreme heat or cold unless protected by shelter', () => {
+    const stats = { ...initialGameState.survival, health: 70, hunger: 100, thirst: 100 }
+
+    expect(advanceSurvival(stats, 60 * 60 * 1000, false, getWeatherDefinition('extreme_heat')).health)
+      .toBe(68)
+    expect(advanceSurvival(stats, 60 * 60 * 1000, false, getWeatherDefinition('extreme_heat'), 1, 1, true).health)
+      .toBe(70)
+    expect(advanceSurvival(stats, 60 * 60 * 1000, false, getWeatherDefinition('blizzard')).health)
+      .toBe(68)
   })
 
   it('increases hunger and thirst loss during strenuous activity', () => {

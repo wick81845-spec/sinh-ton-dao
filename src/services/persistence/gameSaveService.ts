@@ -24,10 +24,14 @@ import type {
   CraftingJob,
   ExplorationLogEntry,
   GameSnapshot,
+  CropId,
+  FarmPlot,
   InventorySlot,
   ItemContainer,
   ItemId,
   ItemQuantity,
+  LivestockPen,
+  WaterCollectorState,
   PlayerBuilding,
   PlayerShip,
   RandomWorldEventRecord,
@@ -36,6 +40,8 @@ import type {
   SocialTradeOffer,
   ShipConstructionJob,
   SurvivalStats,
+  SurvivalAilment,
+  SurvivalAilmentId,
   Voyage,
   WorldEventRecord,
 } from '../../shared/types/game'
@@ -43,7 +49,7 @@ import type { StorageAdapter } from '../storage/StorageAdapter'
 import { localStorageAdapter } from '../storage/localStorageAdapter'
 
 const gameSaveKey = 'game.save'
-const currentSchemaVersion = 7
+const currentSchemaVersion = 11
 const migratedStorageCapacity = 40
 
 interface GameSnapshotV2 {
@@ -93,6 +99,30 @@ interface GameSaveV5 {
 
 interface GameSaveV6 {
   schemaVersion: 6
+  savedAt: string
+  data: GameSnapshot
+}
+
+interface GameSaveV7 {
+  schemaVersion: 7
+  savedAt: string
+  data: GameSnapshot
+}
+
+interface GameSaveV8 {
+  schemaVersion: 8
+  savedAt: string
+  data: GameSnapshot
+}
+
+interface GameSaveV9 {
+  schemaVersion: 9
+  savedAt: string
+  data: GameSnapshot
+}
+
+interface GameSaveV10 {
+  schemaVersion: 10
   savedAt: string
   data: GameSnapshot
 }
@@ -400,11 +430,23 @@ function isShipConstructionJob(value: unknown): value is ShipConstructionJob {
     && typeof value.id === 'string'
     && typeof value.definitionId === 'string'
     && shipDefinitions.some((ship) => ship.id === value.definitionId)
+    && (value.upgradeShipId === undefined || typeof value.upgradeShipId === 'string')
     && typeof value.locationId === 'string'
     && islandDefinitions.some((island) => island.id === value.locationId)
     && isFiniteNumber(value.startedAt)
     && isFiniteNumber(value.completesAt)
     && value.completesAt >= value.startedAt
+}
+
+function isShipConstructionStateValid(job: ShipConstructionJob | null, ships: PlayerShip[]): boolean {
+  if (!job) return true
+  if (ships.length === 0) return job.upgradeShipId === undefined
+  if (!job.upgradeShipId || ships.length !== 1) return false
+
+  const ship = ships.find((entry) => entry.id === job.upgradeShipId)
+  return ship?.status === 'docked'
+    && ship.currentLocationId === job.locationId
+    && getShipDefinition(job.definitionId)?.upgradeFromDefinitionId === ship.definitionId
 }
 
 function isVoyage(value: unknown, ships: PlayerShip[]): value is Voyage {
@@ -436,6 +478,8 @@ function isGameSnapshotV4(value: unknown): value is GameSnapshotV4 {
 
   const ships = value.ships
   if (!Array.isArray(ships) || ships.length > 1 || !ships.every(isPlayerShip)) return false
+  const shipConstruction = value.shipConstruction
+  if (shipConstruction !== null && !isShipConstructionJob(shipConstruction)) return false
   const activeVoyages = Array.isArray(value.voyages)
     ? value.voyages.filter((voyage) => isRecord(voyage)
       && (voyage.status === 'departed' || voyage.status === 'traveling'))
@@ -457,8 +501,7 @@ function isGameSnapshotV4(value: unknown): value is GameSnapshotV4 {
     && Array.isArray(value.worldEventLog)
     && value.worldEventLog.length <= 100
     && value.worldEventLog.every(isWorldEventRecord)
-    && (value.shipConstruction === null || isShipConstructionJob(value.shipConstruction))
-    && !(value.shipConstruction && ships.length > 0)
+    && isShipConstructionStateValid(shipConstruction, ships)
     && Array.isArray(value.voyages)
     && value.voyages.length <= 100
     && value.voyages.every((voyage) => isVoyage(voyage, ships))
@@ -522,6 +565,81 @@ function isCombatLogEntry(value: unknown): value is CombatLogEntry {
     && value.loot.every(isItemQuantity)
     && Array.isArray(value.droppedItems)
     && value.droppedItems.every(isItemQuantity)
+}
+
+function isSurvivalAilmentId(value: unknown): value is SurvivalAilmentId {
+  return value === 'bleeding'
+    || value === 'infection'
+    || value === 'heatstroke'
+    || value === 'hypothermia'
+    || value === 'poisoning'
+}
+
+function isSurvivalAilment(value: unknown): value is SurvivalAilment {
+  if (!isRecord(value)
+    || !isSurvivalAilmentId(value.id)
+    || !isFiniteNumber(value.elapsedMs)
+    || value.elapsedMs < 0) return false
+  return value.id !== 'bleeding' || value.elapsedMs < 5 * 60 * 1000
+}
+
+function isCropId(value: unknown): value is CropId {
+  return value === 'fruit' || value === 'herb' || value === 'coconut'
+}
+
+function isFarmPlot(value: unknown, buildings: PlayerBuilding[]): value is FarmPlot {
+  return isRecord(value)
+    && typeof value.id === 'string'
+    && typeof value.buildingId === 'string'
+    && buildings.some((building) => (
+      building.id === value.buildingId
+      && building.definitionId === 'building_garden_bed'
+      && building.status === 'completed'
+    ))
+    && isCropId(value.cropId)
+    && isFiniteNumber(value.plantedAt)
+    && isFiniteNumber(value.readyAt)
+    && value.readyAt > value.plantedAt
+}
+
+function isLivestockPen(value: unknown, buildings: PlayerBuilding[]): value is LivestockPen {
+  if (!isRecord(value) || typeof value.buildingId !== 'string') return false
+  const building = buildings.find((entry) => entry.id === value.buildingId)
+  if (!building || building.status !== 'completed') return false
+  const isChickenCoop = building.definitionId === 'building_chicken_coop'
+  const isGoatPen = building.definitionId === 'building_goat_pen'
+  if (!isChickenCoop && !isGoatPen) return false
+
+  const chickenValid = value.chickenCount === undefined
+    ? value.nextEggAt === undefined
+    : isChickenCoop
+      && isFiniteNumber(value.chickenCount)
+      && Number.isInteger(value.chickenCount)
+      && value.chickenCount >= 1
+      && value.chickenCount <= 3
+      && isFiniteNumber(value.nextEggAt)
+  const goatValid = value.goatCount === undefined
+    ? value.nextMilkAt === undefined
+    : isGoatPen
+      && isFiniteNumber(value.goatCount)
+      && Number.isInteger(value.goatCount)
+      && value.goatCount >= 1
+      && value.goatCount <= 2
+      && isFiniteNumber(value.nextMilkAt)
+  return (isChickenCoop ? chickenValid : value.chickenCount === undefined && value.nextEggAt === undefined)
+    && (isGoatPen ? goatValid : value.goatCount === undefined && value.nextMilkAt === undefined)
+    && (chickenValid || goatValid)
+}
+
+function isWaterCollectorState(value: unknown): value is WaterCollectorState {
+  return isRecord(value)
+    && isFiniteNumber(value.storedUnits)
+    && Number.isInteger(value.storedUnits)
+    && value.storedUnits >= 0
+    && value.storedUnits <= 10
+    && isFiniteNumber(value.progressMs)
+    && value.progressMs >= 0
+    && value.progressMs < 60_000
 }
 
 function isGameSnapshot(value: unknown): value is GameSnapshot {
@@ -596,6 +714,36 @@ function isGameSnapshot(value: unknown): value is GameSnapshot {
         && new Set(value.tutorialCompletedStepIds).size === value.tutorialCompletedStepIds.length))
     && (value.tutorialIntroCompleted === undefined || typeof value.tutorialIntroCompleted === 'boolean')
     && (value.isResting === undefined || typeof value.isResting === 'boolean')
+    && (value.ailments === undefined || (
+      Array.isArray(value.ailments)
+      && value.ailments.length <= 5
+      && value.ailments.every(isSurvivalAilment)
+      && new Set(value.ailments.map((ailment) => isRecord(ailment) ? ailment.id : undefined)).size === value.ailments.length
+    ))
+    && (value.farmPlots === undefined || (
+      Array.isArray(value.farmPlots)
+      && value.farmPlots.length <= 50
+      && value.farmPlots.every((plot) => isFarmPlot(plot, value.buildings))
+      && new Set(value.farmPlots.map((plot) => isRecord(plot) ? plot.buildingId : undefined)).size === value.farmPlots.length
+      && new Set(value.farmPlots.map((plot) => isRecord(plot) ? plot.id : undefined)).size === value.farmPlots.length
+    ))
+    && (value.livestockPens === undefined || (
+      Array.isArray(value.livestockPens)
+      && value.livestockPens.length <= 50
+      && value.livestockPens.every((pen) => isLivestockPen(pen, value.buildings))
+      && new Set(value.livestockPens.map((pen) => isRecord(pen) ? pen.buildingId : undefined)).size === value.livestockPens.length
+    ))
+    && (value.waterCollectors === undefined || (
+      isRecord(value.waterCollectors)
+      && Object.entries(value.waterCollectors).every(([buildingId, collector]) => (
+        value.buildings.some((building) => (
+          building.id === buildingId
+          && building.definitionId === 'building_rain_collector'
+          && building.status === 'completed'
+        ))
+        && isWaterCollectorState(collector)
+      ))
+    ))
     && (value.backpackEquipped === undefined || typeof value.backpackEquipped === 'boolean')
     && (value.backpackEquipped !== true || value.inventory.maxSlots >= 24)
     && (value.character.status !== 'dead' || value.survival.health === 0)
@@ -763,16 +911,68 @@ function migrateV5ToV6(value: Record<string, unknown>): GameSaveV6 {
   }
 }
 
-function migrateV6ToV7(value: Record<string, unknown>): GameSave {
+function migrateV6ToV7(value: Record<string, unknown>): GameSaveV7 {
   if (typeof value.savedAt !== 'string'
     || !Number.isFinite(Date.parse(value.savedAt))
     || !isGameSnapshot(value.data)) {
     throw new Error('Dữ liệu trò chơi phiên bản 6 không hợp lệ, không thể nâng cấp.')
   }
   return {
-    schemaVersion: currentSchemaVersion,
+    schemaVersion: 7,
     savedAt: value.savedAt,
     data: { ...value.data, campfireFuel: value.data.campfireFuel ?? {} },
+  }
+}
+
+function migrateV7ToV8(value: Record<string, unknown>): GameSaveV8 {
+  if (typeof value.savedAt !== 'string'
+    || !Number.isFinite(Date.parse(value.savedAt))
+    || !isGameSnapshot(value.data)) {
+    throw new Error('Dữ liệu trò chơi phiên bản 7 không hợp lệ, không thể nâng cấp.')
+  }
+  return {
+    schemaVersion: 8,
+    savedAt: value.savedAt,
+    data: { ...value.data, ailments: value.data.ailments ?? [] },
+  }
+}
+
+function migrateV8ToV9(value: Record<string, unknown>): GameSaveV9 {
+  if (typeof value.savedAt !== 'string'
+    || !Number.isFinite(Date.parse(value.savedAt))
+    || !isGameSnapshot(value.data)) {
+    throw new Error('Dữ liệu trò chơi phiên bản 8 không hợp lệ, không thể nâng cấp.')
+  }
+  return {
+    schemaVersion: 9,
+    savedAt: value.savedAt,
+    data: { ...value.data, farmPlots: value.data.farmPlots ?? [] },
+  }
+}
+
+function migrateV9ToV10(value: Record<string, unknown>): GameSaveV10 {
+  if (typeof value.savedAt !== 'string'
+    || !Number.isFinite(Date.parse(value.savedAt))
+    || !isGameSnapshot(value.data)) {
+    throw new Error('Dữ liệu trò chơi phiên bản 9 không hợp lệ, không thể nâng cấp.')
+  }
+  return {
+    schemaVersion: 10,
+    savedAt: value.savedAt,
+    data: { ...value.data, livestockPens: value.data.livestockPens ?? [] },
+  }
+}
+
+function migrateV10ToV11(value: Record<string, unknown>): GameSave {
+  if (typeof value.savedAt !== 'string'
+    || !Number.isFinite(Date.parse(value.savedAt))
+    || !isGameSnapshot(value.data)) {
+    throw new Error('Dữ liệu trò chơi phiên bản 10 không hợp lệ, không thể nâng cấp.')
+  }
+  return {
+    schemaVersion: currentSchemaVersion,
+    savedAt: value.savedAt,
+    data: { ...value.data, waterCollectors: value.data.waterCollectors ?? {} },
   }
 }
 
@@ -825,6 +1025,22 @@ export function createGameSaveService(storage: StorageAdapter = localStorageAdap
       }
       if (isRecord(candidate) && candidate.schemaVersion === 6) {
         candidate = migrateV6ToV7(candidate)
+        wasMigrated = true
+      }
+      if (isRecord(candidate) && candidate.schemaVersion === 7) {
+        candidate = migrateV7ToV8(candidate)
+        wasMigrated = true
+      }
+      if (isRecord(candidate) && candidate.schemaVersion === 8) {
+        candidate = migrateV8ToV9(candidate)
+        wasMigrated = true
+      }
+      if (isRecord(candidate) && candidate.schemaVersion === 9) {
+        candidate = migrateV9ToV10(candidate)
+        wasMigrated = true
+      }
+      if (isRecord(candidate) && candidate.schemaVersion === 10) {
+        candidate = migrateV10ToV11(candidate)
         wasMigrated = true
       }
 

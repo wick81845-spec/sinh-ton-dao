@@ -1,7 +1,15 @@
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import { survivalConfig } from '../../survival/data/survivalConfig'
+import { inflictPoisoning } from '../../survival/services/ailmentService'
 import { getSurvivalConditions } from '../../survival/utils/survivalCalculator'
-import type { GameSnapshot, InventorySlot, ItemContainer, ItemId } from '../../../shared/types/game'
+import type {
+  GameSnapshot,
+  InventorySlot,
+  ItemContainer,
+  ItemId,
+  ItemQuantity,
+  SurvivalAilmentId,
+} from '../../../shared/types/game'
 
 export type ItemContainerUpdate =
   | { ok: true; container: ItemContainer }
@@ -34,6 +42,36 @@ export interface FoodFreshnessResult {
 const baseInventoryCapacity = 12
 const backpackInventoryCapacity = 24
 const freshnessBucketMs = 15 * 60 * 1000
+const toolRepairCosts: Partial<Record<ItemId, readonly ItemQuantity[]>> = {
+  item_wooden_axe: [
+    { itemId: 'item_wood', quantity: 2 },
+    { itemId: 'item_stone', quantity: 1 },
+  ],
+  item_wooden_spear: [
+    { itemId: 'item_branch', quantity: 1 },
+    { itemId: 'item_stone', quantity: 1 },
+    { itemId: 'item_rope', quantity: 1 },
+  ],
+  item_stone_pickaxe: [
+    { itemId: 'item_rough_stone', quantity: 2 },
+    { itemId: 'item_branch', quantity: 1 },
+    { itemId: 'item_rope', quantity: 1 },
+  ],
+  item_copper_axe: [
+    { itemId: 'item_copper_ingot', quantity: 1 },
+    { itemId: 'item_branch', quantity: 1 },
+    { itemId: 'item_rope', quantity: 1 },
+  ],
+  item_iron_axe: [
+    { itemId: 'item_iron_ingot', quantity: 1 },
+    { itemId: 'item_branch', quantity: 1 },
+    { itemId: 'item_rope', quantity: 1 },
+  ],
+  item_fishing_rod: [
+    { itemId: 'item_branch', quantity: 1 },
+    { itemId: 'item_plant_fiber', quantity: 1 },
+  ],
+}
 
 function getExpiry(itemId: ItemId, now: number): number | undefined {
   const shelfLife = itemDefinitions[itemId].shelfLifeMs
@@ -186,13 +224,22 @@ export function repairItem(state: GameSnapshot, itemId: ItemId): InventoryAction
 
   const currentDurability = state.itemDurability?.[itemId] ?? maximum
   if (currentDurability >= maximum) return { ok: false, message: `${itemDefinitions[itemId].name} chưa cần sửa.` }
-  const cost: Array<{ itemId: ItemId; quantity: number }> = itemId === 'item_fishing_rod'
-    ? [{ itemId: 'item_branch', quantity: 1 }, { itemId: 'item_plant_fiber', quantity: 1 }]
-    : [{ itemId: 'item_wood', quantity: 2 }, { itemId: 'item_stone', quantity: 1 }]
+  const cost = toolRepairCosts[itemId]
+  if (!cost) return { ok: false, message: `Chưa có vật liệu sửa ${itemDefinitions[itemId].name.toLocaleLowerCase('vi-VN')}.` }
+
+  const missingMaterials = cost
+    .filter((ingredient) => state.inventory.slots
+      .filter((slot) => slot.itemId === ingredient.itemId)
+      .reduce((total, slot) => total + slot.quantity, 0) < ingredient.quantity)
+    .map((ingredient) => itemDefinitions[ingredient.itemId].name)
+  if (missingMaterials.length > 0) {
+    return { ok: false, message: `Không đủ nguyên liệu để sửa: ${missingMaterials.join(', ')}.` }
+  }
+
   let inventory = state.inventory
   for (const ingredient of cost) {
     const removed = removeItems(inventory, ingredient.itemId, ingredient.quantity)
-    if (!removed.ok) return { ok: false, message: 'Không đủ gỗ/đá hoặc cành/sợi để sửa công cụ.' }
+    if (!removed.ok) return { ok: false, message: `Không thể tiêu hao nguyên liệu sửa ${itemDefinitions[itemId].name.toLocaleLowerCase('vi-VN')}.` }
     inventory = removed.container
   }
   return {
@@ -384,7 +431,8 @@ export function consumeItem(state: GameSnapshot, itemId: ItemId, now = Date.now(
   const canRestoreHunger = hungerRestore > 0 && state.survival.hunger < survivalConfig.hunger.max
   const canRestoreThirst = thirstRestore > 0 && state.survival.thirst < survivalConfig.thirst.max
   const canRestoreHealth = healthRestore > 0 && state.survival.health < survivalConfig.health.max
-  if (!canRestoreHunger && !canRestoreThirst && !canRestoreHealth) {
+  const curedAilments = state.ailments?.filter((ailment) => definition.curesAilments?.includes(ailment.id)) ?? []
+  if (!canRestoreHunger && !canRestoreThirst && !canRestoreHealth && curedAilments.length === 0) {
     if (healthRestore > 0 && hungerRestore === 0 && thirstRestore === 0) {
       return { ok: false, message: 'Bạn hiện không cần hồi phục sức khỏe.' }
     }
@@ -410,6 +458,22 @@ export function consumeItem(state: GameSnapshot, itemId: ItemId, now = Date.now(
   const restoredHunger = hunger - state.survival.hunger
   const restoredThirst = thirst - state.survival.thirst
   const restoredHealth = health - state.survival.health
+  const curedAilmentNames: Record<SurvivalAilmentId, string> = {
+    bleeding: 'chảy máu',
+    infection: 'nhiễm trùng',
+    heatstroke: 'say nắng',
+    hypothermia: 'hạ thân nhiệt',
+    poisoning: 'ngộ độc',
+  }
+  const curedAilmentMessage = curedAilments.length > 0
+    ? ` Đã chữa: ${curedAilments.map((ailment) => curedAilmentNames[ailment.id]).join(', ')}.`
+    : ''
+  const causedPoisoning = definition.causesAilment === 'poisoning'
+    && !state.ailments?.some((ailment) => ailment.id === 'poisoning')
+  const stateAfterUse = definition.causesAilment === 'poisoning'
+    ? inflictPoisoning(state)
+    : state
+  const causedAilmentMessage = causedPoisoning ? ' Bạn bị ngộ độc; hãy dùng thuốc giải độc.' : ''
   const restorationMessage = [
     restoredHunger > 0 ? `No bụng +${restoredHunger}.` : '',
     restoredThirst > 0 ? `Nước +${restoredThirst}.` : '',
@@ -418,8 +482,14 @@ export function consumeItem(state: GameSnapshot, itemId: ItemId, now = Date.now(
 
   return {
     ok: true,
-    state: { ...state, inventory: updatedInventory.container, survival },
+    state: {
+      ...stateAfterUse,
+      inventory: updatedInventory.container,
+      survival,
+      ailments: (stateAfterUse.ailments ?? [])
+        .filter((ailment) => !definition.curesAilments?.includes(ailment.id)),
+    },
     itemId,
-    message: `Đã dùng ${definition.name}. ${restorationMessage}`,
+    message: `Đã dùng ${definition.name}. ${restorationMessage}${curedAilmentMessage}${causedAilmentMessage}`,
   }
 }

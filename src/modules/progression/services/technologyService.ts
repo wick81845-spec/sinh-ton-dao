@@ -30,6 +30,10 @@ export function getTechnologyResearchAvailability(state: GameSnapshot, technolog
     return 'Nghiên cứu chỉ khả dụng tại đảo nhà.'
   }
   if (state.character.level < technology.requiredLevel) return `Cần đạt cấp ${technology.requiredLevel}.`
+  if (technology.requiredDiscoveryId && !state.discoveredIslandIds.includes(technology.requiredDiscoveryId)) {
+    const islandName = technology.requiredDiscoveryId === 'island_004' ? 'Đảo Mạch Đá' : 'Tàn Tích San Hô'
+    return `Cần khám phá ${islandName} để nghiên cứu công nghệ này.`
+  }
   const missingPrerequisite = technology.prerequisites.find((id) => !researched.includes(id))
   if (missingPrerequisite) {
     const prerequisite = technologyDefinitions.find((entry) => entry.id === missingPrerequisite)

@@ -27,6 +27,36 @@ export interface SurvivalStats {
   conditions: string[]
 }
 
+export type SurvivalAilmentId = 'bleeding' | 'infection' | 'heatstroke' | 'hypothermia' | 'poisoning'
+
+export interface SurvivalAilment {
+  id: SurvivalAilmentId
+  elapsedMs: number
+}
+
+export type CropId = 'fruit' | 'herb' | 'coconut'
+
+export interface FarmPlot {
+  id: string
+  buildingId: string
+  cropId: CropId
+  plantedAt: number
+  readyAt: number
+}
+
+export interface LivestockPen {
+  buildingId: string
+  chickenCount?: number
+  nextEggAt?: number
+  goatCount?: number
+  nextMilkAt?: number
+}
+
+export interface WaterCollectorState {
+  storedUnits: number
+  progressMs: number
+}
+
 export interface WeatherState {
   weatherId: string
   locationId: string
@@ -173,6 +203,7 @@ export type ItemId =
   | 'item_wood'
   | 'item_wood_soft'
   | 'item_wood_plank'
+  | 'item_wood_hard'
   | 'item_charcoal'
   | 'item_dried_fruit'
   | 'item_stone'
@@ -189,6 +220,18 @@ export type ItemId =
   | 'item_shrimp'
   | 'item_rough_stone'
   | 'item_gravel'
+  | 'item_clay'
+  | 'item_clay_brick'
+  | 'item_iron_ore'
+  | 'item_copper_ore'
+  | 'item_tin_ore'
+  | 'item_coal'
+  | 'item_iron_ingot'
+  | 'item_copper_ingot'
+  | 'item_bronze_ingot'
+  | 'item_stone_pickaxe'
+  | 'item_copper_axe'
+  | 'item_iron_axe'
   | 'item_fresh_water'
   | 'item_coconut'
   | 'item_rotten_wood'
@@ -200,6 +243,27 @@ export type ItemId =
   | 'item_roasted_crab'
   | 'item_roasted_shrimp'
   | 'item_mushroom_soup'
+  | 'item_poisonous_mushroom'
+  | 'item_herbal_antidote'
+  | 'item_warm_tea'
+  | 'item_dried_fish'
+  | 'item_medicinal_poultice'
+  | 'item_fruit_seed'
+  | 'item_herb_seed'
+  | 'item_coconut_seed'
+  | 'item_clean_water'
+  | 'item_filtered_water'
+  | 'item_sea_salt'
+  | 'item_smoked_fish'
+  | 'item_salted_fish'
+  | 'item_fruit_jam'
+  | 'item_vegetable_stew'
+  | 'item_chicken'
+  | 'item_goat'
+  | 'item_egg'
+  | 'item_goat_milk'
+  | 'item_cheese'
+  | 'item_roasted_egg'
   | 'item_rope'
   | 'item_backpack'
   | 'item_fresh_fish'
@@ -331,6 +395,7 @@ export interface PlayerShip {
 export interface ShipConstructionJob {
   id: string
   definitionId: string
+  upgradeShipId?: string
   locationId: string
   startedAt: number
   completesAt: number
@@ -388,6 +453,10 @@ export interface CombatLogEntry {
 export interface GameSnapshot {
   character: Character
   survival: SurvivalStats
+  ailments?: SurvivalAilment[]
+  farmPlots?: FarmPlot[]
+  livestockPens?: LivestockPen[]
+  waterCollectors?: Record<string, WaterCollectorState>
   isResting?: boolean
   backpackEquipped?: boolean
   equippedWeaponId?: ItemId
