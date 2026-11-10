@@ -97,7 +97,7 @@ export type FishingLootItemId =
   | 'item_glass_bottle'
   | 'item_metal_can'
   | 'item_old_shoe'
-  | 'item_rope'
+  | 'item_old_rope'
   | 'item_torn_net'
   | 'item_driftwood'
   | 'item_plastic_scrap'

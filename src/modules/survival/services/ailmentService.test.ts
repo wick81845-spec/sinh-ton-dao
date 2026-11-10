@@ -91,6 +91,18 @@ describe('ailmentService', () => {
     expect(result.state.survival.health).toBe(99.8)
   })
 
+  it('recovers from hypothermia near a lit campfire', () => {
+    const chilled = {
+      ...initialGameState,
+      ailments: [{ id: 'hypothermia' as const, elapsedMs: 8 * 60 * 1000 }],
+    }
+
+    const warmed = advanceAilments(chilled, 2 * 60 * 1000, getWeatherDefinition('blizzard'), false, true)
+
+    expect(warmed.state.ailments).toEqual([{ id: 'hypothermia', elapsedMs: 4 * 60 * 1000 }])
+    expect(warmed.state.survival.health).toBe(100)
+  })
+
   it('inflicts poisoning once and applies damage until the condition resolves', () => {
     const poisoned = inflictPoisoning(initialGameState)
     expect(poisoned.ailments).toEqual([{ id: 'poisoning', elapsedMs: 0 }])

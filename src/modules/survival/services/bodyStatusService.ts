@@ -96,8 +96,8 @@ export function getBodyStatusEffects(
         appearance: hypothermiaActive ? 'Run rẩy dữ dội, cơ thể lạnh buốt' : 'Run rẩy, co người giữ ấm',
         cause: 'Phơi ngoài trời lạnh cực độ khi không có nơi trú',
         impact: hypothermiaActive
-          ? 'Mất sức khỏe khi tiếp tục phơi lạnh; uống trà nóng để điều trị.'
-          : 'Tiếp xúc kéo dài có thể gây hạ thân nhiệt; hãy tìm nơi trú.',
+          ? 'Mất sức khỏe khi tiếp tục phơi lạnh; ngồi gần lửa trại hoặc uống trà nóng để hồi phục.'
+          : 'Tiếp xúc kéo dài có thể gây hạ thân nhiệt; hãy trú ấm hoặc đến gần lửa trại.',
         icon: '❄',
       })
     } else {

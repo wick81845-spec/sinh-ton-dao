@@ -3,6 +3,7 @@ import type { WeatherDefinition } from '../../world/data/weatherDefinitions'
 import { getSurvivalConditions } from '../utils/survivalCalculator'
 
 const millisecondsPerMinute = 60_000
+const campfireWarmthPerMinute = 0.12
 const rainRatesPerMinute: Readonly<Record<string, number>> = {
   drizzle: 0.3,
   moderate_rain: 0.6,
@@ -27,6 +28,7 @@ export function advanceBodyExposure(
   elapsedMilliseconds: number,
   weather?: WeatherDefinition,
   isSheltered = false,
+  isNearCampfire = false,
 ): { state: GameSnapshot; changed: boolean } {
   const elapsedMinutes = Math.max(0, elapsedMilliseconds) / millisecondsPerMinute
   if (elapsedMinutes === 0) return { state, changed: false }
@@ -50,11 +52,15 @@ export function advanceBodyExposure(
     ? temperatureDelta * 0.008
     : temperatureDelta * 0.004
   const wetColdShiftPerMinute = temperatureDelta < 0 ? (wetness / 100) * 0.03 : 0
+  const campfireWarmth = isNearCampfire
+    ? Math.min(Math.max(0, 37 - previousBodyTemperature), campfireWarmthPerMinute * elapsedMinutes)
+    : 0
   const bodyTemperature = round(clamp(
     previousBodyTemperature
       + (ambientShiftPerMinute - wetColdShiftPerMinute)
         * shelterTemperatureMultiplier
-        * elapsedMinutes,
+        * elapsedMinutes
+      + campfireWarmth,
     32,
     42,
   ))

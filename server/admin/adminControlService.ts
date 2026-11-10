@@ -146,6 +146,7 @@ export function createSupabaseAdminControlService(config: ApiConfig): AdminContr
 
 function toJson(command: AdminSurvivalCommand): Json {
   const json: { [key: string]: Json } = {}
+  if (command.revive) json.revive = true
   for (const key of ['health', 'hunger', 'thirst', 'stamina', 'bodyTemperature', 'wetness'] as const) {
     const value = command[key]
     if (value !== undefined) json[key] = value

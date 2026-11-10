@@ -252,7 +252,6 @@ describe('backend API foundation', () => {
       url: '/api/v1/game/admin/players/9fb61632-9e1f-4380-9a64-05553612b353/survival',
       headers: { authorization: 'Bearer valid-admin-token-1234567890' },
     })
-
     expect(weather.statusCode).toBe(403)
     expect(survival.statusCode).toBe(403)
     expect(playerStats.statusCode).toBe(401)
@@ -312,6 +311,12 @@ describe('backend API foundation', () => {
       url: '/api/v1/game/admin/players/9fb61632-9e1f-4380-9a64-05553612b353/survival',
       headers: { authorization: 'Bearer valid-admin-token-1234567890' },
     })
+    const revive = await app.inject({
+      method: 'POST',
+      url: '/api/v1/game/admin/players/9fb61632-9e1f-4380-9a64-05553612b353/survival',
+      headers: { authorization: 'Bearer valid-admin-token-1234567890' },
+      payload: { revive: true },
+    })
 
     expect(weather.statusCode).toBe(200)
     expect(weather.json()).toMatchObject({ weatherId: 'thunderstorm' })
@@ -325,12 +330,18 @@ describe('backend API foundation', () => {
       status: 'alive',
       currentLocationId: 'island_001',
     })
+    expect(revive.statusCode).toBe(202)
+    expect(adminControls.createSurvivalCommand).toHaveBeenLastCalledWith(
+      '9fb61632-9e1f-4380-9a64-05553612b353',
+      profile.id,
+      { revive: true },
+    )
     expect(adminControls.createSurvivalCommand).toHaveBeenCalledWith(
       '9fb61632-9e1f-4380-9a64-05553612b353',
       profile.id,
       { health: 65, wetness: 80, ailments: [{ id: 'hypothermia', elapsedMs: 0, severity: 'moderate' }] },
     )
     expect(invalid.statusCode).toBe(400)
-    expect(adminControls.createSurvivalCommand).toHaveBeenCalledOnce()
+    expect(adminControls.createSurvivalCommand).toHaveBeenCalledTimes(2)
   })
 })

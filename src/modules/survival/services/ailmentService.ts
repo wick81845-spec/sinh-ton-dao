@@ -73,6 +73,7 @@ export function advanceAilments(
   elapsedMilliseconds: number,
   weather?: WeatherDefinition,
   isSheltered = false,
+  isNearCampfire = false,
 ): { state: GameSnapshot; changed: boolean } {
   const elapsed = Math.max(0, elapsedMilliseconds)
   const currentAilments = state.ailments ?? []
@@ -80,7 +81,7 @@ export function advanceAilments(
   const bodyTemperature = state.survival.bodyTemperature ?? 37
   const heatExposure = !isSheltered
     && ((weather?.temperatureDelta ?? 0) >= 9 || bodyTemperature >= 39)
-  const coldExposure = !isSheltered
+  const coldExposure = !isSheltered && !isNearCampfire
     && ((weather?.temperatureDelta ?? 0) <= -12
       || ((weather?.temperatureDelta ?? 0) <= -7 && wetness >= 35)
       || bodyTemperature <= 35)

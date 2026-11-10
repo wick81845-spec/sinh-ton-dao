@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { parseAdminSurvivalCommand } from './adminSurvivalCommand.js'
 
 describe('parseAdminSurvivalCommand', () => {
+  it('accepts a dedicated revive command and rejects combining it with stat edits', () => {
+    expect(parseAdminSurvivalCommand({ revive: true })).toEqual({ revive: true })
+    expect(parseAdminSurvivalCommand({ revive: false })).toBeNull()
+    expect(parseAdminSurvivalCommand({ revive: true, health: 100 })).toBeNull()
+  })
+
   it('accepts supported values and empty replacements for illness states', () => {
     expect(parseAdminSurvivalCommand({
       bodyTemperature: 35.5,

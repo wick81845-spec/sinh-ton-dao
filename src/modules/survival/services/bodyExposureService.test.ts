@@ -33,6 +33,18 @@ describe('bodyExposureService', () => {
     expect(drying.state.survival.wetness).toBeLessThan(50)
   })
 
+  it('warms a cold survivor near a lit campfire', () => {
+    const coldState = {
+      ...initialGameState,
+      survival: { ...initialGameState.survival, bodyTemperature: 34, wetness: 50 },
+    }
+
+    const warmed = advanceBodyExposure(coldState, 10 * 60 * 1000, getWeatherDefinition('blizzard'), false, true)
+
+    expect(warmed.state.survival.bodyTemperature).toBeGreaterThan(coldState.survival.bodyTemperature)
+    expect(warmed.state.survival.bodyTemperature).toBeLessThanOrEqual(37)
+  })
+
   it('leaves the state untouched when no time has elapsed', () => {
     expect(advanceBodyExposure(initialGameState, 0)).toEqual({
       state: initialGameState,

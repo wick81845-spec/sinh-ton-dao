@@ -52,7 +52,7 @@ export const fishingLootCatalog: readonly FishingLootEntry[] = [
     image: '/assets/fishing/loot/trash/old-shoe.png',
   },
   {
-    itemId: 'item_rope',
+    itemId: 'item_old_rope',
     name: 'Dây thừng cũ',
     description: 'Đoạn dây thừng mục mắc lại dưới đáy biển, có thể tận dụng một phần.',
     kind: 'trash',

@@ -4,6 +4,7 @@ import { completeConstructions, startConstruction } from '../../building/service
 import { completeCrafting, getRecipeAvailability, queueRecipe } from './craftingService'
 import { researchTechnology } from '../../progression/services/technologyService'
 import { consumeItem } from '../../inventory/services/inventoryService'
+import { itemDefinitions } from '../../../data/items/itemDefinitions'
 
 function gameWithWorkbench() {
   const preparedState = {
@@ -236,6 +237,8 @@ describe('craftingService', () => {
   })
 
   it('makes rope at hand and requires a workbench to craft tools that use it', () => {
+    expect(itemDefinitions.item_rope.name).toBe('Dây bện')
+    expect(itemDefinitions.item_old_rope.name).toBe('Dây thừng cũ')
     const state = {
       ...initialGameState,
       inventory: {

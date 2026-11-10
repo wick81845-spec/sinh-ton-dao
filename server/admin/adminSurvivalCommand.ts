@@ -8,11 +8,15 @@ const ailmentIds: readonly string[] = [
   'frostbite', 'animalBite', 'exhaustion',
 ]
 const editableFields = new Set([
-  'health', 'hunger', 'thirst', 'stamina', 'bodyTemperature', 'wetness', 'ailments',
+  'revive', 'health', 'hunger', 'thirst', 'stamina', 'bodyTemperature', 'wetness', 'ailments',
 ])
 
 export function parseAdminSurvivalCommand(value: unknown): AdminSurvivalCommand | null {
   if (!isRecord(value) || Object.keys(value).some((key) => !editableFields.has(key))) return null
+
+  if ('revive' in value) {
+    return value.revive === true && Object.keys(value).length === 1 ? { revive: true } : null
+  }
 
   const command: AdminSurvivalCommand = {}
   for (const [key, min, max] of [

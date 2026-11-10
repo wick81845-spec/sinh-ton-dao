@@ -28,7 +28,7 @@ export interface ItemDefinition {
 
 type StaticItemId = Exclude<
   ItemId,
-  FishItemId | FishingRodItemId | Exclude<FishingLootItemId, 'item_rope'>
+  FishItemId | FishingRodItemId | FishingLootItemId
 >
 
 const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {

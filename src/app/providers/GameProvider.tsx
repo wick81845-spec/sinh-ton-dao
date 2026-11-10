@@ -928,6 +928,28 @@ export function GameProvider({ children }: { children: ReactNode }) {
             continue
           }
 
+          if (command.revive) {
+            const result = respawn(currentState)
+            const revivedState = result.ok
+              ? {
+                ...result.state,
+                appliedAdminCommandIds: [...(currentState.appliedAdminCommandIds ?? []), id].slice(-100),
+              }
+              : {
+                ...currentState,
+                appliedAdminCommandIds: [...(currentState.appliedAdminCommandIds ?? []), id].slice(-100),
+              }
+            stateRef.current = revivedState
+            setGameState(revivedState)
+            emitSurvivalChanges(currentState, revivedState)
+            if (!await persistCurrentState()) continue
+            await acknowledgeAdminCommand(accessToken, id)
+            setNotice(result.ok
+              ? 'Quản trị viên đã hồi sinh bạn tại đảo nhà.'
+              : 'Lệnh hồi sinh đã được xác nhận; nhân vật của bạn hiện vẫn đang sống.')
+            continue
+          }
+
           const survival = {
             ...currentState.survival,
             ...(command.health !== undefined ? { health: command.health } : {}),
@@ -1057,6 +1079,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         now - previousTick,
         survivalWeather,
         hasShelter,
+        hasRestingCampfire,
       )
       const clothesDryingAdvance = advanceClothesDrying(bodyExposure.state, now)
       const ailmentAdvance = advanceAilments(
@@ -1064,6 +1087,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         now - previousTick,
         survivalWeather,
         hasShelter,
+        hasRestingCampfire,
       )
       const survival = ailmentAdvance.state.survival
       let nextState: GameSnapshot = {

@@ -172,6 +172,25 @@ export function AdminControlsPanel({ accessToken }: { accessToken: string }) {
     }
   }
 
+  async function revivePlayer(): Promise<void> {
+    setSavingSurvival(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const target = players.find((player) => player.id === playerId)
+      if (!target || playerSurvival?.status !== 'dead') {
+        throw new Error('Chỉ có thể hồi sinh người chơi đang ở trạng thái đã chết.')
+      }
+      await queueAdminSurvivalCommand(accessToken, playerId, { revive: true })
+      setNotice(`Đã xếp lệnh hồi sinh cho ${target.displayName}. Nhân vật sẽ hồi sinh tại đảo nhà khi nhận lệnh quản trị.`)
+    } catch (reviveError: unknown) {
+      console.error('Không thể xếp lệnh hồi sinh.', reviveError)
+      setError(reviveError instanceof Error ? reviveError.message : 'Không thể xếp lệnh hồi sinh.')
+    } finally {
+      setSavingSurvival(false)
+    }
+  }
+
   return (
     <section className="settings-card admin-controls-card">
       <div className="settings-section-heading">
@@ -228,7 +247,7 @@ export function AdminControlsPanel({ accessToken }: { accessToken: string }) {
                 <strong>Chỉ số hiện tại</strong>
                 {playerSurvival && (
                   <span className={playerSurvival.status === 'alive' ? 'is-alive' : 'is-dead'}>
-                    {playerSurvival.status === 'alive' ? 'Đang sống' : 'Đã mất'}
+                    {playerSurvival.status === 'alive' ? 'Đang sống' : 'Đã chết'}
                   </span>
                 )}
               </div>
@@ -257,6 +276,16 @@ export function AdminControlsPanel({ accessToken }: { accessToken: string }) {
                           )).join(' · ')
                           : 'Không có bệnh hoặc chấn thương'}
                       </p>
+                      {playerSurvival.status === 'dead' && (
+                        <button
+                          className="small-action admin-survival-submit"
+                          type="button"
+                          disabled={savingSurvival}
+                          onClick={() => void revivePlayer()}
+                        >
+                          {savingSurvival ? 'Đang xếp lệnh…' : 'Hồi sinh tại đảo nhà'}
+                        </button>
+                      )}
                     </>
                   )
                   : <p className="settings-note">

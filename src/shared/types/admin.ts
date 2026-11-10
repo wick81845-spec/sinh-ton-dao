@@ -19,6 +19,7 @@ export interface GlobalGameSettings {
 }
 
 export interface AdminSurvivalCommand {
+  revive?: true
   health?: number
   hunger?: number
   thirst?: number

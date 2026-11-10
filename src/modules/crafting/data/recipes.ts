@@ -116,8 +116,8 @@ export const recipes: readonly RecipeDefinition[] = [
   {
     id: 'recipe_rope',
     kind: 'crafting',
-    name: 'Bện dây thực vật',
-    description: 'Bện sợi thực vật thành dây chắc để dùng trong các món đồ sinh tồn.',
+    name: 'Bện dây từ sợi thực vật',
+    description: 'Dùng ba sợi thực vật để bện một sợi dây mới, chắc và đáng tin cậy.',
     ingredients: [{ itemId: 'item_plant_fiber', quantity: 3 }],
     output: { itemId: 'item_rope', quantity: 1 },
     durationSeconds: 8,
@@ -127,7 +127,7 @@ export const recipes: readonly RecipeDefinition[] = [
     id: 'recipe_fishing_rod',
     kind: 'crafting',
     name: 'Cần câu thô',
-    description: 'Ghép cành cây và dây bện thành cần câu có thể dùng nhiều lần.',
+    description: 'Ghép cành cây với dây bện thủ công; không cần dây thừng cũ vớt từ biển.',
     ingredients: [
       { itemId: 'item_branch', quantity: 3 },
       { itemId: 'item_rope', quantity: 1 },
