@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { newPlayerGameState } from '../../src/data/mockGameState.js'
-import { isValidGameSnapshot } from '../../src/services/persistence/gameSaveService.js'
+import { isValidGameSnapshot, normalizeLegacyGameSnapshot } from '../../src/services/persistence/gameSaveService.js'
 import type { GameSnapshot } from '../../src/shared/types/game.js'
 import type { ApiConfig } from '../config.js'
 import type { Database } from '../database.types.js'
@@ -108,11 +108,12 @@ function parsePlayerGameState(value: {
   revision: number
   state: GameSnapshot
 }): Omit<PlayerGameState, 'created'> {
+  const state = normalizeLegacyGameSnapshot(value.state)
   if (value.schema_version !== 5
     || !Number.isSafeInteger(value.revision)
     || value.revision < 0
-    || !isValidGameSnapshot(value.state)) {
+    || !state) {
     throw new Error('Dữ liệu game trên máy chủ không hợp lệ hoặc cần migration.')
   }
-  return { state: value.state, revision: value.revision }
+  return { state, revision: value.revision }
 }

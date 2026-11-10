@@ -271,7 +271,7 @@ export const gatheringActivities: readonly GatheringActivityDefinition[] = [
     resourceId: 'palm_leaf',
     ordinaryByproducts: [
       { itemId: 'item_coconut', quantity: [1, 2], chance: 0.5 },
-      { itemId: 'item_plant_fiber', quantity: [1, 2], chance: 0.45 },
+      { itemId: 'item_plant_fiber', quantity: [1, 2], chance: 1 },
       { itemId: 'item_coconut_seed', quantity: [1, 1], chance: 0.08 },
     ],
     luckyDrop: { itemId: 'item_coconut', quantity: [2, 3], chance: 1 },

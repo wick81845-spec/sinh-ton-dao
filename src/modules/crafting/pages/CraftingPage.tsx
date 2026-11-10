@@ -51,6 +51,14 @@ export function CraftingPage() {
         <div className="stamina-chip"><strong>{gameState.craftingQueue.length} / 3</strong> việc trong hàng đợi</div>
       </div>
 
+      <aside className="crafting-rope-guide">
+        <div>
+          <strong>Đang tìm Dây bện để làm cần câu?</strong>
+          <p>Thu hoạch ở Rừng dừa để nhận Sợi thực vật, cần 3 sợi cho mỗi Dây bện.</p>
+        </div>
+        <a href="#recipe-rope">Tới công thức</a>
+      </aside>
+
       {activeJob && activeRecipe && isActive && (
         <section className="gathering-progress" aria-live="polite">
           <div className="progress-heading">
@@ -136,7 +144,11 @@ export function CraftingPage() {
           const issue = getRecipeAvailability(gameState, recipe.id, now)
           const output = itemDefinitions[recipe.output.itemId]
           return (
-            <article className={`recipe-card${issue ? ' is-unavailable' : ''}`} key={recipe.id}>
+            <article
+              className={`recipe-card${issue ? ' is-unavailable' : ''}`}
+              id={recipe.id === 'recipe_rope' ? 'recipe-rope' : undefined}
+              key={recipe.id}
+            >
               <div className="recipe-summary">
                 <img className={`resource-icon ${output.tone}`} src={output.image} alt="" aria-hidden="true" />
                 <div className="recipe-card-copy">

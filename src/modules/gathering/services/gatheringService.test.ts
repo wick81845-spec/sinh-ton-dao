@@ -101,6 +101,18 @@ describe('gatheringService', () => {
     expect(completed.state.inventory.slots.find((slot) => slot.itemId === 'item_seashell')).toBeUndefined()
   })
 
+  it('always yields plant fiber at the palm grove for crafting rope', () => {
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.99)
+    const started = startGathering(initialGameState, 'collect-palm-grove', 1000)
+    if (!started.ok) throw new Error(started.message)
+    const completed = completeGathering(started.state, started.state.activeGathering?.completesAt ?? 5000)
+    random.mockRestore()
+
+    expect(completed.status).toBe('completed')
+    if (completed.status !== 'completed') throw new Error('Palm grove harvest should complete.')
+    expect(completed.rewards).toContainEqual({ itemId: 'item_plant_fiber', quantity: 2 })
+  })
+
   it('adds a real delay and a small health penalty for adverse outcomes', () => {
     const random = vi.spyOn(Math, 'random')
       .mockReturnValueOnce(0.05)

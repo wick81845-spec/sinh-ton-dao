@@ -3,7 +3,7 @@ import { initialGameState, newPlayerGameState } from '../../data/mockGameState'
 import { randomGatheringActivityId } from '../../modules/gathering/data/gatheringConfig'
 import { wildlifeObservationTasks } from '../../modules/exploration/data/explorationConfig'
 import type { StorageAdapter } from '../storage/StorageAdapter'
-import { createGameSaveService, isValidGameSnapshot } from './gameSaveService'
+import { createGameSaveService, isValidGameSnapshot, normalizeLegacyGameSnapshot } from './gameSaveService'
 
 class MemoryStorage implements StorageAdapter {
   private values = new Map<string, unknown>()
@@ -111,13 +111,16 @@ describe('gameSaveService', () => {
       ...initialGameState,
       survival: { ...initialGameState.survival, health: 0 },
       character: { ...initialGameState.character, status: 'alive' as const },
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [{ itemId: 'item_spotted_trout', quantity: 1 }],
+      },
     }
 
-    expect(isValidGameSnapshot(legacyDeadSave)).toBe(true)
-    expect(isValidGameSnapshot({
-      ...legacyDeadSave,
-      character: { ...legacyDeadSave.character, status: 'dead' as const },
-    })).toBe(true)
+    expect(normalizeLegacyGameSnapshot(legacyDeadSave)).toMatchObject({
+      survival: { health: 0 },
+      inventory: { slots: [{ itemId: 'item_fresh_fish', quantity: 1 }] },
+    })
   })
 
   it('persists the new-player intro state without rejecting older saves', () => {

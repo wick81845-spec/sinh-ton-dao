@@ -11377,6 +11377,40 @@ body {
   margin-top: 4px;
 }
 
+.crafting-rope-guide {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid color-mix(in srgb, var(--sea) 28%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--sea-soft) 38%, var(--paper));
+}
+
+.crafting-rope-guide strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.crafting-rope-guide p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.crafting-rope-guide a {
+  flex: 0 0 auto;
+  color: var(--sea-dark);
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.crafting-rope-guide a:hover {
+  text-decoration: underline;
+}
+
 .crafting-toolbar {
   display: flex;
   align-items: center;
@@ -11582,6 +11616,11 @@ body {
 }
 
 @media (max-width: 760px) {
+  .crafting-rope-guide {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .crafting-toolbar {
     align-items: stretch;
     flex-direction: column-reverse;

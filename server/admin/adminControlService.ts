@@ -7,7 +7,7 @@ import type {
   PendingAdminCommand,
 } from '../../src/shared/types/admin.js'
 import { parseAdminSurvivalCommand } from './adminSurvivalCommand.js'
-import { isValidGameSnapshot } from '../../src/services/persistence/gameSaveService.js'
+import { normalizeLegacyGameSnapshot } from '../../src/services/persistence/gameSaveService.js'
 import type { ApiConfig } from '../config.js'
 import type { Database, Json } from '../database.types.js'
 
@@ -65,10 +65,11 @@ export function createSupabaseAdminControlService(config: ApiConfig): AdminContr
         .maybeSingle()
       if (error) throw error
       if (!data || data.schema_version !== 5) return null
-      if (!isValidGameSnapshot(data.state)) {
+      const state = normalizeLegacyGameSnapshot(data.state)
+      if (!state) {
         throw new Error(`Save của người chơi ${playerId} không hợp lệ.`)
       }
-      const { survival, ailments = [], character } = data.state
+      const { survival, ailments = [], character } = state
       return {
         survival,
         ailments,

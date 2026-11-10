@@ -839,6 +839,11 @@ export function isValidGameSnapshot(value: unknown): value is GameSnapshot {
   return isGameSnapshot(value)
 }
 
+export function normalizeLegacyGameSnapshot(value: unknown): GameSnapshot | null {
+  const migrated = migrateLegacyFishReferences(value)
+  return isGameSnapshot(migrated) ? migrated : null
+}
+
 function migrateV1ToV2(value: Record<string, unknown>): GameSaveV2 {
   if (typeof value.savedAt !== 'string'
     || !Number.isFinite(Date.parse(value.savedAt))
