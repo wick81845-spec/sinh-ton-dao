@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mô phỏng ngày đêm & thời tiết</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #edf3eb;
+        background: #101914;
+        font-synthesis: none;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 28px 16px 54px;
+        background:
+          radial-gradient(ellipse at 9% 0%, #27412c 0, transparent 37%),
+          radial-gradient(ellipse at 100% 100%, #21352b 0, transparent 34%),
+          #101914;
+      }
+
+      main { width: min(1120px, 100%); margin: 0 auto; }
+      .eyebrow { color: #bdd58f; font-size: .73rem; font-weight: 800; letter-spacing: .16em; }
+      h1 { margin: 8px 0; font-size: clamp(1.9rem, 5vw, 3rem); }
+      .intro { max-width: 800px; color: #becbc0; line-height: 1.65; }
+      .notice {
+        margin: 20px 0;
+        border: 1px solid #d5ac55;
+        border-radius: 12px;
+        padding: 13px 15px;
+        color: #f5dfac;
+        background: #352c18;
+        line-height: 1.5;
+      }
+
+      .card {
+        border: 1px solid #34463a;
+        border-radius: 15px;
+        padding: 17px;
+        background: linear-gradient(145deg, #1a251e, #151e19);
+        box-shadow: 0 14px 32px #0003;
+      }
+
+      .controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+      .control label { display: block; margin: 0 0 6px; color: #bdc9bf; font-size: .85rem; }
+      .control input:not([type="checkbox"]):not([type="range"]), .control select {
+        width: 100%;
+        border: 1px solid #526653;
+        border-radius: 9px;
+        padding: 9px 11px;
+        color: #edf3eb;
+        background: #17211a;
+        font: inherit;
+      }
+
+      .control input[type="range"] { width: 100%; accent-color: #b8d77e; }
+      .control input[type="checkbox"] { accent-color: #b8d77e; }
+      .check-control { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+      .check-control label { margin: 0; }
+      .section-heading { margin: 26px 0 12px; }
+      .section-heading h2 { margin: 0 0 5px; }
+      .section-heading p { margin: 0; color: #aebdb1; line-height: 1.5; }
+      .clock-strip {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 14px;
+        margin-top: 15px;
+        border: 1px solid #39483c;
+        border-radius: 12px;
+        padding: 13px 15px;
+        background: #141d17;
+      }
+
+      .clock-time { font-size: 1.55rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+      .clock-phase { color: #ced9c9; }
+      .clock-day { color: #bdc9bf; font-size: .85rem; text-align: right; }
+      .phase-track { height: 8px; overflow: hidden; margin-top: 7px; border-radius: 99px; background: #344039; }
+      .phase-progress { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #e59b51, #f3d16f, #93c7ed, #343950); }
+      .dashboard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+      .meters { display: grid; gap: 14px; }
+      .meter-heading { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; font-size: .9rem; }
+      .meter-track { height: 12px; overflow: hidden; border-radius: 99px; background: #344039; }
+      .meter-value { height: 100%; width: 100%; border-radius: inherit; background: linear-gradient(90deg, #e59b51, #f3d16f); transition: width .15s ease; }
+      .meter.thirst .meter-value { background: linear-gradient(90deg, #4aabce, #91dcec); }
+      .meter.stamina .meter-value { background: linear-gradient(90deg, #79a85c, #c0e18b); }
+      .meter.health .meter-value { background: linear-gradient(90deg, #ba574e, #ee9380); }
+      .meter.temperature .meter-value { background: linear-gradient(90deg, #79b9db, #8cb67b, #e7ae56, #da6554); }
+      .readout { margin: 5px 0 0; color: #9faf9f; font-size: .8rem; line-height: 1.45; }
+      .weather-description { margin: 5px 0 14px; color: #aebdb1; line-height: 1.5; }
+      .stat-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+      .chip, .tag {
+        display: inline-flex;
+        border: 1px solid #435346;
+        border-radius: 99px;
+        padding: 4px 9px;
+        color: #d3ded5;
+        font-size: .77rem;
+      }
+
+      .chip.cold { border-color: #547a99; color: #c2e3f5; }
+      .chip.hot { border-color: #a66c3b; color: #ffce91; }
+      .effect-list { display: grid; gap: 9px; margin-top: 14px; }
+      .effect {
+        border: 1px solid #39483c;
+        border-left: 3px solid #718871;
+        border-radius: 10px;
+        padding: 11px 12px;
+        color: #bac8bc;
+        background: #141d17;
+        font-size: .86rem;
+        line-height: 1.45;
+      }
+
+      .effect strong { display: block; margin-bottom: 3px; color: #e2eadd; }
+      .effect.warning { border-left-color: #d9a64a; }
+      .effect.danger { border-left-color: #d47656; }
+      .effect.critical { border-left-color: #d45858; }
+      .effect.positive { border-left-color: #8cb67b; }
+      .timeline { margin-top: 16px; }
+      .timeline h3 { margin: 0 0 8px; color: #c4d59e; font-size: .92rem; }
+      .time-row {
+        display: grid;
+        grid-template-columns: 90px repeat(4, 1fr);
+        gap: 8px;
+        padding: 8px 0;
+        border-bottom: 1px solid #303d33;
+        color: #c5d0c6;
+        font-size: .8rem;
+      }
+
+      .time-row:first-of-type { color: #98aa9b; }
+      .time-row:last-child { border-bottom: 0; }
+      .outcome {
+        margin-top: 14px;
+        border-radius: 11px;
+        padding: 12px 14px;
+        color: #c5d3c7;
+        background: #18231c;
+        font-size: .87rem;
+        line-height: 1.5;
+      }
+
+      .outcome strong { color: #e3eddf; }
+      .footnote { margin-top: 18px; color: #94a49a; font-size: .82rem; line-height: 1.55; }
+      @media (max-width: 760px) {
+        body { padding: 20px 12px 40px; }
+        .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .dashboard { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 470px) {
+        .controls { grid-template-columns: 1fr; }
+        .clock-strip { grid-template-columns: auto 1fr; }
+        .clock-day { grid-column: 1 / -1; text-align: left; }
+        .time-row { grid-template-columns: 62px repeat(4, minmax(52px, 1fr)); font-size: .72rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="eyebrow">HẢI GIỚI SINH TỒN · BẢN THỬ THẾ GIỚI</span>
+      <h1>Ngày đêm & thời tiết có tác động</h1>
+      <p class="intro">
+        Tua thời gian để xem một ngày game kéo dài đúng 30 phút thực. Chọn bất kỳ thời tiết nào trong dữ liệu
+        và thử nghỉ ngơi, làm việc, thám hiểm hoặc đi biển để thấy các chỉ số và nguy cơ thay đổi.
+      </p>
+      <div class="notice">
+        <strong>Mô phỏng đề xuất — chưa áp dụng vào game live.</strong>
+        Hệ thống ngày hiện tại không bị thay đổi. Mọi thiệt hại, lợi ích, xác suất và độ bền dưới đây chỉ chạy trong trang thử này.
+      </div>
+
+      <section class="card" aria-labelledby="controls-title">
+        <div class="section-heading" style="margin-top:0">
+          <h2 id="controls-title">Thiết lập lượt thử</h2>
+          <p>Thời gian sống còn giảm theo giờ thực online; chu kỳ ngày đêm là đồng hồ game riêng 30 phút/ngày.</p>
+        </div>
+        <div class="controls">
+          <div class="control">
+            <label for="weather">Thời tiết</label>
+            <select id="weather"></select>
+          </div>
+          <div class="control">
+            <label for="activity">Hoạt động</label>
+            <select id="activity">
+              <option value="idle">Nghỉ / đi lại nhẹ</option>
+              <option value="work">Làm việc nặng</option>
+              <option value="explore">Thám hiểm</option>
+              <option value="voyage">Đi biển bằng thuyền</option>
+            </select>
+          </div>
+          <div class="control">
+            <label for="start-time">Giờ game lúc bắt đầu</label>
+            <input id="start-time" type="time" value="08:00">
+          </div>
+          <div class="control">
+            <label for="elapsed">Thời gian tua: <strong id="elapsed-label">0 phút</strong></label>
+            <input id="elapsed" type="range" min="0" max="1440" step="5" value="0">
+          </div>
+          <div class="control">
+            <label for="hunger">Đói ban đầu · <span id="hunger-label">80</span></label>
+            <input id="hunger" type="range" min="0" max="100" value="80">
+          </div>
+          <div class="control">
+            <label for="thirst">Khát ban đầu · <span id="thirst-label">80</span></label>
+            <input id="thirst" type="range" min="0" max="100" value="80">
+          </div>
+          <div class="control">
+            <label for="stamina">Thể lực ban đầu · <span id="stamina-label">80</span></label>
+            <input id="stamina" type="range" min="0" max="100" value="80">
+          </div>
+          <div class="control">
+            <label for="health">Sức khỏe ban đầu · <span id="health-label">100</span></label>
+            <input id="health" type="range" min="0" max="100" value="100">
+          </div>
+          <div class="control">
+            <label for="wetness">Độ ướt ban đầu · <span id="wetness-label">0</span></label>
+            <input id="wetness" type="range" min="0" max="100" value="0">
+          </div>
+          <label class="control check-control"><input id="shelter" type="checkbox"><span>Núp trong nơi trú kín</span></label>
+          <label class="control check-control"><input id="force-voyage" type="checkbox"><span>Thử ra khơi dù có cảnh báo</span></label>
+        </div>
+      </section>
+
+      <section class="clock-strip" aria-label="Đồng hồ thế giới mô phỏng">
+        <div class="clock-time" id="clock-time">08:00</div>
+        <div>
+          <div class="clock-phase"><span id="phase-icon">☀</span> <strong id="phase-name">Ban ngày</strong> · <span id="clock-temperature">Nhiệt độ 30°</span></div>
+          <div class="phase-track"><div class="phase-progress" id="phase-progress"></div></div>
+        </div>
+        <div class="clock-day"><strong id="day-count">Ngày game 1</strong><br><span>1 ngày game = 30 phút thực</span></div>
+      </section>
+
+      <section class="dashboard" aria-label="Kết quả mô phỏng">
+        <article class="card">
+          <h2>Chỉ số sau khi tua</h2>
+          <div class="meters">
+            <div class="meter">
+              <div class="meter-heading"><span>Đói</span><strong id="hunger-value">80</strong></div>
+              <div class="meter-track"><div class="meter-value" id="hunger-bar"></div></div>
+              <p class="readout" id="hunger-readout"></p>
+            </div>
+            <div class="meter thirst">
+              <div class="meter-heading"><span>Khát</span><strong id="thirst-value">80</strong></div>
+              <div class="meter-track"><div class="meter-value" id="thirst-bar"></div></div>
+              <p class="readout" id="thirst-readout"></p>
+            </div>
+            <div class="meter stamina">
+              <div class="meter-heading"><span>Thể lực</span><strong id="stamina-value">80</strong></div>
+              <div class="meter-track"><div class="meter-value" id="stamina-bar"></div></div>
+              <p class="readout" id="stamina-readout"></p>
+            </div>
+            <div class="meter health">
+              <div class="meter-heading"><span>Sức khỏe</span><strong id="health-value">100</strong></div>
+              <div class="meter-track"><div class="meter-value" id="health-bar"></div></div>
+              <p class="readout" id="health-readout"></p>
+            </div>
+            <div class="meter temperature">
+              <div class="meter-heading"><span>Thân nhiệt môi trường</span><strong id="temperature-value">30°</strong></div>
+              <div class="meter-track"><div class="meter-value" id="temperature-bar"></div></div>
+              <p class="readout" id="temperature-readout"></p>
+            </div>
+            <div class="meter">
+              <div class="meter-heading"><span>Độ ướt quần áo</span><strong id="wetness-value">0%</strong></div>
+              <div class="meter-track"><div class="meter-value" id="wetness-bar"></div></div>
+              <p class="readout" id="wetness-readout"></p>
+            </div>
+          </div>
+          <div class="effect-list" id="body-effects" aria-live="polite"></div>
+        </article>
+
+        <article class="card">
+          <h2 id="weather-title">Tác động thời tiết</h2>
+          <p class="weather-description" id="weather-description"></p>
+          <div class="stat-chips" id="weather-chips"></div>
+          <div class="effect-list" id="weather-effects"></div>
+          <div class="outcome" id="activity-outcome"></div>
+          <div class="timeline" id="timeline"></div>
+        </article>
+      </section>
+      <p class="footnote">
+        Quy tắc mô phỏng: đói −10/giờ thực và khát −14/giờ thực lúc nghỉ; hoạt động nặng tăng hao hụt 50%,
+        nóng tăng khát thêm 50%, rét tăng hao đói và giảm sức bền. Mưa tích độ ướt; gió/sóng/tầm nhìn tác động
+        hành trình và thám hiểm. Thời tiết chuyển trong mô phỏng theo lựa chọn của bạn, không tự ngẫu nhiên.
+      </p>
+    </main>
+    <script type="module">
+      import { weatherDefinitions, weatherSeverityLabels } from '/src/modules/world/data/weatherDefinitions.ts'
+
+      const $ = (id) => document.getElementById(id)
+      const weatherSelect = $('weather')
+      const rainfallIds = new Set(['drizzle', 'moderate_rain', 'heavy_rain', 'tropical_shower', 'thunderstorm', 'lightning_storm', 'hail', 'freezing_rain'])
+      const clockPhases = [
+        { start: 0, end: 180, id: 'night', name: 'Ban đêm', icon: '☾' },
+        { start: 180, end: 360, id: 'pre-dawn', name: 'Rạng sáng', icon: '🌄' },
+        { start: 360, end: 540, id: 'dawn', name: 'Bình minh', icon: '🌅' },
+        { start: 540, end: 900, id: 'day', name: 'Ban ngày', icon: '☀' },
+        { start: 900, end: 1080, id: 'afternoon', name: 'Chiều', icon: '🌤' },
+        { start: 1080, end: 1260, id: 'sunset', name: 'Hoàng hôn', icon: '🌇' },
+        { start: 1260, end: 1440, id: 'night', name: 'Ban đêm', icon: '☾' },
+      ]
+
+      function currentClock(startMinute, elapsedRealMinutes) {
+        const totalGameMinutes = startMinute + elapsedRealMinutes * 48
+        const dayIndex = Math.floor(totalGameMinutes / 1440)
+        const minuteOfDay = Math.floor(totalGameMinutes % 1440)
+        const hour = Math.floor(minuteOfDay / 60)
+        const minute = minuteOfDay % 60
+        const phase = clockPhases.find((entry) => minuteOfDay >= entry.start && minuteOfDay < entry.end)
+        const dayTemperature = hour >= 12 && hour < 15 ? 2 : hour >= 9 && hour < 18 ? 1 : hour >= 21 || hour < 6 ? -2 : 0
+        const progress = minuteOfDay / 1440 * 100
+        return {
+          dayIndex,
+          minuteOfDay,
+          hour,
+          phase,
+          dayTemperature,
+          progress,
+          time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+        }
+      }
+
+      function clamp(value, min, max) { return Math.max(min, Math.min(max, value)) }
+      function round(value) { return Math.round(value * 10) / 10 }
+      function formatHours(value) {
+        if (!Number.isFinite(value)) return '—'
+        const hours = Math.floor(value)
+        const minutes = Math.round((value - hours) * 60)
+        if (hours === 0) return `${minutes} phút`
+        return minutes ? `${hours} giờ ${minutes} phút` : `${hours} giờ`
+      }
+
+      function calculate(start, elapsedHours, activity, weather, shelter) {
+        const workingMultiplier = activity === 'idle' ? 1 : 1.5
+        const stepHours = Math.min(1 / 120, elapsedHours || 1 / 120)
+        const steps = Math.ceil(elapsedHours / stepHours)
+        let hunger = start.hunger
+        let thirst = start.thirst
+        let health = start.health
+        let stamina = start.stamina
+        let wetness = start.wetness
+        let heatExposure = 0
+        let coldExposure = 0
+        let rainExposure = 0
+        let maxTemperature = -Infinity
+        let minTemperature = Infinity
+        let tempAtEnd = 28 + weather.temperatureDelta
+        let temperatureDeltaAtEnd = weather.temperatureDelta
+        let damageFromWeather = 0
+        let hungerZeroAt = start.hunger === 0 ? 0 : null
+        let thirstZeroAt = start.thirst === 0 ? 0 : null
+        let deathCause = null
+
+        for (let index = 0; index < steps && elapsedHours > 0; index += 1) {
+          const hours = Math.min(stepHours, elapsedHours - index * stepHours)
+          const elapsedRealMinutes = index * stepHours * 60
+          const clock = currentClock(start.minuteOfDay, elapsedRealMinutes)
+          const temperatureDelta = weather.temperatureDelta + clock.dayTemperature
+          const temperature = 28 + temperatureDelta
+          tempAtEnd = temperature
+          temperatureDeltaAtEnd = temperatureDelta
+          maxTemperature = Math.max(maxTemperature, temperature)
+          minTemperature = Math.min(minTemperature, temperature)
+
+          const hot = temperatureDelta >= 5
+          const cold = temperatureDelta <= -7
+          const extremeHeat = temperatureDelta >= 9
+          const extremeCold = temperatureDelta <= -12
+          const hungerWeatherMultiplier = cold ? 1.2 : 1
+          const droughtMultiplier = weather.id === 'drought' ? 1.25 : 1
+          const thirstWeatherMultiplier = (hot ? 1.5 : 1) * droughtMultiplier
+          hunger = clamp(hunger - 10 * workingMultiplier * hungerWeatherMultiplier * hours, 0, 100)
+          thirst = clamp(thirst - 14 * workingMultiplier * thirstWeatherMultiplier * hours, 0, 100)
+
+          if (activity === 'idle') {
+            const recoveryPenalty = hunger <= 25 || thirst <= 25 ? 0.5 : 1
+            stamina = clamp(stamina + 5 * hours * 60 * recoveryPenalty, 0, 100)
+          } else {
+            const activityRate = activity === 'explore' ? 10 : activity === 'voyage' ? 6 : 8
+            const needPenalty = hunger <= 25 || thirst <= 25 ? 1.25 : 1
+            const weatherPenalty = cold || weather.wind >= 7 ? 1.2 : 1
+            stamina = clamp(stamina - activityRate * needPenalty * weatherPenalty * hours, 0, 100)
+          }
+
+          if (rainfallIds.has(weather.id)) {
+            const rainRate = weather.id === 'drizzle' ? 8 : weather.id === 'moderate_rain' ? 18 : 30
+            const shelterMultiplier = shelter ? 0.35 : 1
+            wetness = clamp(wetness + rainRate * shelterMultiplier * hours, 0, 100)
+            rainExposure += hours * shelterMultiplier
+          } else {
+            const dryingRate = shelter ? 18 : 10
+            wetness = clamp(wetness - dryingRate * hours, 0, 100)
+          }
+
+          if (extremeHeat && activity !== 'idle' && !shelter) heatExposure += hours
+          if ((extremeCold || (cold && wetness >= 50)) && !shelter) coldExposure += hours * (1 + weather.wind * 0.03)
+
+          const hungerDepleted = start.hunger === 0 || hunger === 0
+          const thirstDepleted = start.thirst === 0 || thirst === 0
+          const elapsedAtStep = elapsedRealMinutes / 60 + hours
+          if (hunger === 0 && hungerZeroAt === null) hungerZeroAt = elapsedAtStep
+          if (thirst === 0 && thirstZeroAt === null) thirstZeroAt = elapsedAtStep
+          const malnutrition = hunger <= 10 ? 0.5 : 0
+          const severeDehydration = thirst <= 10 ? 1 : 0
+          const starvation = hungerDepleted ? 2 : 0
+          const dehydration = thirstDepleted ? 4 : 0
+          const deprivationDamage = (malnutrition + starvation + severeDehydration + dehydration) * hours
+          const heatDamage = heatExposure > 3 ? 1 * hours : 0
+          const coldDamage = coldExposure > 2 ? 0.75 * hours : 0
+          const ashDamage = ['ashfall', 'volcanic_eruption'].includes(weather.id) && !shelter ? 0.5 * hours : 0
+          const weatherDamage = heatDamage + coldDamage + ashDamage
+          damageFromWeather += weatherDamage
+          health = clamp(health - deprivationDamage - weatherDamage, 0, 100)
+          if (hungerZeroAt !== null && elapsedAtStep >= hungerZeroAt + 24) {
+            health = 0
+            deathCause = 'đói lả kéo dài 24 giờ'
+          }
+          if (thirstZeroAt !== null && elapsedAtStep >= thirstZeroAt + 6) {
+            health = 0
+            deathCause = 'mất nước kéo dài 6 giờ'
+          }
+        }
+
+        const clocks = currentClock(start.minuteOfDay, elapsedHours * 60)
+        const startTemperature = 28 + weather.temperatureDelta + currentClock(start.minuteOfDay, 0).dayTemperature
+        if (minTemperature === Infinity) minTemperature = startTemperature
+        if (maxTemperature === -Infinity) maxTemperature = startTemperature
+        const weatherStatus = temperatureDeltaAtEnd >= 9
+          ? 'Say nắng: nguy cơ tăng khi tiếp tục lao động ngoài trời'
+          : temperatureDeltaAtEnd >= 5
+            ? 'Nóng: mất nước nhanh'
+            : temperatureDeltaAtEnd <= -12
+              ? 'Rét đậm: nguy cơ hạ thân nhiệt'
+              : temperatureDeltaAtEnd <= -7
+                ? 'Rét lạnh: tiêu hao năng lượng tăng'
+                : 'Nhiệt độ dễ chịu'
+        const firstDeath = Math.min(
+          (start.hunger / (10 * workingMultiplier)) + 24,
+          (start.thirst / (14 * workingMultiplier * (temperatureDeltaAtEnd >= 5 ? 1.5 : 1) * (weather.id === 'drought' ? 1.25 : 1))) + 6,
+        )
+        return {
+          hunger: round(hunger),
+          thirst: round(thirst),
+          stamina: round(stamina),
+          health: round(health),
+          wetness: round(wetness),
+          temperature: round(tempAtEnd),
+          temperatureDelta: temperatureDeltaAtEnd,
+          minTemperature,
+          maxTemperature,
+          weatherStatus,
+          clocks,
+          firstDeath,
+          damageFromWeather: round(damageFromWeather),
+          heatExposure,
+          coldExposure,
+          rainExposure,
+          hungerZeroAt,
+          thirstZeroAt,
+          deathCause,
+        }
+      }
+
+      function getWeatherEffects(weather, result, activity, shelter, forceVoyage) {
+        const notes = []
+        const temperatureDelta = result.temperatureDelta
+        if (temperatureDelta >= 5) notes.push({
+          tone: temperatureDelta >= 9 ? 'danger' : 'warning',
+          title: temperatureDelta >= 9 ? 'Nắng nóng nguy hiểm' : 'Nóng và mất nước',
+          text: `Khát hao nhanh hơn 50%. Nhiệt độ hiệu dụng đang ${result.temperature}° (lệch ${temperatureDelta > 0 ? '+' : ''}${temperatureDelta}° so với nền).`,
+        })
+        if (temperatureDelta <= -7) notes.push({
+          tone: temperatureDelta <= -12 ? 'critical' : 'warning',
+          title: temperatureDelta <= -12 ? 'Nguy cơ hạ thân nhiệt' : 'Rét làm tăng tiêu hao',
+          text: `Đói hao nhanh hơn 20%; rét tích lũy ${formatHours(result.coldExposure)} phơi nhiễm.`,
+        })
+        if (weather.id === 'drought') notes.push({
+          tone: 'danger',
+          title: 'Hạn hán',
+          text: 'Nhu cầu nước hao nhanh hơn 25%; lượng nước tìm được từ nguồn tự nhiên giảm trong mô phỏng.',
+        })
+        if (rainfallIds.has(weather.id)) notes.push({
+          tone: result.wetness >= 50 && temperatureDelta <= -7 ? 'danger' : 'warning',
+          title: 'Quần áo bị ướt',
+          text: `Độ ướt ${result.wetness}%. Mưa + rét làm tích lũy nguy cơ hạ thân nhiệt; trú kín giảm tốc độ ướt.`,
+        })
+        if (weather.visibility < 0.7) notes.push({
+          tone: 'warning',
+          title: 'Tầm nhìn kém',
+          text: `Khả năng dò tìm/thám hiểm giảm theo tầm nhìn ${Math.round(weather.visibility * 100)}%; tăng nguy cơ lạc hoặc vấp ngã.`,
+        })
+        if (weather.wind >= 5 || weather.sea >= 5) notes.push({
+          tone: weather.severity === 'dangerous' ? 'danger' : 'warning',
+          title: 'Gió/sóng ảnh hưởng hành trình',
+          text: `Gió ${weather.wind}/10, sóng ${weather.sea}/10: đi biển lâu hơn và tăng nguy cơ hư hại thuyền.`,
+        })
+        if (weather.id === 'volcanic_eruption' || weather.id === 'ashfall') notes.push({
+          tone: weather.id === 'volcanic_eruption' ? 'critical' : 'danger',
+          title: weather.id === 'volcanic_eruption' ? 'Tro bụi và dung nham' : 'Mưa tro',
+          text: 'Giảm tầm nhìn, gây phơi nhiễm tro và có nguy cơ sức khỏe nếu ở ngoài trời.',
+        })
+        if (weather.id === 'red_tide') notes.push({
+          tone: 'danger',
+          title: 'Thủy triều đỏ độc hại',
+          text: 'Không nên câu/ăn hải sản từ vùng nước này; cá và sinh vật biển có nguy cơ nhiễm độc.',
+        })
+        if (['ashfall', 'volcanic_eruption'].includes(weather.id) && !shelter) notes.push({
+          tone: 'critical',
+          title: 'Phơi nhiễm tro bụi / dung nham',
+          text: `Ở ngoài trời mất khoảng ${result.damageFromWeather} sức khỏe do tro/nhiệt trong lượt thử.`,
+        })
+        if (['rainbow', 'meteor_shower', 'aurora'].includes(weather.id)) notes.push({
+          tone: 'positive',
+          title: 'Hiện tượng hiếm có lợi',
+          text: 'Tăng cơ hội quan sát, ghi nhận khám phá và nhận thưởng sự kiện; không gây sát thương thời tiết.',
+        })
+        if (!notes.length) notes.push({
+          tone: 'positive',
+          title: 'Thời tiết tương đối thuận lợi',
+          text: `Ảnh hưởng qua nhiệt độ ${result.temperature}°, tầm nhìn ${Math.round(weather.visibility * 100)}%, gió ${weather.wind}/10 và sóng ${weather.sea}/10.`,
+        })
+
+        const effectiveVisibility = Math.max(0.1, weather.visibility - weather.wind * 0.015 - (shelter ? 0 : 0))
+        const explorationSuccess = Math.round(clamp(100 * effectiveVisibility - weather.sea * 2, 20, 98))
+        const voyageMultiplier = 1
+          + (weather.severity === 'adverse' ? 0.5 : weather.severity === 'dangerous' ? 0.75 : 0)
+          + Math.max(0, weather.wind - 2) * 0.06
+          + Math.max(0, weather.sea - 2) * 0.08
+          + (weather.visibility < 0.5 ? 0.25 : 0)
+        let activityOutcome = ''
+        if (activity === 'explore') {
+          activityOutcome = `<strong>Thám hiểm dự kiến:</strong> khoảng ${explorationSuccess}% cơ hội hoàn thành an toàn theo tầm nhìn hiện tại. Còn lại là nguy cơ chậm tiến độ, lạc đường hoặc bị thương.`
+        } else if (activity === 'voyage') {
+          if (weather.severity === 'dangerous' && !forceVoyage) {
+            activityOutcome = '<strong>Khởi hành bị chặn:</strong> thời tiết nguy hiểm. Bật “Thử ra khơi dù có cảnh báo” để xem hậu quả nếu cố đi.'
+          } else {
+            const damageChance = Math.round(clamp(weather.wind * 3 + weather.sea * 4 + (weather.visibility < 0.5 ? 15 : 0), 0, 90))
+            activityOutcome = `<strong>Hành trình:</strong> mất khoảng ${(voyageMultiplier * 100 - 100).toFixed(0)}% thời gian thêm; nguy cơ hư hại thuyền khoảng ${damageChance}%. ${weather.severity === 'dangerous' ? 'Đã bỏ qua cảnh báo nguy hiểm.' : ''}`
+          }
+        } else if (activity === 'work') {
+          activityOutcome = `<strong>Làm việc ngoài trời:</strong> nhu cầu ăn/uống hao nhanh hơn 50%; thể lực giảm theo thời lượng. Tầm nhìn và mưa ảnh hưởng hiệu suất thao tác.`
+        } else {
+          activityOutcome = `<strong>Nghỉ/đi lại nhẹ:</strong> nhu cầu giảm nền; hồi thể lực khi nghỉ. ${shelter ? 'Nơi trú kín giảm tác động mưa, nóng và rét.' : 'Không có nơi trú, cơ thể tiếp xúc trực tiếp với thời tiết.'}`
+        }
+
+        return { notes, activityOutcome, explorationSuccess, voyageMultiplier }
+      }
+
+      function draw() {
+        const weather = weatherDefinitions.find((entry) => entry.id === weatherSelect.value) ?? weatherDefinitions[0]
+        const elapsedRealMinutes = Number($('elapsed').value)
+        const elapsedHours = elapsedRealMinutes / 60
+        const [startHour, startMinute] = $('start-time').value.split(':').map(Number)
+        const start = {
+          minuteOfDay: startHour * 60 + startMinute,
+          hunger: Number($('hunger').value),
+          thirst: Number($('thirst').value),
+          stamina: Number($('stamina').value),
+          health: Number($('health').value),
+          wetness: Number($('wetness').value),
+        }
+        const activity = $('activity').value
+        const shelter = $('shelter').checked
+        const result = calculate(start, elapsedHours, activity, weather, shelter)
+        const weatherResult = getWeatherEffects(weather, result, activity, shelter, $('force-voyage').checked)
+
+        $('elapsed-label').textContent = `${elapsedRealMinutes} phút`
+        for (const id of ['hunger', 'thirst', 'stamina', 'health', 'wetness']) $(`${id}-label`).textContent = start[id]
+        const currentClockState = currentClock(start.minuteOfDay, elapsedRealMinutes)
+        $('clock-time').textContent = currentClockState.time
+        $('phase-icon').textContent = currentClockState.phase.icon
+        $('phase-name').textContent = currentClockState.phase.name
+        $('clock-temperature').textContent = `Nhiệt độ ${result.temperature}°`
+        $('day-count').textContent = `Ngày game ${currentClockState.dayIndex + 1}`
+        $('phase-progress').style.width = `${currentClockState.progress}%`
+
+        for (const [id, value] of Object.entries({
+          hunger: result.hunger, thirst: result.thirst, stamina: result.stamina,
+          health: result.health, wetness: result.wetness,
+        })) {
+          $(`${id}-value`).textContent = id === 'wetness' ? `${value}%` : value
+          $(`${id}-bar`).style.width = `${value}%`
+        }
+        $('temperature-value').textContent = `${result.temperature}°`
+        $('temperature-bar').style.width = `${clamp((result.temperature + 20) / 60 * 100, 0, 100)}%`
+        $('temperature-readout').textContent = `${result.weatherStatus} · Trong lượt thử nhiệt độ biến thiên ${result.minTemperature}° đến ${result.maxTemperature}°.`
+        $('hunger-readout').textContent = result.hunger <= 0
+          ? 'Đói lả; sức khỏe giảm. Nếu không ăn, bộ đếm tử vong tiếp tục.'
+          : `Hao hụt theo thời lượng hoạt động và nhiệt độ. Mốc nguy hiểm bắt đầu dưới 50.`
+        $('thirst-readout').textContent = result.thirst <= 0
+          ? 'Mất nước nghiêm trọng; sức khỏe giảm. Nếu không uống, bộ đếm tử vong tiếp tục.'
+          : `Nóng làm khát giảm nhanh hơn. Mốc nguy hiểm bắt đầu dưới 50.`
+        $('stamina-readout').textContent = activity === 'idle'
+          ? 'Đang hồi khi nghỉ; đói/khát thấp làm chậm hồi phục.'
+          : 'Đang tiêu hao theo hoạt động; thiếu ăn/uống hoặc rét làm tăng mức mệt.'
+        $('health-readout').textContent = result.deathCause
+          ? `ĐÃ TỬ VONG do ${result.deathCause}.`
+          : result.damageFromWeather > 0
+          ? `Mất ${result.damageFromWeather} sức khỏe do thời tiết trong lượt thử.`
+          : result.health < start.health
+            ? `Đang giảm do đói/khát; còn ${result.health} sức khỏe.`
+            : `Ước tính nếu không ăn/uống: nguy cơ tử vong sớm nhất sau ${formatHours(Math.max(0, result.firstDeath - elapsedHours))} nữa.`
+        $('wetness-readout').textContent = result.wetness >= 50
+          ? 'Ướt nặng; gặp rét sẽ tăng nguy cơ hạ thân nhiệt.'
+          : result.wetness > 0 ? 'Quần áo còn ẩm; đang khô dần.' : 'Khô ráo.'
+
+        $('weather-title').textContent = `${weather.icon} ${weather.name} · ${weatherSeverityLabels[weather.severity]}`
+        $('weather-description').textContent = weather.description
+        $('weather-chips').innerHTML = [
+          `Nhiệt ${weather.temperatureDelta > 0 ? '+' : ''}${weather.temperatureDelta}°`,
+          `Tầm nhìn ${Math.round(weather.visibility * 100)}%`,
+          `Gió ${weather.wind}/10`,
+          `Sóng ${weather.sea}/10`,
+        ].map((text) => `<span class="chip">${text}</span>`).join('')
+        $('weather-effects').innerHTML = weatherResult.notes.map((note) => `
+          <article class="effect ${note.tone}"><strong>${note.title}</strong>${note.text}</article>
+        `).join('')
+        $('activity-outcome').innerHTML = weatherResult.activityOutcome
+        $('timeline').innerHTML = `<h3>Ngày đêm nhanh · 30 phút thực = 24 giờ game</h3>${[
+          ['00:00', 'Ban đêm'], ['03:00', 'Rạng sáng'], ['06:00', 'Bình minh'],
+          ['09:00', 'Ban ngày'], ['15:00', 'Chiều'], ['18:00', 'Hoàng hôn'], ['21:00', 'Ban đêm'],
+        ].map(([time, phase]) => `
+          <div class="time-row"><span>${time}</span><strong>${phase}</strong><span>+${(1440 / 30).toFixed(0)} phút game / phút thực</span><span>${time === currentClockState.time ? '← Hiện tại' : ''}</span><span></span></div>
+        `).join('')}`
+
+        const timeToThirstZero = start.thirst / (14 * (activity === 'idle' ? 1 : 1.5))
+        const timeToHungerZero = start.hunger / (10 * (activity === 'idle' ? 1 : 1.5))
+        const isDeadFromNeeds = (result.health <= 0)
+        const statusEffects = []
+        if (result.hunger <= 50) statusEffects.push({ tone: 'warning', title: 'Đói / hoa mắt', text: 'Dưới 50: khó tập trung; dưới 25: hoạt động nặng tốn thêm thể lực; dưới 10: sức khỏe bắt đầu giảm.' })
+        if (result.thirst <= 50) statusEffects.push({ tone: 'warning', title: 'Khát / hoa mắt', text: 'Dưới 50: hoa mắt; dưới 25: thể lực hồi chậm; chạm 0: mất sức khỏe nhanh hơn.' })
+        if (result.health <= 25 && result.health > 0) statusEffects.push({ tone: 'danger', title: 'Sinh lực nguy cấp', text: 'Một lượng sát thương nhỏ nữa có thể làm nhân vật gục ngã.' })
+        if (result.health <= 0) statusEffects.push({ tone: 'critical', title: 'Đã tử vong', text: 'Sức khỏe về 0.' })
+        if (result.wetness >= 50 && result.temperatureDelta <= -7) statusEffects.push({ tone: 'danger', title: 'Ướt lạnh', text: 'Mất thêm sức khỏe theo thời gian nếu tiếp tục phơi rét.' })
+        if (result.temperatureDelta >= 9 && result.heatExposure >= 3) statusEffects.push({ tone: 'danger', title: 'Kiệt sức vì nóng', text: 'Phơi nóng nguy hiểm khi lao động liên tục đã vượt 3 giờ; sức khỏe bắt đầu giảm.' })
+        if (result.health > 25 && result.hunger > 50 && result.thirst > 50 && result.wetness < 50) {
+          statusEffects.push({ tone: 'positive', title: 'Thể trạng ổn định', text: 'Chưa xuất hiện trạng thái nguy hiểm trong thời gian đã tua.' })
+        }
+        $('body-effects').innerHTML = statusEffects.map((effect) => `
+          <article class="effect ${effect.tone}"><strong>${effect.title}</strong>${effect.text}</article>
+        `).join('')
+        if (elapsedRealMinutes === 0 && !isDeadFromNeeds) {
+          $('health-readout').textContent = `Ước tính từ mức ban đầu: đói cạn sau ${formatHours(timeToHungerZero)}; khát cạn sau ${formatHours(timeToThirstZero)}. Sau đó áp dụng mốc tử vong đã đề xuất.`
+        }
+      }
+
+      for (const weather of weatherDefinitions) {
+        const option = document.createElement('option')
+        option.value = weather.id
+        option.textContent = `${weather.icon} ${weather.name} · ${weatherSeverityLabels[weather.severity]}`
+        weatherSelect.append(option)
+      }
+      weatherSelect.value = 'sunny'
+      for (const id of ['weather', 'activity', 'start-time', 'elapsed', 'hunger', 'thirst', 'stamina', 'health', 'wetness', 'shelter', 'force-voyage']) {
+        $(id).addEventListener('input', draw)
+        $(id).addEventListener('change', draw)
+      }
+      draw()
+    </script>
+  </body>
+</html>

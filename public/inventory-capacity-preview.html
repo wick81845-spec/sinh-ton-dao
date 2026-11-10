@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mô phỏng túi đồ & sức chứa</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #101914;
+        color: #e8eee6;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+      }
+      * { box-sizing: border-box; }
+      body {
+        min-width: 320px;
+        margin: 0;
+        padding: 28px 18px 54px;
+        background:
+          radial-gradient(ellipse at 9% 4%, #203629 0, transparent 40%),
+          radial-gradient(ellipse at 92% 17%, #26382b 0, transparent 33%),
+          #101914;
+      }
+      button { font: inherit; }
+      button:focus-visible { outline: 2px solid #d5bd79; outline-offset: 3px; }
+      .page { width: min(1120px, 100%); margin: 0 auto; }
+      .eyebrow { color: #a9bd8c; font-size: .73rem; font-weight: 800; letter-spacing: .16em; }
+      h1 { margin: 9px 0 7px; font-size: clamp(1.75rem, 5vw, 2.45rem); letter-spacing: -.04em; }
+      .intro { max-width: 760px; margin: 0; color: #aebbad; line-height: 1.65; }
+      .notice {
+        margin: 22px 0;
+        padding: 13px 15px;
+        border: 1px solid #796a3d;
+        border-radius: 12px;
+        background: #282619;
+        color: #e5d9ae;
+        font-size: .9rem;
+        line-height: 1.55;
+      }
+      .notice strong { color: #f1e7c2; }
+      .layout { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 16px; align-items: start; }
+      .panel {
+        border: 1px solid #35443a;
+        border-radius: 17px;
+        background: linear-gradient(150deg, #1d2921, #17211b 64%);
+        box-shadow: 0 14px 36px #07100b55;
+      }
+      .bag-panel { padding: 20px; }
+      .panel-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+      .kicker { color: #8da78f; font-size: .68rem; font-weight: 800; letter-spacing: .14em; }
+      h2 { margin: 5px 0 0; font-size: 1.22rem; }
+      .bag-state {
+        display: inline-flex; gap: 7px; align-items: center;
+        padding: 7px 10px; border: 1px solid #526046; border-radius: 99px;
+        color: #d7dfbd; background: #273126; white-space: nowrap; font-size: .76rem; font-weight: 700;
+      }
+      .capacity { margin: 18px 0 7px; }
+      .capacity-copy { display: flex; justify-content: space-between; gap: 10px; color: #c9d2c7; font-size: .84rem; }
+      .capacity-copy strong { color: #e9ebd9; }
+      .bar { height: 8px; margin-top: 9px; overflow: hidden; border-radius: 99px; background: #0c140f; }
+      .bar > i { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #87a867, #d4bd78); transition: width .2s ease; }
+      .bar.warning > i { background: linear-gradient(90deg, #d6a64f, #d26b52); }
+      .stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 13px 0 18px; }
+      .stat { padding: 7px 10px; border: 1px solid #344238; border-radius: 9px; color: #bac6b9; background: #17211a; font-size: .75rem; }
+      .stat strong { color: #e4e9dc; }
+      .tabs { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 14px; }
+      .tab, .secondary, .primary, .item-action {
+        min-height: 36px; border: 1px solid #3c4b40; border-radius: 9px; cursor: pointer;
+        color: #c3cec1; background: #202b23; transition: background .15s, border-color .15s, color .15s;
+      }
+      .tab { padding: 0 12px; font-size: .78rem; }
+      .tab:hover, .secondary:hover, .item-action:hover { border-color: #83966d; color: #f3f2df; }
+      .tab[aria-pressed="true"] { border-color: #91a778; color: #f3f0d7; background: #35432f; }
+      .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+      .slot {
+        position: relative; display: flex; min-height: 130px; flex-direction: column; align-items: center; justify-content: center;
+        gap: 6px; padding: 12px 8px 10px; border: 1px solid #405045; border-radius: 13px;
+        background: linear-gradient(145deg, #26342a, #1b261f); text-align: center;
+      }
+      .slot:hover { border-color: #9baa7a; }
+      .slot-icon { display: grid; width: 47px; height: 47px; place-items: center; border: 1px solid #566348; border-radius: 14px; background: #34402c; font-size: 1.65rem; }
+      .slot-name { max-width: 100%; color: #e0e6dc; font-size: .76rem; font-weight: 700; line-height: 1.25; }
+      .slot-meta { color: #a0b09e; font-size: .69rem; }
+      .slot-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+      .item-action { min-height: 27px; padding: 3px 7px; font-size: .67rem; }
+      .item-action:disabled { cursor: not-allowed; opacity: .42; }
+      .split-controls { display: grid; grid-template-columns: minmax(0, 68px) auto; gap: 5px; justify-content: center; }
+      .split-controls[hidden] { display: none; }
+      .split-controls input { width: 68px; min-height: 27px; border: 1px solid #53634e; border-radius: 7px; padding: 3px 5px; color: #e6ebdf; background: #111a14; font: inherit; font-size: .69rem; }
+      .slot-count { position: absolute; top: 7px; right: 7px; padding: 3px 6px; border-radius: 7px; color: #f1dfaa; background: #111a13dd; font-size: .68rem; font-weight: 800; }
+      .empty { grid-column: 1 / -1; padding: 28px 12px; border: 1px dashed #49584c; border-radius: 12px; color: #9daa9b; text-align: center; }
+      .sidebar { display: grid; gap: 16px; }
+      .side-panel { padding: 17px; }
+      .side-title { display: flex; justify-content: space-between; align-items: center; gap: 9px; }
+      .side-title h2 { font-size: 1rem; }
+      .side-list { display: grid; gap: 8px; margin: 14px 0 0; }
+      .side-item { display: flex; align-items: center; gap: 9px; padding: 9px; border: 1px solid #344238; border-radius: 10px; background: #17211a; }
+      .side-item .mini-icon { font-size: 1.2rem; }
+      .side-item strong { display: block; font-size: .77rem; }
+      .side-item small { color: #94a491; font-size: .69rem; }
+      .empty-storage { color: #a8b5a7; font-size: .81rem; line-height: 1.5; }
+      .chest-shell {
+        margin-top: 14px; padding: 12px; border: 1px solid #80613d; border-radius: 13px;
+        background: repeating-linear-gradient(0deg, #432f20 0, #432f20 10px, #4a3524 11px, #4a3524 20px);
+        box-shadow: inset 0 0 0 3px #241b14, 0 8px 18px #090f0b66;
+      }
+      .chest-lid { height: 12px; margin: -2px 3px 9px; border: 1px solid #785836; border-radius: 7px 7px 3px 3px; background: linear-gradient(180deg, #67472d, #3e2b1d); }
+      .chest-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 8px; border: 1px solid #82623f; border-radius: 9px; background: #291f17; }
+      .chest-slot {
+        display: flex; min-width: 0; aspect-ratio: 1 / .86; flex-direction: column; align-items: center; justify-content: center;
+        gap: 3px; border: 1px solid #5b4935; border-radius: 7px; color: #e6d9bb;
+        background: linear-gradient(145deg, #3c3023, #2d241b); text-align: center;
+      }
+      .chest-slot.filled { border-color: #9c7949; background: linear-gradient(145deg, #57402a, #3c2d20); }
+      .chest-slot-icon { font-size: 1.25rem; line-height: 1; }
+      .chest-slot-name { overflow: hidden; max-width: 100%; padding: 0 2px; color: #dbc9a6; font-size: .56rem; text-overflow: ellipsis; white-space: nowrap; }
+      .chest-slot-count { color: #f0d998; font-size: .59rem; font-weight: 800; }
+      .chest-empty-mark { color: #816d53; font-size: .86rem; }
+      .chest-footer { display: flex; justify-content: space-between; gap: 8px; padding: 8px 2px 1px; color: #dfc79f; font-size: .68rem; }
+      .pack-card { display: grid; grid-template-columns: 48px 1fr; gap: 11px; align-items: center; margin-top: 14px; padding: 12px; border: 1px solid #6c6848; border-radius: 12px; background: #29291f; }
+      .pack-icon { display: grid; width: 46px; height: 46px; place-items: center; border-radius: 13px; background: #3a3928; font-size: 1.7rem; }
+      .pack-card strong { display: block; font-size: .84rem; }
+      .pack-card small { display: block; margin-top: 4px; color: #a9ac91; font-size: .72rem; line-height: 1.4; }
+      .pack-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+      .primary, .secondary { padding: 0 12px; font-size: .78rem; font-weight: 700; }
+      .primary { border-color: #849463; color: #f2efd9; background: #465339; }
+      .primary:hover { background: #586846; }
+      .primary:disabled { cursor: not-allowed; opacity: .42; }
+      .secondary { background: #212c24; }
+      .message { min-height: 38px; margin: 12px 0 0; color: #d4c991; font-size: .77rem; line-height: 1.45; }
+      .rule { margin-top: 16px; padding-top: 13px; border-top: 1px solid #37443a; color: #a9b5a7; font-size: .76rem; line-height: 1.55; }
+      .rule strong { color: #dce3d5; }
+      .footnote { margin: 17px 2px 0; color: #8e9d8f; font-size: .76rem; line-height: 1.55; }
+      @media (max-width: 860px) {
+        .layout { grid-template-columns: 1fr; }
+        .sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .sidebar .storage-panel { grid-row: span 2; }
+      }
+      @media (max-width: 600px) {
+        body { padding: 20px 11px 38px; }
+        .bag-panel { padding: 14px; }
+        .panel-head { flex-direction: column; }
+        .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+        .slot { min-height: 121px; padding-inline: 5px; }
+        .sidebar { grid-template-columns: 1fr; }
+        .sidebar .storage-panel { grid-row: auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <span class="eyebrow">HẢI GIỚI SINH TỒN · BẢN THỬ HÀNH TRANG</span>
+      <h1>Túi đồ & sức chứa</h1>
+      <p class="intro">Xem cách sắp xếp hành trang theo ô, chuyển vật phẩm về rương và thử giới hạn mang đồ khi có hoặc không có ba lô.</p>
+      <div class="notice"><strong>Bản mô phỏng đề xuất — chưa thay đổi game thật.</strong> Mặc định mang 12 ô; ba lô nâng sức chứa lên 24 ô. Khối lượng chỉ hiển thị tham khảo trong bản thử này.</div>
+
+      <div class="layout">
+        <section class="panel bag-panel" aria-labelledby="bag-title">
+          <div class="panel-head">
+            <div>
+              <span class="kicker">ĐANG MANG THEO</span>
+              <h2 id="bag-title">Hành trang của bạn</h2>
+            </div>
+            <span class="bag-state" id="bag-state" aria-live="polite">🎒 Có ba lô</span>
+          </div>
+          <div class="capacity">
+            <div class="capacity-copy"><span>Ô hành trang đã dùng</span><strong id="capacity-text">0 / 24 ô</strong></div>
+            <div class="bar" id="capacity-bar"><i id="capacity-fill"></i></div>
+          </div>
+          <div class="stats">
+            <span class="stat">Tổng số món: <strong id="item-count">0</strong></span>
+            <span class="stat">Khối lượng: <strong id="weight-count">0 kg</strong></span>
+            <span class="stat">Ô còn trống: <strong id="free-count">0</strong></span>
+          </div>
+          <div class="tabs" role="group" aria-label="Lọc vật phẩm">
+            <button type="button" class="tab" data-filter="all" aria-pressed="true">Tất cả</button>
+            <button type="button" class="tab" data-filter="resource" aria-pressed="false">Nguyên liệu</button>
+            <button type="button" class="tab" data-filter="food" aria-pressed="false">Thức ăn</button>
+            <button type="button" class="tab" data-filter="tool" aria-pressed="false">Công cụ</button>
+          </div>
+          <div class="grid" id="inventory-grid" aria-live="polite"></div>
+          <div class="pack-controls">
+            <button type="button" class="primary" id="pickup-button">Thử nhặt vật phẩm mới</button>
+            <button type="button" class="secondary" id="reset-button">Đặt lại mô phỏng</button>
+          </div>
+          <p class="message" id="status" role="status">Thử nhặt thêm đồ, cất vật phẩm vào rương hoặc tháo ba lô để xem giới hạn hoạt động.</p>
+        </section>
+
+        <aside class="sidebar" aria-label="Ba lô và kho chứa">
+          <section class="panel side-panel" aria-labelledby="pack-title">
+            <div class="side-title"><div><span class="kicker">TRANG BỊ</span><h2 id="pack-title">Ba lô</h2></div><span aria-hidden="true">🎒</span></div>
+            <div class="pack-card">
+              <span class="pack-icon" aria-hidden="true">🎒</span>
+              <div><strong id="pack-name">Ba lô đi rừng</strong><small id="pack-description">Tăng sức chứa từ 12 lên 24 ô hành trang.</small></div>
+            </div>
+            <button type="button" class="secondary" id="pack-button" style="width:100%;margin-top:11px">Tháo ba lô</button>
+            <p class="rule"><strong>Quy tắc đang thử:</strong> không thể tháo ba lô nếu số ô đang dùng vượt quá sức chứa cơ bản. Cất hoặc giảm bớt đồ trước.</p>
+          </section>
+
+          <section class="panel side-panel storage-panel" aria-labelledby="storage-title">
+            <div class="side-title"><div><span class="kicker">LƯU TRỮ TRÊN ĐẢO</span><h2 id="storage-title">Rương gỗ</h2></div><span id="storage-capacity" class="stat">0 / 24 ô</span></div>
+            <div class="chest-shell" role="group" aria-label="Các ô trong rương">
+              <div class="chest-lid" aria-hidden="true"></div>
+              <div class="chest-grid" id="storage-grid" aria-live="polite"></div>
+              <div class="chest-footer"><span id="chest-used">0 ô đã dùng</span><span id="chest-free">24 ô trống</span></div>
+            </div>
+            <p class="rule">Chọn <strong>Cất cả</strong> để chuyển nguyên chồng, hoặc <strong>Chia nhỏ</strong> để chọn số lượng muốn cất. Các thao tác chỉ ảnh hưởng đến bản mô phỏng này.</p>
+          </section>
+        </aside>
+      </div>
+      <p class="footnote">Đề xuất hiện tại dùng giới hạn theo số ô để dễ hiểu và tránh cộng thêm phạt cân nặng. Nếu bạn duyệt hướng này, bước sau mới tích hợp vào hành trang và kiểm tra tương thích với thu thập, chế tạo, câu cá, kho rương và save cũ.</p>
+    </main>
+    <script>
+      const starterInventory = [
+        { id: 'wood', name: 'Gỗ trôi dạt', icon: '🪵', category: 'resource', quantity: 12, weight: 0.5 },
+        { id: 'stone', name: 'Đá cuội', icon: '🪨', category: 'resource', quantity: 8, weight: 1 },
+        { id: 'fruit', name: 'Quả dại', icon: '🫐', category: 'food', quantity: 5, weight: 0.2 },
+        { id: 'branch', name: 'Cành cây', icon: '🌿', category: 'resource', quantity: 9, weight: 0.3 },
+        { id: 'fiber', name: 'Sợi thực vật', icon: '🧵', category: 'resource', quantity: 14, weight: 0.1 },
+        { id: 'herb', name: 'Thảo mộc', icon: '🌱', category: 'resource', quantity: 4, weight: 0.1 },
+        { id: 'mushroom', name: 'Nấm rừng', icon: '🍄', category: 'food', quantity: 3, weight: 0.2 },
+        { id: 'water', name: 'Nước sạch', icon: '🫙', category: 'food', quantity: 2, weight: 0.7 },
+        { id: 'axe', name: 'Rìu đá', icon: '🪓', category: 'tool', quantity: 1, weight: 2.5 },
+        { id: 'shell', name: 'Vỏ sò', icon: '🐚', category: 'resource', quantity: 6, weight: 0.1 },
+        { id: 'bark', name: 'Vỏ cây', icon: '🪹', category: 'resource', quantity: 7, weight: 0.2 },
+        { id: 'dried-fruit', name: 'Trái cây sấy', icon: '🥭', category: 'food', quantity: 4, weight: 0.15 },
+        { id: 'rope', name: 'Dây thừng', icon: '➰', category: 'resource', quantity: 1, weight: 1.2 },
+        { id: 'charcoal', name: 'Than củi', icon: '⬛', category: 'resource', quantity: 5, weight: 0.3 },
+      ]
+      const starterStorage = [
+        { id: 'plank', name: 'Ván gỗ', icon: '🪚', quantity: 16 },
+        { id: 'coconut', name: 'Dừa', icon: '🥥', quantity: 3 },
+      ]
+      let inventory = structuredClone(starterInventory)
+      let storage = structuredClone(starterStorage)
+      let hasBackpack = true
+      let filter = 'all'
+      let pickupIndex = 0
+      const $ = (id) => document.getElementById(id)
+      const capacity = () => hasBackpack ? 24 : 12
+      const totalWeight = (items) => items.reduce((sum, item) => sum + (item.weight ?? 0) * item.quantity, 0)
+      const formatWeight = (weight) => `${weight.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} kg`
+
+      function render() {
+        const used = inventory.length
+        const limit = capacity()
+        const ratio = used / limit * 100
+        $('capacity-text').textContent = `${used} / ${limit} ô`
+        $('capacity-fill').style.width = `${Math.min(100, ratio)}%`
+        $('capacity-bar').classList.toggle('warning', ratio >= 80)
+        $('item-count').textContent = inventory.reduce((sum, item) => sum + item.quantity, 0)
+        $('weight-count').textContent = formatWeight(totalWeight(inventory))
+        $('free-count').textContent = limit - used
+        $('bag-state').textContent = hasBackpack ? '🎒 Có ba lô' : '🧺 Không có ba lô'
+        $('pack-name').textContent = hasBackpack ? 'Ba lô đi rừng' : 'Chưa trang bị ba lô'
+        $('pack-description').textContent = hasBackpack ? 'Tăng sức chứa từ 12 lên 24 ô hành trang.' : 'Hành trang trở về giới hạn cơ bản 12 ô.'
+        $('pack-button').textContent = hasBackpack ? 'Tháo ba lô' : 'Trang bị ba lô'
+        $('pack-button').title = hasBackpack && used > 12 ? 'Cất bớt vật phẩm để còn tối đa 12 ô trước khi tháo ba lô.' : ''
+        const shown = inventory.filter((item) => filter === 'all' || item.category === filter)
+        $('inventory-grid').innerHTML = shown.length ? shown.map((item) => `
+          <article class="slot">
+            <span class="slot-count">×${item.quantity}</span>
+            <span class="slot-icon" aria-hidden="true">${item.icon}</span>
+            <span class="slot-name">${item.name}</span>
+            <span class="slot-meta">${formatWeight(item.weight * item.quantity)}</span>
+            <span class="slot-actions">
+              ${item.category === 'food' ? `<button class="item-action" type="button" data-use="${item.id}">Dùng 1</button>` : ''}
+              <button class="item-action" type="button" data-store="${item.id}">Cất cả</button>
+              ${item.quantity > 1 ? `<button class="item-action" type="button" data-toggle-split="${item.id}" aria-expanded="false">Chia nhỏ</button>` : ''}
+            </span>
+            ${item.quantity > 1 ? `<span class="split-controls" id="split-${item.id}" hidden>
+              <input type="number" min="1" max="${item.quantity - 1}" value="${Math.max(1, Math.floor(item.quantity / 2))}" aria-label="Số lượng ${item.name} muốn cất">
+              <button class="item-action" type="button" data-split-store="${item.id}">Cất số này</button>
+            </span>` : ''}
+          </article>`).join('') : '<p class="empty">Không có vật phẩm trong mục này.</p>'
+        $('storage-capacity').textContent = `${storage.length} / 24 ô`
+        $('chest-used').textContent = `${storage.length} ô đã dùng`
+        $('chest-free').textContent = `${24 - storage.length} ô trống`
+        $('storage-grid').innerHTML = Array.from({ length: 24 }, (_, index) => {
+          const item = storage[index]
+          return item
+            ? `<div class="chest-slot filled" aria-label="${item.name}, số lượng ${item.quantity}">
+                <span class="chest-slot-icon" aria-hidden="true">${item.icon}</span>
+                <span class="chest-slot-name">${item.name}</span>
+                <span class="chest-slot-count">×${item.quantity}</span>
+              </div>`
+            : `<div class="chest-slot" aria-label="Ô trống ${index + 1}"><span class="chest-empty-mark" aria-hidden="true">·</span></div>`
+        }).join('')
+        document.querySelectorAll('[data-store]').forEach((button) => button.addEventListener('click', () => moveToStorage(button.dataset.store)))
+        document.querySelectorAll('[data-toggle-split]').forEach((button) => button.addEventListener('click', () => {
+          const controls = $(`split-${button.dataset.toggleSplit}`)
+          const expanded = button.getAttribute('aria-expanded') === 'true'
+          button.setAttribute('aria-expanded', String(!expanded))
+          button.textContent = expanded ? 'Chia nhỏ' : 'Đóng chia'
+          controls.hidden = expanded
+          if (!expanded) controls.querySelector('input').focus()
+        }))
+        document.querySelectorAll('[data-split-store]').forEach((button) => button.addEventListener('click', () => {
+          const quantity = Number($(`split-${button.dataset.splitStore}`).querySelector('input').value)
+          moveToStorage(button.dataset.splitStore, quantity)
+        }))
+        document.querySelectorAll('[data-use]').forEach((button) => button.addEventListener('click', () => useFood(button.dataset.use)))
+      }
+
+      function moveToStorage(id, quantity) {
+        const item = inventory.find((entry) => entry.id === id)
+        if (!item) return
+        const amount = quantity ?? item.quantity
+        if (!Number.isInteger(amount) || amount <= 0 || amount > item.quantity) {
+          $('status').textContent = `Số lượng cần cất phải từ 1 đến ${item.quantity}.`
+          return
+        }
+        if (storage.length >= 24 && !storage.some((item) => item.id === id)) {
+          $('status').textContent = 'Rương đã đầy ô trong mô phỏng; chưa thể cất vật phẩm.'
+          return
+        }
+        item.quantity -= amount
+        if (item.quantity === 0) inventory = inventory.filter((entry) => entry.id !== id)
+        const stored = storage.find((entry) => entry.id === id)
+        if (stored) stored.quantity += amount
+        else storage.push({ id: item.id, name: item.name, icon: item.icon, quantity: amount })
+        $('status').textContent = amount === item.quantity + amount
+          ? `Đã cất toàn bộ ${item.name} vào rương.`
+          : `Đã cất ${amount} ${item.name} vào rương; phần còn lại vẫn trong hành trang.`
+        render()
+      }
+
+      function useFood(id) {
+        const item = inventory.find((entry) => entry.id === id)
+        if (!item || item.quantity < 1) return
+        item.quantity -= 1
+        if (item.quantity === 0) inventory = inventory.filter((entry) => entry.id !== id)
+        $('status').textContent = `Đã dùng 1 ${item.name} trong mô phỏng.`
+        render()
+      }
+
+      document.querySelectorAll('[data-filter]').forEach((button) => button.addEventListener('click', () => {
+        filter = button.dataset.filter
+        document.querySelectorAll('[data-filter]').forEach((tab) => tab.setAttribute('aria-pressed', String(tab === button)))
+        render()
+      }))
+      $('pack-button').addEventListener('click', () => {
+        if (hasBackpack && inventory.length > 12) {
+          $('status').textContent = `Chưa thể tháo ba lô: đang dùng ${inventory.length}/12 ô cơ bản. Hãy cất bớt ${inventory.length - 12} ô vào rương trước.`
+          return
+        }
+        hasBackpack = !hasBackpack
+        $('status').textContent = hasBackpack ? 'Đã trang bị ba lô: sức chứa tăng lên 24 ô.' : 'Đã tháo ba lô: sức chứa trở về 12 ô.'
+        render()
+      })
+      $('pickup-button').addEventListener('click', () => {
+        if (inventory.length < capacity()) {
+          pickupIndex += 1
+          inventory.push({ id: `pickup-${pickupIndex}`, name: `Nguyên liệu nhặt thử ${pickupIndex}`, icon: '🪸', category: 'resource', quantity: 3, weight: 0.3 })
+          $('status').textContent = 'Đã nhặt thêm một chồng nguyên liệu mới, chiếm 1 ô.'
+        } else {
+          $('status').textContent = `Không đủ ô trống (${inventory.length}/${capacity()}); cất bớt đồ hoặc trang bị ba lô.`
+        }
+        render()
+      })
+      $('reset-button').addEventListener('click', () => {
+        inventory = structuredClone(starterInventory)
+        storage = structuredClone(starterStorage)
+        hasBackpack = true
+        filter = 'all'
+        pickupIndex = 0
+        document.querySelectorAll('[data-filter]').forEach((tab) => tab.setAttribute('aria-pressed', String(tab.dataset.filter === 'all')))
+        $('status').textContent = 'Đã đặt lại dữ liệu mô phỏng ban đầu.'
+        render()
+      })
+      render()
+    </script>
+  </body>
+</html>

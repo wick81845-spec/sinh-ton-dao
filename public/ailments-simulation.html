@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mô phỏng bệnh & chấn thương</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #edf3eb;
+        background: #101914;
+        font-synthesis: none;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 28px 16px 54px;
+        background:
+          radial-gradient(ellipse at 9% 0%, #27412c 0, transparent 37%),
+          radial-gradient(ellipse at 100% 100%, #382723 0, transparent 34%),
+          #101914;
+      }
+
+      main { width: min(1120px, 100%); margin: 0 auto; }
+      .eyebrow { color: #bdd58f; font-size: .73rem; font-weight: 800; letter-spacing: .16em; }
+      h1 { margin: 8px 0; font-size: clamp(1.9rem, 5vw, 3rem); }
+      .intro { max-width: 800px; color: #becbc0; line-height: 1.65; }
+      .notice {
+        margin: 20px 0;
+        border: 1px solid #d5ac55;
+        border-radius: 12px;
+        padding: 13px 15px;
+        color: #f5dfac;
+        background: #352c18;
+        line-height: 1.5;
+      }
+
+      .card {
+        border: 1px solid #34463a;
+        border-radius: 15px;
+        padding: 17px;
+        background: linear-gradient(145deg, #1a251e, #151e19);
+        box-shadow: 0 14px 32px #0003;
+      }
+
+      .controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+      .control label { display: block; margin: 0 0 6px; color: #bdc9bf; font-size: .85rem; }
+      .control input:not([type="checkbox"]):not([type="range"]), .control select {
+        width: 100%;
+        border: 1px solid #526653;
+        border-radius: 9px;
+        padding: 9px 11px;
+        color: #edf3eb;
+        background: #17211a;
+        font: inherit;
+      }
+
+      .control input[type="range"] { width: 100%; accent-color: #b8d77e; }
+      .control input[type="checkbox"] { accent-color: #b8d77e; }
+      .check-control { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+      .check-control label { margin: 0; }
+      .heading { margin: 26px 0 12px; }
+      .heading h2 { margin: 0 0 5px; }
+      .heading p { margin: 0; color: #aebdb1; line-height: 1.5; }
+      .presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 13px 0; }
+      button {
+        border: 1px solid #526653;
+        border-radius: 9px;
+        padding: 9px 11px;
+        color: #edf3eb;
+        background: #17211a;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button:hover, button:focus-visible { border-color: #c6df8e; }
+      .preset-button { font-size: .82rem; }
+      .dashboard { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 14px; margin-top: 14px; }
+      .meters { display: grid; gap: 14px; }
+      .meter-heading { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; font-size: .9rem; }
+      .meter-track { height: 12px; overflow: hidden; border-radius: 99px; background: #344039; }
+      .meter-value { height: 100%; width: 100%; border-radius: inherit; background: linear-gradient(90deg, #e59b51, #f3d16f); transition: width .15s ease; }
+      .meter.health .meter-value { background: linear-gradient(90deg, #ba574e, #ee9380); }
+      .meter.temperature .meter-value { background: linear-gradient(90deg, #79b9db, #8cb67b, #e7ae56, #da6554); }
+      .readout { margin: 5px 0 0; color: #9faf9f; font-size: .8rem; line-height: 1.45; }
+      .condition-list { display: grid; gap: 10px; margin-top: 16px; }
+      .condition {
+        border: 1px solid #39483c;
+        border-left: 3px solid #718871;
+        border-radius: 10px;
+        padding: 12px;
+        color: #bac8bc;
+        background: #141d17;
+        font-size: .86rem;
+        line-height: 1.48;
+      }
+
+      .condition strong { display: block; margin-bottom: 4px; color: #e2eadd; }
+      .condition.warning { border-left-color: #d9a64a; }
+      .condition.danger { border-left-color: #d47656; }
+      .condition.critical { border-left-color: #d45858; }
+      .condition.good { border-left-color: #8cb67b; }
+      .condition small { display: block; margin-top: 5px; color: #a6b5a8; }
+      .pill {
+        display: inline-flex;
+        margin: 7px 5px 0 0;
+        border: 1px solid #435346;
+        border-radius: 99px;
+        padding: 3px 8px;
+        color: #d3ded5;
+        font-size: .73rem;
+      }
+
+      .timeline { margin-top: 18px; overflow-x: auto; }
+      .timeline h3 { margin: 0 0 8px; color: #c4d59e; font-size: .92rem; }
+      .time-row {
+        display: grid;
+        grid-template-columns: 90px repeat(4, minmax(72px, 1fr));
+        gap: 8px;
+        min-width: 430px;
+        padding: 8px 0;
+        border-bottom: 1px solid #303d33;
+        color: #c5d0c6;
+        font-size: .8rem;
+      }
+
+      .time-row:first-of-type { color: #98aa9b; }
+      .remedy-list { display: grid; gap: 9px; margin-top: 12px; }
+      .remedy {
+        border: 1px solid #39483c;
+        border-radius: 10px;
+        padding: 11px;
+        color: #bac8bc;
+        background: #141d17;
+        font-size: .84rem;
+        line-height: 1.45;
+      }
+
+      .remedy strong { color: #e2eadd; }
+      .remedy button { display: block; margin-top: 8px; padding: 7px 10px; font-size: .8rem; }
+      .status { min-height: 22px; margin: 10px 0 0; color: #c8d6ca; font-size: .83rem; }
+      .footnote { margin-top: 18px; color: #94a49a; font-size: .82rem; line-height: 1.55; }
+      @media (max-width: 760px) {
+        body { padding: 20px 12px 40px; }
+        .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .dashboard { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 470px) { .controls { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="eyebrow">HẢI GIỚI SINH TỒN · BẢN THỬ SỨC KHỎE</span>
+      <h1>Bệnh & chấn thương</h1>
+      <p class="intro">
+        Mô phỏng 20 dạng bệnh và chấn thương phổ biến trong sinh tồn. Chọn tình huống hoặc phối hợp nhiều tác nhân, tua thời gian để xem diễn biến
+        và thử vật phẩm chữa trị trong mô phỏng.
+      </p>
+      <div class="notice">
+        <strong>Chỉ là mô phỏng gameplay, chưa thêm vào game live.</strong>
+        Các chỉ số, thời gian và phương pháp chữa dưới đây là đề xuất cân bằng trong game, không phải hướng dẫn y tế ngoài đời.
+      </div>
+
+      <section class="card" aria-labelledby="setup-title">
+        <div class="heading" style="margin-top:0">
+          <h2 id="setup-title">Thiết lập tình huống</h2>
+          <p>Chọn môi trường, hoạt động và khoảng thời gian phơi nhiễm.</p>
+        </div>
+        <div class="presets" role="group" aria-label="Tình huống mẫu">
+          <button type="button" class="preset-button" data-preset="sun">☀ Phơi nắng lâu</button>
+          <button type="button" class="preset-button" data-preset="wound">🩸 Bị thương khi thu thập</button>
+          <button type="button" class="preset-button" data-preset="poison">☠ Ăn phải cá độc</button>
+          <button type="button" class="preset-button" data-preset="cold">❄ Mưa lạnh ngoài trời</button>
+          <button type="button" class="preset-button" data-preset="injury">🦴 Bong gân / gãy xương</button>
+          <button type="button" class="preset-button" data-preset="insects">🦟 Côn trùng trong rừng ẩm</button>
+          <button type="button" class="preset-button" data-preset="water">💧 Nước bẩn gây tiêu chảy</button>
+          <button type="button" class="preset-button" data-preset="smoke">🌫 Hít khói cháy rừng</button>
+          <button type="button" class="preset-button" data-preset="burn">🔥 Bỏng lửa trại</button>
+          <button type="button" class="preset-button" data-preset="cold-injury">🧊 Tê cóng trong mưa lạnh</button>
+          <button type="button" class="preset-button" data-preset="animal">🐾 Thú hoang tấn công</button>
+          <button type="button" class="preset-button" data-preset="dehydration">🥵 Kiệt sức vì mất nước</button>
+          <button type="button" class="preset-button" data-preset="all">Thử nhiều tác nhân</button>
+          <button type="button" class="preset-button" data-preset="reset">Đặt lại</button>
+        </div>
+        <div class="controls">
+          <div class="control">
+            <label for="environment">Môi trường</label>
+            <select id="environment">
+              <option value="normal">Thời tiết ôn hòa / có bóng râm</option>
+              <option value="sun">Nắng nóng mạnh</option>
+              <option value="rain">Mưa lớn</option>
+              <option value="cold">Rét đậm + mưa</option>
+              <option value="dirty">Vết thương bẩn / nước ô nhiễm</option>
+            </select>
+          </div>
+          <div class="control">
+            <label for="activity">Hoạt động</label>
+            <select id="activity">
+              <option value="rest">Nghỉ ngơi</option>
+              <option value="work">Làm việc nặng</option>
+              <option value="explore">Thám hiểm</option>
+            </select>
+          </div>
+          <div class="control">
+            <label for="elapsed">Thời gian: <strong id="elapsed-label">0 giờ</strong></label>
+            <input id="elapsed" type="range" min="0" max="48" step="0.5" value="0">
+          </div>
+          <div class="control">
+            <label for="sun-exposure">Phơi nắng · <span id="sun-label">0</span>/10</label>
+            <input id="sun-exposure" type="range" min="0" max="10" value="0">
+          </div>
+          <div class="control">
+            <label for="wound-severity">Mức độ vết thương · <span id="wound-label">0</span>/3</label>
+            <input id="wound-severity" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="poison-level">Độc tố · <span id="poison-label">0</span>/3</label>
+            <input id="poison-level" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="infection-risk">Nhiễm trùng · <span id="infection-label">0</span>/3</label>
+            <input id="infection-risk" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="sprain">Bong gân · <span id="sprain-label">0</span>/3</label>
+            <input id="sprain" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="fracture">Gãy xương · <span id="fracture-label">0</span>/3</label>
+            <input id="fracture" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="blister">Phồng rộp · <span id="blister-label">0</span>/3</label>
+            <input id="blister" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="insect-bite">Côn trùng đốt · <span id="insect-bite-label">0</span>/3</label>
+            <input id="insect-bite" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="diarrhea">Tiêu chảy · <span id="diarrhea-label">0</span>/3</label>
+            <input id="diarrhea" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="allergy">Dị ứng · <span id="allergy-label">0</span>/3</label>
+            <input id="allergy" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="smoke">Hít khói · <span id="smoke-label">0</span>/3</label>
+            <input id="smoke" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="sting">Sinh vật biển đốt · <span id="sting-label">0</span>/3</label>
+            <input id="sting" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="dehydration">Mất nước · <span id="dehydration-label">0</span>/3</label>
+            <input id="dehydration" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="burn">Bỏng do lửa · <span id="burn-label">0</span>/3</label>
+            <input id="burn" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="frostbite">Tê cóng · <span id="frostbite-label">0</span>/3</label>
+            <input id="frostbite" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="animal-bite">Thú cắn / cào · <span id="animal-bite-label">0</span>/3</label>
+            <input id="animal-bite" type="range" min="0" max="3" step="1" value="0">
+          </div>
+          <div class="control">
+            <label for="wetness">Độ ướt · <span id="wetness-label">0</span>/100</label>
+            <input id="wetness" type="range" min="0" max="100" value="0">
+          </div>
+          <div class="control">
+            <label for="health">Sức khỏe ban đầu · <span id="health-label">100</span></label>
+            <input id="health" type="range" min="0" max="100" value="100">
+          </div>
+          <div class="control">
+            <label for="stamina">Thể lực ban đầu · <span id="stamina-label">80</span></label>
+            <input id="stamina" type="range" min="0" max="100" value="80">
+          </div>
+          <label class="control check-control"><input id="shelter" type="checkbox"><span>Có nơi trú</span></label>
+          <label class="control check-control"><input id="clean-water" type="checkbox" checked><span>Có nước sạch để rửa</span></label>
+        </div>
+      </section>
+
+      <section class="dashboard" aria-label="Kết quả mô phỏng bệnh và chấn thương">
+        <article class="card">
+          <h2>Chỉ số sau khi tua</h2>
+          <div class="meters">
+            <div class="meter health">
+              <div class="meter-heading"><span>Sức khỏe</span><strong id="health-value">100</strong></div>
+              <div class="meter-track"><div class="meter-value" id="health-bar"></div></div>
+              <p class="readout" id="health-readout"></p>
+            </div>
+            <div class="meter">
+              <div class="meter-heading"><span>Thể lực</span><strong id="stamina-value">80</strong></div>
+              <div class="meter-track"><div class="meter-value" id="stamina-bar"></div></div>
+              <p class="readout" id="stamina-readout"></p>
+            </div>
+            <div class="meter temperature">
+              <div class="meter-heading"><span>Thân nhiệt mô phỏng</span><strong id="temperature-value">37°</strong></div>
+              <div class="meter-track"><div class="meter-value" id="temperature-bar"></div></div>
+              <p class="readout" id="temperature-readout"></p>
+            </div>
+          </div>
+          <div class="condition-list" id="conditions" aria-live="polite"></div>
+        </article>
+        <article class="card">
+          <h2>Tình trạng & cách xử lý trong game</h2>
+          <p class="readout">Vật phẩm ở đây chỉ là nút giả lập, không sửa save hay inventory.</p>
+          <div class="remedy-list" id="remedies"></div>
+          <p class="status" id="action-status" role="status"></p>
+          <div class="timeline" id="timeline"></div>
+        </article>
+      </section>
+      <p class="footnote">
+        Cân bằng đề xuất: vết thương gây chảy máu đến khi băng bó; gãy xương cần nẹp và hạn chế vận động;
+        nhiễm trùng, sốt, độc tố và mất nước làm suy giảm sức khỏe theo thời gian. Có thể phối hợp nhiều tác nhân
+        để xem chúng cộng dồn. Tất cả con số và cách điều trị chỉ phục vụ gameplay.
+      </p>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id)
+      const values = {
+        sun: $('sun-exposure'),
+        wound: $('wound-severity'),
+        poison: $('poison-level'),
+        infection: $('infection-risk'),
+        sprain: $('sprain'),
+        fracture: $('fracture'),
+        blister: $('blister'),
+        insectBite: $('insect-bite'),
+        diarrhea: $('diarrhea'),
+        allergy: $('allergy'),
+        smoke: $('smoke'),
+        sting: $('sting'),
+        dehydration: $('dehydration'),
+        burn: $('burn'),
+        frostbite: $('frostbite'),
+        animalBite: $('animal-bite'),
+        wetness: $('wetness'),
+        health: $('health'),
+        stamina: $('stamina'),
+        elapsed: $('elapsed'),
+      }
+
+      const initialValues = {
+        health: 100,
+        stamina: 80,
+        wetness: 0,
+        sun: 0,
+        wound: 0,
+        poison: 0,
+        infection: 0,
+        sprain: 0,
+        fracture: 0,
+        blister: 0,
+        insectBite: 0,
+        diarrhea: 0,
+        allergy: 0,
+        smoke: 0,
+        sting: 0,
+        dehydration: 0,
+        burn: 0,
+        frostbite: 0,
+        animalBite: 0,
+        elapsed: 0,
+      }
+
+      const conditionInfo = {
+        sunburn: { name: 'Bỏng nắng', icon: '☀', cause: 'Phơi nắng mạnh kéo dài, đặc biệt khi lao động ngoài trời.', remedy: 'Vào bóng râm, uống nước; dùng gel lá thuốc để giảm đau và thời gian hồi.' },
+        heatstroke: { name: 'Say nắng', icon: '♨', cause: 'Nhiệt độ rất cao + hoạt động nặng + thiếu nước.', remedy: 'Dừng hoạt động, vào chỗ mát, bù nước; thuốc hạ nhiệt giúp giảm nguy cơ.' },
+        bleeding: { name: 'Vết thương chảy máu', icon: '🩸', cause: 'Bị cứa, té ngã hoặc trúng đòn khi đang thiếu bảo hộ.', remedy: 'Băng sạch cầm máu; băng bẩn cầm máu nhưng tăng nguy cơ nhiễm trùng.' },
+        infection: { name: 'Nhiễm trùng vết thương', icon: '🦠', cause: 'Vết thương không được rửa/băng sạch, hoặc bị bẩn/ướt kéo dài.', remedy: 'Rửa bằng nước sạch và dùng thuốc sát trùng; nếu để lâu, sức khỏe tiếp tục giảm.' },
+        poisoning: { name: 'Ngộ độc thực phẩm', icon: '☠', cause: 'Ăn cá độc, thức ăn hỏng hoặc vật phẩm nhiễm độc.', remedy: 'Dùng thuốc giải độc; nghỉ và uống nước giúp hạn chế kiệt sức nhưng không loại độc nhanh.' },
+        hypothermia: { name: 'Hạ thân nhiệt', icon: '❄', cause: 'Rét + quần áo ướt + ở ngoài trời quá lâu.', remedy: 'Vào nơi trú, thay đồ khô/sưởi ấm; lửa trại tăng tốc hồi phục.' },
+        sprain: { name: 'Bong gân', icon: '🦶', cause: 'Trượt ngã hoặc di chuyển vội trên địa hình gồ ghề.', remedy: 'Nẹp cố định, nghỉ và tránh thám hiểm cho đến khi hồi phục.' },
+        fracture: { name: 'Gãy xương', icon: '🦴', cause: 'Ngã mạnh, đá lở hoặc tai nạn khi thám hiểm.', remedy: 'Nẹp chắc và trở về nơi trú; vận động khiến chấn thương nặng hơn.' },
+        blisters: { name: 'Phồng rộp', icon: '🩹', cause: 'Đi bộ/làm việc lâu với giày dép hoặc trang bị không phù hợp.', remedy: 'Băng bảo vệ và nghỉ khô ráo; tiếp tục đi xa làm đau tăng.' },
+        insectBites: { name: 'Vết côn trùng đốt', icon: '🦟', cause: 'Ở lâu trong rừng ẩm, đầm lầy hoặc gần tổ côn trùng.', remedy: 'Thuốc xua côn trùng giúp phòng; gel lá thuốc làm dịu vết đốt.' },
+        tropicalFever: { name: 'Sốt do côn trùng', icon: '🌡', cause: 'Vết đốt trong vùng nguy cơ không được xử lý; có độ trễ trước khi phát bệnh.', remedy: 'Thuốc hạ sốt và nghỉ giúp hồi phục; đây là trạng thái game khái quát, không mô phỏng bệnh thật.' },
+        diarrhea: { name: 'Tiêu chảy / mất nước', icon: '💧', cause: 'Nước bẩn hoặc thức ăn hỏng gây rối loạn tiêu hóa.', remedy: 'Uống nước sạch và dùng thuốc đường ruột; hoạt động nặng làm mất nước nhanh hơn.' },
+        allergy: { name: 'Dị ứng / sưng nề', icon: '🌿', cause: 'Tiếp xúc phấn hoa, thực vật hoặc côn trùng gây phản ứng.', remedy: 'Thuốc chống dị ứng làm giảm triệu chứng; phản ứng nặng cần xử lý ngay trong gameplay.' },
+        smoke: { name: 'Hít khói', icon: '🌫', cause: 'Ở gần cháy rừng, núi lửa hoặc lửa trại trong không gian kín.', remedy: 'Rời vùng khói, ra nơi thoáng và nghỉ để hồi sức.' },
+        marineSting: { name: 'Sinh vật biển đốt', icon: '🪼', cause: 'Chạm sứa, cá độc hoặc gai sinh vật khi lội nước/rạn san hô.', remedy: 'Rời khỏi nước, dùng thuốc giảm đau/giải độc trong game và tránh vùng có sinh vật độc.' },
+        dehydration: { name: 'Mất nước nghiêm trọng', icon: '🥵', cause: 'Thiếu nước kéo dài, nắng nóng hoặc mất nước do tiêu chảy.', remedy: 'Uống nước sạch và nghỉ nơi râm mát; thiếu nước tiếp tục sẽ làm suy kiệt nhanh.' },
+        burns: { name: 'Bỏng do lửa', icon: '🔥', cause: 'Chạm lửa trại, cháy rừng hoặc vật thể nóng.', remedy: 'Rời nguồn nhiệt, dùng băng/thuốc chữa bỏng trong game và tránh hoạt động nặng.' },
+        frostbite: { name: 'Tê cóng', icon: '🧊', cause: 'Phơi nhiễm lạnh và ẩm kéo dài, nhất là khi không có nơi trú.', remedy: 'Đến nơi khô ấm, thay đồ và sưởi từ từ; tiếp tục ở ngoài lạnh khiến tổn thương nặng hơn.' },
+        animalBite: { name: 'Thú cắn / cào', icon: '🐾', cause: 'Bị thú hoang tấn công khi thám hiểm hoặc đến gần tổ.', remedy: 'Băng vết thương và dùng thuốc sát trùng; rút lui khỏi khu vực thú dữ.' },
+        exhaustion: { name: 'Kiệt sức', icon: '🥱', cause: 'Làm việc hoặc thám hiểm quá lâu khi thể lực thấp.', remedy: 'Dừng hoạt động, ăn uống và nghỉ tại nơi an toàn để hồi thể lực.' },
+      }
+
+      function clamp(value, min, max) { return Math.max(min, Math.min(max, value)) }
+      function round(value) { return Math.round(value * 10) / 10 }
+      function formatHours(value) {
+        if (value < 1) return `${Math.round(value * 60)} phút`
+        const hours = Math.floor(value)
+        const minutes = Math.round((value - hours) * 60)
+        return minutes ? `${hours} giờ ${minutes} phút` : `${hours} giờ`
+      }
+
+      function getActiveConditions(input, elapsed) {
+        const active = []
+        const environment = $('environment').value
+        const activity = $('activity').value
+        const hasWound = input.wound > 0
+        const dirty = environment === 'dirty' || (!$('clean-water').checked && hasWound)
+        const isOutside = !$('shelter').checked
+        const heat = environment === 'sun' && isOutside
+        const coldWet = environment === 'cold' && isOutside && input.wetness >= 35
+
+        if (heat && input.sun >= 3) {
+          const severity = input.sun >= 8 ? 'severe' : input.sun >= 5 ? 'moderate' : 'mild'
+          active.push({ id: 'sunburn', severity, onset: 2, baseDamage: severity === 'severe' ? 0.6 : severity === 'moderate' ? 0.3 : 0.1, stamina: 1.5 })
+        }
+        if (heat && input.sun >= 6 && input.stamina < 45 && input.health < 75) {
+          active.push({ id: 'heatstroke', severity: input.sun >= 8 ? 'severe' : 'moderate', onset: 1, baseDamage: input.sun >= 8 ? 1.2 : 0.6, stamina: 2 })
+        }
+        if (hasWound) {
+          active.push({
+            id: 'bleeding',
+            severity: input.wound >= 3 ? 'severe' : input.wound === 2 ? 'moderate' : 'mild',
+            onset: 0,
+            baseDamage: input.wound * 0.7,
+            stamina: input.wound * 0.35,
+          })
+          if (dirty && elapsed >= 6) {
+            active.push({ id: 'infection', severity: input.infection >= 2 ? 'severe' : 'moderate', onset: 6, baseDamage: input.infection >= 2 ? 0.9 : 0.45, stamina: 0.5 })
+          }
+        }
+        if (input.infection > 0 && !active.some((entry) => entry.id === 'infection')) {
+          active.push({ id: 'infection', severity: input.infection >= 3 ? 'severe' : 'moderate', onset: 4, baseDamage: input.infection * 0.3, stamina: 0.45 })
+        }
+        if (input.poison > 0) {
+          active.push({ id: 'poisoning', severity: input.poison >= 3 ? 'severe' : input.poison === 2 ? 'moderate' : 'mild', onset: 0.5, baseDamage: input.poison * 0.65, stamina: input.poison * 0.6 })
+        }
+        if (coldWet && elapsed >= 1) {
+          active.push({ id: 'hypothermia', severity: input.wetness >= 70 ? 'severe' : 'moderate', onset: 1, baseDamage: input.wetness >= 70 ? 0.9 : 0.45, stamina: 1 })
+        }
+        if (input.sprain > 0) {
+          active.push({ id: 'sprain', severity: input.sprain >= 3 ? 'severe' : input.sprain === 2 ? 'moderate' : 'mild', onset: 0, baseDamage: 0, stamina: input.sprain * (activity === 'rest' ? 0.15 : 0.55) })
+        }
+        if (input.fracture > 0) {
+          active.push({ id: 'fracture', severity: input.fracture >= 3 ? 'severe' : input.fracture === 2 ? 'moderate' : 'mild', onset: 2, baseDamage: input.fracture * 0.15, stamina: input.fracture * (activity === 'rest' ? 0.25 : 0.8) })
+        }
+        if (input.blister > 0 && activity !== 'rest') {
+          active.push({ id: 'blisters', severity: input.blister >= 3 ? 'severe' : input.blister === 2 ? 'moderate' : 'mild', onset: 1, baseDamage: 0, stamina: input.blister * 0.3 })
+        }
+        if (input.insectBite > 0) {
+          active.push({ id: 'insectBites', severity: input.insectBite >= 3 ? 'severe' : input.insectBite === 2 ? 'moderate' : 'mild', onset: 0, baseDamage: 0, stamina: input.insectBite * 0.15 })
+          if (environment === 'dirty' && elapsed >= 12) {
+            active.push({ id: 'tropicalFever', severity: input.insectBite >= 3 ? 'severe' : 'moderate', onset: 12, baseDamage: input.insectBite * 0.2, stamina: input.insectBite * 0.25 })
+          }
+        }
+        if (input.diarrhea > 0) {
+          active.push({ id: 'diarrhea', severity: input.diarrhea >= 3 ? 'severe' : input.diarrhea === 2 ? 'moderate' : 'mild', onset: 0, baseDamage: input.diarrhea * 0.25, stamina: input.diarrhea * 0.35 })
+        }
+        if (input.allergy > 0) {
+          active.push({ id: 'allergy', severity: input.allergy >= 3 ? 'severe' : input.allergy === 2 ? 'moderate' : 'mild', onset: 0, baseDamage: input.allergy * 0.15, stamina: input.allergy * 0.25 })
+        }
+        if (input.smoke > 0) {
+          active.push({ id: 'smoke', severity: input.smoke >= 3 ? 'severe' : input.smoke === 2 ? 'moderate' : 'mild', onset: 0, baseDamage: input.smoke * 0.25, stamina: input.smoke * 0.5 })
+        }
+        if (input.sting > 0) {
+          active.push({ id: 'marineSting', severity: input.sting >= 3 ? 'severe' : input.sting === 2 ? 'moderate' : 'mild', onset: 0, baseDamage: input.sting * 0.45, stamina: input.sting * 0.4 })
+        }
+        if (input.dehydration > 0) {
+          active.push({ id: 'dehydration', severity: input.dehydration >= 3 ? 'severe' : input.dehydration === 2 ? 'moderate' : 'mild', onset: 0, baseDamage: input.dehydration * 0.35, stamina: input.dehydration * 0.5 })
+        }
+        if (input.burn > 0) {
+          active.push({ id: 'burns', severity: input.burn >= 3 ? 'severe' : input.burn === 2 ? 'moderate' : 'mild', onset: 0, baseDamage: input.burn * 0.5, stamina: input.burn * 0.2 })
+        }
+        if (input.frostbite > 0 || (coldWet && input.wetness >= 70 && elapsed >= 4)) {
+          const severityLevel = input.frostbite || (input.wetness >= 85 ? 3 : 2)
+          active.push({ id: 'frostbite', severity: severityLevel >= 3 ? 'severe' : 'moderate', onset: input.frostbite > 0 ? 0 : 4, baseDamage: severityLevel * 0.25, stamina: severityLevel * 0.35 })
+        }
+        if (input.animalBite > 0) {
+          active.push({ id: 'animalBite', severity: input.animalBite >= 3 ? 'severe' : input.animalBite === 2 ? 'moderate' : 'mild', onset: 0, baseDamage: input.animalBite * 0.6, stamina: input.animalBite * 0.3 })
+        }
+        if (activity !== 'rest' && (input.stamina <= 20 || elapsed >= 8)) {
+          active.push({ id: 'exhaustion', severity: input.stamina <= 10 ? 'severe' : 'moderate', onset: input.stamina <= 20 ? 0 : 4, baseDamage: input.stamina <= 10 ? 0.35 : 0.15, stamina: 1.2 })
+        }
+        return active
+      }
+
+      function simulate(input) {
+        const hours = input.elapsed
+        const activityRate = $('activity').value === 'rest' ? 0 : $('activity').value === 'explore' ? 1.1 : 0.75
+        const effects = getActiveConditions(input, hours)
+        let healthLoss = 0
+        let staminaLoss = 0
+        for (const effect of effects) {
+          const exposureHours = Math.max(0, hours - effect.onset)
+          if (effect.id === 'bleeding') {
+            healthLoss += effect.baseDamage * hours
+            staminaLoss += effect.stamina * hours
+          } else if (exposureHours > 0) {
+            healthLoss += effect.baseDamage * exposureHours
+            staminaLoss += effect.stamina * exposureHours
+          }
+        }
+        if (input.sun >= 3 && $('environment').value === 'sun' && !$('shelter').checked) {
+          healthLoss += Math.max(0, hours - 3) * Math.max(0, input.sun - 2) * 0.07
+        }
+        if ($('activity').value !== 'rest') staminaLoss += activityRate * hours
+        if ($('activity').value === 'rest' && effects.length === 0) {
+          const recovery = hours * 5
+          staminaLoss = -recovery
+        }
+
+        let temperature = 37
+        if ($('environment').value === 'sun') temperature += Math.min(4, input.sun * 0.45)
+        if ($('environment').value === 'cold') temperature -= Math.min(5, input.wetness * 0.045 + hours * 0.6)
+        const worsens = effects.filter((effect) => hours >= effect.onset)
+        const hasInfection = worsens.some((effect) => effect.id === 'infection')
+        const hasHypothermia = worsens.some((effect) => effect.id === 'hypothermia')
+        const conditionHealthLoss = healthLoss
+        return {
+          effects,
+          health: round(clamp(input.health - healthLoss, 0, 100)),
+          healthLoss: round(healthLoss),
+          stamina: round(clamp(input.stamina - staminaLoss, 0, 100)),
+          staminaLoss: round(staminaLoss),
+          temperature: round(temperature),
+          infected: hasInfection,
+          hypothermia: hasHypothermia,
+          conditionHealthLoss,
+        }
+      }
+
+      function severityLabel(severity) {
+        return severity === 'severe' ? 'Nặng' : severity === 'moderate' ? 'Vừa' : 'Nhẹ'
+      }
+
+      function render() {
+        const input = {
+          sun: Number(values.sun.value),
+          wound: Number(values.wound.value),
+          poison: Number(values.poison.value),
+          infection: Number(values.infection.value),
+          sprain: Number(values.sprain.value),
+          fracture: Number(values.fracture.value),
+          blister: Number(values.blister.value),
+          insectBite: Number(values.insectBite.value),
+          diarrhea: Number(values.diarrhea.value),
+          allergy: Number(values.allergy.value),
+          smoke: Number(values.smoke.value),
+          sting: Number(values.sting.value),
+          dehydration: Number(values.dehydration.value),
+          burn: Number(values.burn.value),
+          frostbite: Number(values.frostbite.value),
+          animalBite: Number(values.animalBite.value),
+          wetness: Number(values.wetness.value),
+          health: Number(values.health.value),
+          stamina: Number(values.stamina.value),
+          elapsed: Number(values.elapsed.value),
+        }
+        for (const [id, inputElement] of Object.entries(values)) {
+          const labelId = `${id.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}-label`
+          $(labelId).textContent = inputElement.value
+        }
+        $('elapsed-label').textContent = formatHours(input.elapsed)
+
+        const result = simulate(input)
+        $('health-value').textContent = result.health
+        $('health-bar').style.width = `${result.health}%`
+        $('stamina-value').textContent = result.stamina
+        $('stamina-bar').style.width = `${result.stamina}%`
+        $('temperature-value').textContent = `${result.temperature}°`
+        $('temperature-bar').style.width = `${clamp((result.temperature - 30) / 15 * 100, 0, 100)}%`
+        $('health-readout').textContent = result.health <= 0
+          ? 'Nhân vật gục ngã trong mô phỏng.'
+          : result.healthLoss > 0
+            ? `Mất ${result.healthLoss} sức khỏe do trạng thái đang mắc.`
+            : 'Chưa mất sức khỏe trong khoảng thời gian này.'
+        $('stamina-readout').textContent = result.staminaLoss < 0
+          ? `Nghỉ ngơi hồi ${Math.abs(result.staminaLoss)} thể lực.`
+          : result.staminaLoss > 0
+            ? `Tiêu hao ${result.staminaLoss} thể lực do hoạt động và triệu chứng.`
+            : 'Thể lực chưa thay đổi.'
+        $('temperature-readout').textContent = result.temperature >= 39
+          ? 'Sốt / thân nhiệt tăng do nắng nóng trong mô phỏng.'
+          : result.temperature <= 34
+            ? 'Thân nhiệt thấp, nguy cơ hạ thân nhiệt.'
+            : 'Thân nhiệt ổn định.'
+
+        const conditionCards = result.effects.map((effect) => {
+          const info = conditionInfo[effect.id]
+          const progress = effect.id === 'bleeding'
+            ? `Mất khoảng ${round(effect.baseDamage)} sức khỏe/giờ; vết thương chưa băng vẫn tiếp tục chảy máu.`
+            : effect.id === 'insectBites'
+              ? 'Gây ngứa và giảm thể lực; nếu ở vùng nguy cơ đủ lâu, có thể phát sốt sau 12 giờ.'
+              : ['sprain', 'fracture', 'blisters'].includes(effect.id)
+                ? `${effect.baseDamage > 0 ? `Mất khoảng ${round(effect.baseDamage)} sức khỏe/giờ; ` : ''}${$('activity').value === 'rest' ? 'nghỉ ngơi giúp tránh làm nặng thêm.' : 'tiếp tục hoạt động làm giảm thể lực nhanh hơn.'}`
+                : effect.id === 'diarrhea'
+                  ? `Mất khoảng ${round(effect.baseDamage)} sức khỏe/giờ và tăng nguy cơ mất nước.`
+            : `Bắt đầu ảnh hưởng sau ${formatHours(effect.onset)}; hiện gây khoảng ${round(effect.baseDamage)} sức khỏe/giờ khi đã phát bệnh.`
+          return `<article class="condition ${effect.severity === 'severe' ? 'critical' : effect.severity === 'moderate' ? 'danger' : 'warning'}">
+            <strong>${info.icon} ${info.name} · ${severityLabel(effect.severity)}</strong>
+            <span>Nguyên nhân: ${info.cause}</span>
+            <small>${progress} Thể lực cũng bị ảnh hưởng.</small>
+          </article>`
+        })
+        if (result.health <= 25 && result.health > 0) conditionCards.push(
+          '<article class="condition critical"><strong>! Sinh lực nguy cấp</strong><span>Nhân vật có thể gục ngã nếu chịu thêm tổn thương.</span></article>',
+        )
+        if (!conditionCards.length) conditionCards.push(
+          '<article class="condition good"><strong>✚ Chưa có bệnh/chấn thương</strong><span>Nhân vật ổn định trong tình huống đang chọn.</span></article>',
+        )
+        $('conditions').innerHTML = conditionCards.join('')
+
+        const possible = new Set(result.effects.map((effect) => effect.id))
+        const remedies = []
+        if (possible.has('sunburn')) remedies.push(['Gel lá thuốc', 'Giảm đau bỏng nắng và giảm một nửa thời gian hồi; bóng râm ngăn nặng thêm.', 'sun'])
+        if (possible.has('heatstroke')) remedies.push(['Nước sạch + nơi mát', 'Dừng say nắng; nếu tiếp tục lao động ngoài trời, triệu chứng tăng lại.', 'cool'])
+        if (possible.has('bleeding')) remedies.push(['Băng sạch', 'Cầm chảy máu ngay. Nếu có nước sạch, rửa vết thương trước khi băng.', 'bandage'])
+        if (possible.has('infection')) remedies.push(['Thuốc sát trùng', 'Giảm nhiễm trùng theo thời gian; điều trị muộn không hồi ngay sức khỏe đã mất.', 'antiseptic'])
+        if (possible.has('poisoning')) remedies.push(['Thuốc giải độc', 'Giảm độc tố mạnh; nước và nghỉ giúp duy trì thể trạng trong lúc hồi phục.', 'antidote'])
+        if (possible.has('hypothermia')) remedies.push(['Nơi trú khô + lửa trại', 'Ngăn tiếp tục mất nhiệt; trú ẩm/rét làm triệu chứng nặng hơn.', 'warm'])
+        if (possible.has('sprain') || possible.has('fracture')) remedies.push(['Nẹp + nghỉ ngơi', 'Cố định chấn thương; gãy xương cần thời gian hồi lâu hơn và không nên tiếp tục thám hiểm.', 'splint'])
+        if (possible.has('blisters')) remedies.push(['Băng chân + nghỉ', 'Bảo vệ vùng phồng rộp; giảm hoạt động để tránh đau và tổn thương thêm.', 'blisterCare'])
+        if (possible.has('insectBites') || possible.has('tropicalFever')) remedies.push(['Thuốc xua côn trùng / lá thuốc', 'Làm dịu vết đốt; rời vùng côn trùng và nghỉ nếu đã phát sốt.', 'insectCare'])
+        if (possible.has('diarrhea')) remedies.push(['Nước sạch + thuốc đường ruột', 'Bù nước trong mô phỏng và giảm dần triệu chứng tiêu chảy.', 'gutCare'])
+        if (possible.has('allergy')) remedies.push(['Thuốc chống dị ứng', 'Giảm sưng và ngăn phản ứng dị ứng tiếp tục tăng.', 'allergyCare'])
+        if (possible.has('smoke')) remedies.push(['Rời vùng khói', 'Ra nơi thoáng, dừng hoạt động và nghỉ để hồi phục.', 'smokeCare'])
+        if (possible.has('marineSting')) remedies.push(['Thuốc xử lý vết đốt', 'Giảm độc tố và đau trong mô phỏng; rời khỏi vùng sinh vật biển nguy hiểm.', 'stingCare'])
+        if (possible.has('dehydration')) remedies.push(['Nước sạch + nghỉ nơi râm', 'Bù nước mô phỏng và ngăn tình trạng mất nước tiếp tục làm suy kiệt.', 'rehydrate'])
+        if (possible.has('burns')) remedies.push(['Băng/thuốc chữa bỏng', 'Rời nguồn nhiệt và giảm mức độ bỏng trong mô phỏng.', 'burnCare'])
+        if (possible.has('frostbite')) remedies.push(['Nơi trú ấm + đồ khô', 'Ngăn tiếp xúc lạnh và giảm tê cóng; cần thời gian hồi phục.', 'frostbiteCare'])
+        if (possible.has('animalBite')) remedies.push(['Băng sạch + sát trùng', 'Cầm vết thương và giảm nguy cơ nhiễm trùng; tránh quay lại khu vực thú dữ.', 'animalCare'])
+        if (possible.has('exhaustion')) remedies.push(['Dừng việc + nghỉ ngơi', 'Hồi thể lực và ngăn kiệt sức tăng thêm.', 'exhaustionCare'])
+        if (!remedies.length) remedies.push(['Chưa cần chữa trị', 'Chọn một tình huống mẫu hoặc tăng mức phơi nhiễm để thử.', 'none'])
+        $('remedies').innerHTML = remedies.map(([name, description, id]) => `
+          <div class="remedy"><strong>${name}</strong><br>${description}${id === 'none' ? '' : `<button type="button" data-remedy="${id}">Thử dùng trong mô phỏng</button>`}</div>
+        `).join('')
+
+        const status = $('action-status')
+        if (!status.dataset.message) status.textContent = ''
+        const marks = [...new Set([0, 1, 2, 4, 8, 12, 24, 48].filter((mark) => mark <= input.elapsed))]
+        if (!marks.includes(input.elapsed)) marks.push(input.elapsed)
+        $('timeline').innerHTML = `<h3>Diễn biến dự kiến · sức khỏe / thể lực / nhiệt độ</h3>${marks.map((mark) => {
+          const atTime = simulate({ ...input, elapsed: mark })
+          return `<div class="time-row"><span>${formatHours(mark)}</span><strong>${atTime.health} sức khỏe</strong><strong>${atTime.stamina} thể lực</strong><strong>${atTime.temperature}°</strong><span>${atTime.effects.length} trạng thái</span></div>`
+        }).join('')}`
+
+        document.querySelectorAll('[data-remedy]').forEach((button) => {
+          button.addEventListener('click', () => applyRemedy(button.dataset.remedy))
+        })
+      }
+
+      function applyRemedy(remedy) {
+        const elapsed = Number(values.elapsed.value)
+        const status = $('action-status')
+        switch (remedy) {
+          case 'sun':
+            values.sun.value = '0'
+            $('environment').value = 'normal'
+            status.dataset.message = 'Đã dùng gel lá thuốc và vào bóng râm: bỏng nắng không nặng thêm; hồi phục dần.'
+            break
+          case 'cool':
+            $('environment').value = 'normal'
+            $('activity').value = 'rest'
+            values.stamina.value = String(clamp(Number(values.stamina.value) + 10, 0, 100))
+            status.dataset.message = 'Đã vào nơi mát, dừng lao động và bù nước: say nắng dừng tiến triển.'
+            break
+          case 'bandage':
+            values.wound.value = '0'
+            if ($('clean-water').checked) values.infection.value = String(Math.max(0, Number(values.infection.value) - 1))
+            status.dataset.message = 'Đã băng vết thương: chảy máu dừng. Rửa bằng nước sạch giúp giảm nguy cơ nhiễm trùng.'
+            break
+          case 'antiseptic':
+            values.infection.value = '0'
+            status.dataset.message = 'Đã sát trùng: nhiễm trùng ngừng gây thêm tổn thương; sức khỏe đã mất không tự hồi ngay.'
+            break
+          case 'antidote':
+            values.poison.value = '0'
+            status.dataset.message = 'Đã dùng thuốc giải độc: độc tố bị loại khỏi mô phỏng.'
+            break
+          case 'warm':
+            $('environment').value = 'normal'
+            $('shelter').checked = true
+            values.wetness.value = '0'
+            $('activity').value = 'rest'
+            status.dataset.message = 'Đã vào nơi trú ấm và thay đồ khô: hạ thân nhiệt dừng tiến triển, hồi phục dần.'
+            break
+          case 'splint':
+            values.sprain.value = String(Math.max(0, Number(values.sprain.value) - 1))
+            values.fracture.value = String(Math.max(0, Number(values.fracture.value) - 1))
+            $('activity').value = 'rest'
+            values.stamina.value = String(clamp(Number(values.stamina.value) + Math.min(20, elapsed * 2), 0, 100))
+            status.dataset.message = 'Đã nẹp và nghỉ: giảm một mức độ chấn thương; cần thời gian hồi phục tiếp.'
+            break
+          case 'blisterCare':
+            values.blister.value = '0'
+            $('activity').value = 'rest'
+            status.dataset.message = 'Đã băng bảo vệ và nghỉ: phồng rộp ngừng gây đau khi di chuyển.'
+            break
+          case 'insectCare':
+            values.insectBite.value = '0'
+            $('environment').value = 'normal'
+            $('activity').value = 'rest'
+            status.dataset.message = 'Đã rời vùng côn trùng và chăm sóc vết đốt; trạng thái sốt trong mô phỏng được xử lý.'
+            break
+          case 'gutCare':
+            values.diarrhea.value = '0'
+            $('activity').value = 'rest'
+            values.stamina.value = String(clamp(Number(values.stamina.value) + 10, 0, 100))
+            status.dataset.message = 'Đã dùng nước sạch và thuốc đường ruột: tiêu chảy ngừng gây thêm tổn thất.'
+            break
+          case 'allergyCare':
+            values.allergy.value = '0'
+            status.dataset.message = 'Đã dùng thuốc chống dị ứng: phản ứng ngừng tiến triển.'
+            break
+          case 'smokeCare':
+            values.smoke.value = '0'
+            $('activity').value = 'rest'
+            status.dataset.message = 'Đã rời vùng khói và nghỉ ở nơi thoáng: hít khói ngừng gây thêm tổn thương.'
+            break
+          case 'stingCare':
+            values.sting.value = '0'
+            status.dataset.message = 'Đã xử lý vết đốt và rời vùng nguy hiểm: độc tố sinh vật biển được loại khỏi mô phỏng.'
+            break
+          case 'rehydrate':
+            values.dehydration.value = '0'
+            values.diarrhea.value = '0'
+            $('environment').value = 'normal'
+            $('activity').value = 'rest'
+            values.stamina.value = String(clamp(Number(values.stamina.value) + 15, 0, 100))
+            status.dataset.message = 'Đã uống nước sạch và nghỉ nơi râm: mất nước dừng gây thêm tổn thất.'
+            break
+          case 'burnCare':
+            values.burn.value = String(Math.max(0, Number(values.burn.value) - 1))
+            $('environment').value = 'normal'
+            status.dataset.message = 'Đã rời nguồn nhiệt và băng bỏng: mức độ giảm một bậc, cần thời gian hồi phục.'
+            break
+          case 'frostbiteCare':
+            values.frostbite.value = String(Math.max(0, Number(values.frostbite.value) - 1))
+            $('environment').value = 'normal'
+            $('shelter').checked = true
+            values.wetness.value = '0'
+            $('activity').value = 'rest'
+            status.dataset.message = 'Đã vào nơi trú ấm và thay đồ khô: tê cóng giảm một bậc.'
+            break
+          case 'animalCare':
+            values.animalBite.value = '0'
+            if ($('clean-water').checked) values.infection.value = String(Math.max(0, Number(values.infection.value) - 1))
+            $('activity').value = 'rest'
+            status.dataset.message = 'Đã băng vết cắn và sát trùng: vết thương ngừng gây thêm tổn thất.'
+            break
+          case 'exhaustionCare':
+            $('activity').value = 'rest'
+            values.stamina.value = String(clamp(Number(values.stamina.value) + 25, 0, 100))
+            status.dataset.message = 'Đã dừng hoạt động và nghỉ: thể lực hồi phục, kiệt sức không tiến triển thêm.'
+            break
+          default:
+            return
+        }
+        status.textContent = status.dataset.message
+        render()
+      }
+
+      function setPreset(preset) {
+        const defaults = { ...initialValues }
+        $('environment').value = 'normal'
+        $('activity').value = 'work'
+        $('shelter').checked = false
+        $('clean-water').checked = true
+        if (preset === 'sun') {
+          $('environment').value = 'sun'
+          defaults.sun = 8
+          defaults.stamina = 35
+          defaults.elapsed = 6
+        } else if (preset === 'wound') {
+          $('environment').value = 'dirty'
+          defaults.wound = 2
+          defaults.infection = 2
+          defaults.elapsed = 12
+          $('clean-water').checked = false
+        } else if (preset === 'poison') {
+          $('environment').value = 'normal'
+          defaults.poison = 3
+          defaults.elapsed = 8
+        } else if (preset === 'cold') {
+          $('environment').value = 'cold'
+          defaults.wetness = 80
+          defaults.elapsed = 8
+          $('activity').value = 'explore'
+        } else if (preset === 'injury') {
+          defaults.sprain = 2
+          defaults.fracture = 1
+          defaults.blister = 2
+          defaults.elapsed = 8
+          $('activity').value = 'explore'
+        } else if (preset === 'insects') {
+          $('environment').value = 'dirty'
+          defaults.insectBite = 3
+          defaults.elapsed = 18
+          $('activity').value = 'explore'
+        } else if (preset === 'water') {
+          $('environment').value = 'dirty'
+          defaults.diarrhea = 3
+          defaults.elapsed = 8
+          $('clean-water').checked = false
+        } else if (preset === 'smoke') {
+          defaults.smoke = 3
+          defaults.elapsed = 6
+          defaults.health = 85
+          defaults.stamina = 55
+        } else if (preset === 'burn') {
+          defaults.burn = 3
+          defaults.wound = 1
+          defaults.elapsed = 6
+          defaults.health = 90
+        } else if (preset === 'cold-injury') {
+          $('environment').value = 'cold'
+          defaults.frostbite = 2
+          defaults.wetness = 85
+          defaults.elapsed = 8
+          $('activity').value = 'explore'
+        } else if (preset === 'animal') {
+          defaults.animalBite = 3
+          defaults.infection = 2
+          defaults.elapsed = 10
+          defaults.health = 80
+        } else if (preset === 'dehydration') {
+          $('environment').value = 'sun'
+          defaults.sun = 8
+          defaults.dehydration = 3
+          defaults.stamina = 20
+          defaults.health = 70
+          defaults.elapsed = 10
+          $('activity').value = 'work'
+        } else if (preset === 'all') {
+          $('environment').value = 'cold'
+          defaults.sun = 6
+          defaults.wound = 2
+          defaults.poison = 1
+          defaults.infection = 2
+          defaults.fracture = 1
+          defaults.insectBite = 2
+          defaults.diarrhea = 1
+          defaults.dehydration = 1
+          defaults.burn = 1
+          defaults.animalBite = 1
+          defaults.allergy = 1
+          defaults.smoke = 1
+          defaults.sting = 1
+          defaults.wetness = 75
+          defaults.health = 75
+          defaults.stamina = 28
+          defaults.elapsed = 12
+          $('clean-water').checked = false
+        } else if (preset === 'reset') {
+          defaults.elapsed = 0
+          $('activity').value = 'rest'
+        }
+        for (const [key, value] of Object.entries(defaults)) values[key].value = String(value)
+        $('action-status').textContent = ''
+        delete $('action-status').dataset.message
+        render()
+      }
+
+      for (const input of Object.values(values)) {
+        input.addEventListener('input', () => {
+          $('action-status').textContent = ''
+          delete $('action-status').dataset.message
+          render()
+        })
+        input.addEventListener('change', () => {
+          $('action-status').textContent = ''
+          delete $('action-status').dataset.message
+          render()
+        })
+      }
+      for (const id of ['environment', 'activity', 'shelter', 'clean-water']) {
+        $(id).addEventListener('change', () => {
+          $('action-status').textContent = ''
+          delete $('action-status').dataset.message
+          render()
+        })
+      }
+      document.querySelectorAll('[data-preset]').forEach((button) => {
+        button.addEventListener('click', () => setPreset(button.dataset.preset))
+      })
+      render()
+    </script>
+  </body>
+</html>

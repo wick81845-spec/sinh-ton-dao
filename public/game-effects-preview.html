@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sổ tay hiệu ứng Hải Giới</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #edf3eb;
+        background: #101914;
+        font-synthesis: none;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 28px 16px 54px;
+        background:
+          radial-gradient(ellipse at 9% 0%, #27412c 0, transparent 37%),
+          radial-gradient(ellipse at 100% 100%, #21352b 0, transparent 34%),
+          #101914;
+      }
+
+      main { width: min(1120px, 100%); margin: 0 auto; }
+      .eyebrow { color: #bdd58f; font-size: .73rem; font-weight: 800; letter-spacing: .16em; }
+      h1 { margin: 8px 0; font-size: clamp(1.9rem, 5vw, 3rem); }
+      .intro { max-width: 760px; color: #becbc0; line-height: 1.65; }
+      .notice {
+        margin: 20px 0;
+        border: 1px solid #d5ac55;
+        border-radius: 12px;
+        padding: 13px 15px;
+        color: #f5dfac;
+        background: #352c18;
+        line-height: 1.5;
+      }
+
+      .summary, .grid, .weather-grid { display: grid; gap: 14px; }
+      .summary { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 18px 0 24px; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .weather-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 14px; }
+      .card {
+        border: 1px solid #34463a;
+        border-radius: 15px;
+        padding: 17px;
+        background: linear-gradient(145deg, #1a251e, #151e19);
+        box-shadow: 0 14px 32px #0003;
+      }
+
+      .summary .card { padding: 15px; }
+      .summary strong { display: block; margin-bottom: 5px; font-size: 1.1rem; }
+      .summary span, .muted { color: #aebdb1; font-size: .87rem; line-height: 1.5; }
+      .section-heading { margin: 30px 0 12px; }
+      .section-heading h2 { margin: 0 0 5px; }
+      .section-heading p { margin: 0; color: #aebdb1; line-height: 1.5; }
+      .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+      button, select, input[type="number"] {
+        border: 1px solid #526653;
+        border-radius: 9px;
+        padding: 9px 11px;
+        color: #edf3eb;
+        background: #17211a;
+        font: inherit;
+      }
+
+      button { cursor: pointer; font-weight: 700; }
+      button:hover, button:focus-visible { border-color: #c6df8e; }
+      button[aria-pressed="true"] { border-color: #d2e99b; color: #e1efb5; background: #354c32; }
+      .filter-button { padding: 8px 11px; font-size: .84rem; }
+      .controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+      .control label { display: block; margin: 0 0 6px; color: #bdc9bf; font-size: .85rem; }
+      .control input, .control select { width: 100%; }
+      input[type="range"] { accent-color: #b8d77e; }
+      .check-control { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+      .check-control input { width: auto; accent-color: #b8d77e; }
+      .current-effects { display: grid; gap: 9px; margin-top: 15px; }
+      .effect, .weather-card {
+        border: 1px solid #39483c;
+        border-left: 3px solid #718871;
+        border-radius: 10px;
+        padding: 12px;
+        color: #bac8bc;
+        background: #141d17;
+        font-size: .88rem;
+        line-height: 1.5;
+      }
+
+      .effect strong, .weather-card strong { display: block; color: #e2eadd; }
+      .effect.negative, .weather-card.dangerous { border-left-color: #d47656; }
+      .effect.severe { border-left-color: #d45858; }
+      .effect.positive { border-left-color: #8cb67b; }
+      .effect.display { border-left-color: #8496ac; }
+      .effect.new { border-left-color: #d9a64a; }
+      .tag {
+        display: inline-flex;
+        margin: 6px 5px 0 0;
+        border: 1px solid #435346;
+        border-radius: 99px;
+        padding: 2px 8px;
+        color: #c8d6ca;
+        font-size: .73rem;
+      }
+
+      .tag.live { border-color: #507a51; color: #b8e3b2; }
+      .tag.visual { border-color: #596c83; color: #c0d0e4; }
+      .tag.missing { border-color: #8a6740; color: #f2d19a; }
+      .table-wrap { overflow-x: auto; margin-top: 12px; border: 1px solid #34463a; border-radius: 12px; }
+      table { width: 100%; border-collapse: collapse; min-width: 680px; background: #151e19; }
+      th, td { padding: 10px 12px; border-bottom: 1px solid #303d33; text-align: left; vertical-align: top; font-size: .85rem; }
+      th { color: #c4d59e; background: #1d2a20; }
+      td { color: #c3cec4; }
+      tr:last-child td { border-bottom: 0; }
+      .state-badge { white-space: nowrap; font-size: .75rem; font-weight: 800; }
+      .state-live { color: #a9d8a4; }
+      .state-display { color: #b3c9e2; }
+      .state-partial { color: #f0c77e; }
+      .state-missing { color: #e9a986; }
+      .empty { color: #aebdb1; }
+      .footnote { margin-top: 20px; color: #94a49a; font-size: .82rem; line-height: 1.55; }
+      @media (max-width: 760px) {
+        body { padding: 20px 12px 40px; }
+        .summary { grid-template-columns: 1fr; }
+        .grid, .weather-grid { grid-template-columns: 1fr; }
+        .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 430px) { .controls { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="eyebrow">HẢI GIỚI SINH TỒN · KIỂM KÊ HỆ THỐNG</span>
+      <h1>Sổ tay hiệu ứng tốt & bất lợi</h1>
+      <p class="intro">
+        Bản xem thử này phân biệt hiệu ứng thật sự thay đổi luật chơi, hiệu ứng chỉ hiện bằng mô tả/hình ảnh
+        và những hiệu ứng chưa được triển khai. Chọn chỉ số, trạng thái nghỉ và thời tiết để xem các trạng thái cơ thể hiện tại.
+      </p>
+      <div class="notice">
+        Đây là trang kiểm kê/mô phỏng, không sửa luật game. “Có trong dữ liệu thời tiết” không đồng nghĩa
+        với việc hiệu ứng đó đã gây đúng hậu quả gameplay.
+      </div>
+
+      <section class="summary" aria-label="Tóm tắt tình trạng hiệu ứng">
+        <article class="card"><strong id="weather-count">— kiểu thời tiết</strong><span>Được lấy trực tiếp từ danh mục thời tiết trong mã nguồn.</span></article>
+        <article class="card"><strong>Hiệu ứng cơ thể có thật</strong><span>Đói/khát, thể lực, sức khỏe, nghỉ ngơi và một phần tác động của nóng.</span></article>
+        <article class="card"><strong>Còn thiếu / chỉ hiển thị</strong><span>Hoa mắt, suy giảm hành động theo đói, rét gây sát thương, mưa trơn trượt và nhiều hệ quả thời tiết khác.</span></article>
+      </section>
+
+      <section class="card" aria-labelledby="sim-title">
+        <div class="section-heading" style="margin-top:0">
+          <h2 id="sim-title">Thử trạng thái cơ thể hiện tại</h2>
+          <p>Hiệu ứng liệt kê bên dưới được tính bằng đúng hàm trạng thái hiện có trong game.</p>
+        </div>
+        <div class="controls">
+          <div class="control"><label for="hunger">Đói · <span id="hunger-value">80</span></label><input id="hunger" type="range" min="0" max="100" value="80"></div>
+          <div class="control"><label for="thirst">Khát · <span id="thirst-value">80</span></label><input id="thirst" type="range" min="0" max="100" value="80"></div>
+          <div class="control"><label for="stamina">Thể lực · <span id="stamina-value">80</span></label><input id="stamina" type="range" min="0" max="100" value="80"></div>
+          <div class="control"><label for="health">Sức khỏe · <span id="health-value">100</span></label><input id="health" type="range" min="0" max="100" value="100"></div>
+          <div class="control"><label for="weather">Thời tiết hiện tại</label><select id="weather"></select></div>
+          <label class="control check-control"><input id="resting" type="checkbox" checked><span>Đang nghỉ ngơi</span></label>
+        </div>
+        <div class="current-effects" id="current-effects" aria-live="polite"></div>
+      </section>
+
+      <section aria-labelledby="catalog-title">
+        <div class="section-heading">
+          <h2 id="catalog-title">Hiệu ứng và nguồn tác động trong game</h2>
+          <p>Lọc theo trạng thái triển khai để phân biệt luật đang chạy với phần mới chỉ là ý tưởng.</p>
+        </div>
+        <div class="filters" role="group" aria-label="Lọc danh mục hiệu ứng">
+          <button class="filter-button" type="button" data-filter="all" aria-pressed="true">Tất cả</button>
+          <button class="filter-button" type="button" data-filter="live" aria-pressed="false">Đang tác động gameplay</button>
+          <button class="filter-button" type="button" data-filter="visual" aria-pressed="false">Chỉ hiển thị / mô tả</button>
+          <button class="filter-button" type="button" data-filter="missing" aria-pressed="false">Chưa có</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Trạng thái</th><th>Nguồn / hiệu ứng</th><th>Đang hoạt động thế nào</th><th>Ghi chú</th></tr></thead>
+            <tbody id="effect-catalog"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="weather-title">
+        <div class="section-heading">
+          <h2 id="weather-title">Toàn bộ thời tiết trong dữ liệu</h2>
+          <p>Các chỉ số tầm nhìn/gió/sóng được ghi rõ; trạng thái triển khai nói lên chúng có ảnh hưởng thật hay chỉ được hiển thị.</p>
+        </div>
+        <label class="control" style="max-width:360px">
+          <span class="muted">Tìm thời tiết</span>
+          <input id="weather-search" type="search" placeholder="Ví dụ: bão, rét, sương…" style="width:100%;margin-top:6px">
+        </label>
+        <div class="weather-grid" id="weather-catalog"></div>
+      </section>
+      <p class="footnote">
+        Ghi chú quan trọng: trò chơi hiện chưa có cơ chế bệnh kéo dài, thân nhiệt thực tế, hiệu ứng hoa mắt/nhòe màn hình,
+        giảm chính xác/hiệu suất hành động, vật phẩm chữa thương, kháng thời tiết, độ ướt tích lũy hoặc nhiên liệu lửa trại.
+        Những mục đó được đánh dấu riêng, không giả làm tính năng đã hoàn thiện.
+      </p>
+    </main>
+    <script type="module">
+      import { getBodyStatusEffects } from '/src/modules/survival/services/bodyStatusService.ts'
+      import { survivalConfig } from '/src/modules/survival/data/survivalConfig.ts'
+      import { weatherDefinitions, weatherSeverityLabels } from '/src/modules/world/data/weatherDefinitions.ts'
+
+      const $ = (id) => document.getElementById(id)
+      const weatherSelect = $('weather')
+      const weatherSearch = $('weather-search')
+      const emptyStats = { hunger: 80, thirst: 80, stamina: 80, health: 100, temperature: 28, conditions: [] }
+
+      const effectRows = [
+        ['live', 'Đói thấp (≤25)', `Hồi thể lực khi nghỉ giảm theo mức thiếu ăn. Dưới hoặc bằng ${survivalConfig.criticalNeedThreshold}, sức khỏe giảm ${survivalConfig.health.malnutritionDamagePerHour}/giờ.`, 'Mốc 0: mất thêm sức khỏe theo tốc độ đói lả.'],
+        ['live', 'Khát thấp (≤25)', `Hồi thể lực khi nghỉ giảm theo mức mất nước. Dưới hoặc bằng ${survivalConfig.criticalNeedThreshold}, sức khỏe giảm ${survivalConfig.health.severeDehydrationDamagePerHour}/giờ.`, 'Trời nóng làm nhu cầu nước giảm nhanh hơn.'],
+        ['live', 'Đói/khát chạm 0', `Sức khỏe giảm ${survivalConfig.health.starvationDamagePerHour}/giờ khi đói lả và ${survivalConfig.health.dehydrationDamagePerHour}/giờ khi mất nước nghiêm trọng.`, 'Tử vong xảy ra khi sức khỏe về 0; chưa có đồng hồ tử vong riêng 6/24 giờ.'],
+        ['live', 'Nghỉ ngơi', `Hồi ${survivalConfig.stamina.recoveryPerMinute} thể lực/phút. Hồi ${survivalConfig.health.restRecoveryPerHour} sức khỏe/giờ khi đói/khát đều >${survivalConfig.warningThreshold}.`, 'Sức khỏe không hồi nếu đang hoạt động hoặc nhu cầu ăn/uống thấp.'],
+        ['live', 'Lều lá / lửa trại', 'Mỗi công trình hiện có tại đảo nhà cộng 25% hiệu quả nghỉ; cả hai cùng có thì tổng hệ số là 1.5×.', 'Chưa cần nhiên liệu; lửa trại chưa thể tắt.'],
+        ['live', 'Suy giảm hồi thể lực', 'Đói/khát ≤25 làm chậm hồi; ≤10 áp dụng thêm hệ số giảm. Sức khỏe ≤25 cũng làm hồi thể lực chậm hơn.', 'Chỉ ảnh hưởng hồi thể lực, chưa tăng stamina cost hành động.'],
+        ['live', 'Hành động tiêu hao thể lực', 'Thu thập, câu cá và thám hiểm trừ thể lực theo chi phí từng hành động; không đủ thì hành động bị chặn.', 'Chi phí xem được ở từng hoạt động.'],
+        ['live', 'Sức khỏe thấp', 'Ở mức ≤25 được đánh dấu nguy cấp; sức khỏe 0 làm nhân vật gục ngã.', 'Chiến đấu có thể làm mất sức khỏe và làm rơi túi; hồi sinh đặt lại một phần chỉ số.'],
+        ['live', 'Sự kiện cá nhân', 'Các lựa chọn có thể làm thay đổi sức khỏe, thể lực, đói, khát, tiền, danh tiếng, vật phẩm hoặc khám phá.', 'Tác động theo lựa chọn, không phải hiệu ứng kéo dài.'],
+        ['live', 'Thời tiết nóng', 'Nhiệt độ hiệu dụng ≥5 làm khát giảm nhanh hơn 50%.', 'Bao gồm điều chỉnh nhiệt độ ngày/đêm.'],
+        ['live', 'Thời tiết nguy hiểm/bất lợi', 'Nguy hiểm chặn khởi hành bằng thuyền; bất lợi kéo dài hành trình thêm 50%.', 'Không có sát thương do bão/biển trực tiếp.'],
+        ['live', 'Cá theo thời tiết', 'Một số loài cá chỉ xuất hiện trong thời tiết được cấu hình.', 'Ảnh hưởng khả năng gặp cá, không phải chỉ số cơ thể.'],
+        ['visual', 'No đủ / được cung cấp nước / sung sức / khỏe mạnh', 'Hiện là nhãn và mô tả trạng thái; không tự cộng thêm chỉ số hay buff riêng.', 'Đủ ăn/uống chỉ cho phép hồi phục khi nghỉ và tránh các hệ số phạt.'],
+        ['visual', 'Đói, suy dinh dưỡng, khát, mất nước', 'Hiển thị tên trạng thái, mô tả và thay đổi hình ảnh nhân vật.', 'Mô tả ở một số thẻ nói sức khỏe giảm khi “đói/khát kéo dài”; luật thật chỉ giảm khi nhu cầu ≤10 hoặc bằng 0.'],
+        ['visual', 'Mệt mỏi / kiệt sức', 'Hiển thị theo thể lực thấp; hành động có chi phí cao sẽ bị chặn nếu thiếu thể lực.', 'Chưa có run tay hay giảm tốc độ hành động.'],
+        ['visual', 'Nóng, rét, mưa ướt', 'Hiển thị biểu hiện cơ thể và mô tả thời tiết.', 'Rét chưa gây mất máu; mưa chưa tích lũy độ ướt/hạ thân nhiệt.'],
+        ['visual', 'Sương, tầm nhìn, gió, sóng', 'Dữ liệu thời tiết và mức tầm nhìn/gió/sóng được hiển thị.', 'Ngoài chặn/giãn thời gian đi thuyền, các trị số chưa tác động đường đi.'],
+        ['visual', 'Nhiệt độ ngày/đêm và hình ảnh cơ thể', 'Luật khát dùng nhiệt độ đã cộng thời gian trong ngày; thẻ hình ảnh nóng/rét đọc nhiệt độ thời tiết gốc.', 'Có thể xảy ra nóng nhanh khát nhưng chưa hiện thẻ Nóng tương ứng.'],
+        ['missing', 'Hoa mắt / mờ tầm nhìn do đói', 'Chưa có hiệu ứng màn hình hoặc trạng thái điều khiển.', 'Đề xuất: bắt đầu đói/khát dưới 50; tăng mức độ khi cả hai thấp.'],
+        ['missing', 'Phạt hoạt động nặng do thiếu ăn/uống', 'Chưa cộng thêm thể lực hoặc giảm hiệu suất hành động.', 'Đề xuất trước đó: +25% thể lực khi đói/khát ≤25.'],
+        ['missing', 'Tử vong sau số giờ cạn đói/khát', 'Chưa có bộ đếm 24 giờ đói / 6 giờ mất nước.', 'Hiện tại chỉ mất sức khỏe theo giờ đến 0.'],
+        ['missing', 'Rét, say nắng, mưa và tai biến thời tiết', 'Chưa gây thân nhiệt nguy hiểm, chấn thương, trơn trượt hay giảm tầm nhìn trong logic hành động.', 'Nhiều mô tả thời tiết hứa hẹn ảnh hưởng nhưng chưa có luật tương ứng.'],
+        ['missing', 'Bệnh/chấn thương kéo dài và điều trị', 'Chưa có hiệu ứng tồn tại qua thời gian cần thuốc/chữa trị.', 'Tổn thương hiện chủ yếu là trừ sức khỏe trực tiếp.'],
+        ['missing', 'Hiệu ứng có lợi từ món ăn / đồ uống', 'Đồ ăn/uống chỉ hồi thanh đói/khát theo giá trị vật phẩm.', 'Chưa có buff sức khỏe, thể lực, kháng lạnh/nóng hoặc thời lượng.'],
+      ]
+
+      const stateLabel = {
+        live: ['Đang chạy', 'state-live'],
+        visual: ['Chỉ hiển thị', 'state-display'],
+        missing: ['Chưa có', 'state-missing'],
+      }
+
+      function escapeHtml(text) {
+        return String(text).replace(/[&<>"']/g, (character) => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        })[character])
+      }
+
+      function drawEffectCatalog(filter = 'all') {
+        const rows = effectRows.filter(([state]) => filter === 'all' || filter === state)
+        $('effect-catalog').innerHTML = rows.map(([state, name, impact, note]) => `
+          <tr>
+            <td><span class="state-badge ${stateLabel[state][1]}">${stateLabel[state][0]}</span></td>
+            <td><strong>${escapeHtml(name)}</strong></td>
+            <td>${escapeHtml(impact)}</td>
+            <td>${escapeHtml(note)}</td>
+          </tr>`).join('')
+      }
+
+      function weatherImpact(weather) {
+        const notes = []
+        if (weather.temperatureDelta >= 5) notes.push('Tác động thật: khát nhanh hơn 50%')
+        if (weather.severity === 'dangerous') notes.push('Tác động thật: chặn khởi hành thuyền')
+        else if (weather.severity === 'adverse') notes.push('Tác động thật: hành trình thuyền lâu hơn 50%')
+        if (weather.visibility < 1) notes.push(`Tầm nhìn ${Math.round(weather.visibility * 100)}%: hiện chủ yếu là dữ liệu hiển thị`)
+        if (weather.wind > 0) notes.push(`Gió ${weather.wind}/10: hiện chưa có lực cản riêng`)
+        if (weather.sea > 0) notes.push(`Sóng ${weather.sea}/10: hiện chưa gây hư hại trực tiếp`)
+        if (['drizzle', 'moderate_rain', 'heavy_rain', 'tropical_shower', 'thunderstorm', 'lightning_storm'].includes(weather.id)) {
+          notes.push('Hiển thị trạng thái ướt; chưa tích lũy độ ướt')
+        }
+        if (!notes.length) notes.push('Chủ yếu là bối cảnh/hiển thị; có thể ảnh hưởng danh sách cá hoặc sự kiện')
+        return notes
+      }
+
+      function drawWeatherCatalog(query = '') {
+        const normalized = query.trim().toLocaleLowerCase('vi')
+        const matches = weatherDefinitions.filter((weather) => (
+          `${weather.name} ${weather.group} ${weather.description}`.toLocaleLowerCase('vi').includes(normalized)
+        ))
+        $('weather-catalog').innerHTML = matches.map((weather) => `
+          <article class="weather-card ${weather.severity}">
+            <strong>${weather.icon} ${escapeHtml(weather.name)}</strong>
+            <span class="tag">${weatherSeverityLabels[weather.severity]}</span>
+            <span class="tag">Nhiệt ${weather.temperatureDelta > 0 ? '+' : ''}${weather.temperatureDelta}°</span>
+            <span class="tag">Tầm nhìn ${Math.round(weather.visibility * 100)}%</span>
+            <span class="tag">Gió ${weather.wind}/10</span>
+            <span class="tag">Sóng ${weather.sea}/10</span>
+            <p>${escapeHtml(weather.description)}</p>
+            <p>${weatherImpact(weather).map(escapeHtml).join(' · ')}</p>
+          </article>`).join('')
+        if (!matches.length) $('weather-catalog').innerHTML = '<p class="empty">Không tìm thấy kiểu thời tiết phù hợp.</p>'
+      }
+
+      function drawBodyEffects() {
+        const stats = {
+          ...emptyStats,
+          hunger: Number($('hunger').value),
+          thirst: Number($('thirst').value),
+          stamina: Number($('stamina').value),
+          health: Number($('health').value),
+        }
+        const weather = weatherDefinitions.find((entry) => entry.id === weatherSelect.value)
+        for (const id of ['hunger', 'thirst', 'stamina', 'health']) $(`${id}-value`).textContent = stats[id]
+        const effects = getBodyStatusEffects(stats, weather, $('resting').checked)
+        $('current-effects').innerHTML = effects.length
+          ? effects.map((effect) => `
+            <article class="effect ${effect.severity === 'positive' ? 'positive' : effect.severity === 'severe' ? 'severe' : 'negative'}">
+              <strong>${escapeHtml(effect.icon)} ${escapeHtml(effect.name)} · ${escapeHtml(effect.severity)}</strong>
+              <span>${escapeHtml(effect.appearance)}</span><br>
+              <span>Nguyên nhân: ${escapeHtml(effect.cause)}</span><br>
+              <span>Tác động theo mã hiện tại: ${escapeHtml(effect.impact)}</span>
+            </article>`).join('')
+          : '<p class="empty">Hiện không có hiệu ứng cơ thể nổi bật ở các giá trị đã chọn.</p>'
+      }
+
+      for (const weather of weatherDefinitions) {
+        const option = document.createElement('option')
+        option.value = weather.id
+        option.textContent = `${weather.icon} ${weather.name} · ${weatherSeverityLabels[weather.severity]}`
+        weatherSelect.append(option)
+      }
+      $('weather-count').textContent = `${weatherDefinitions.length} kiểu thời tiết`
+      drawEffectCatalog()
+      drawWeatherCatalog()
+      drawBodyEffects()
+
+      for (const id of ['hunger', 'thirst', 'stamina', 'health', 'weather', 'resting']) {
+        $(id).addEventListener('input', drawBodyEffects)
+        $(id).addEventListener('change', drawBodyEffects)
+      }
+      weatherSearch.addEventListener('input', () => drawWeatherCatalog(weatherSearch.value))
+      document.querySelectorAll('[data-filter]').forEach((button) => {
+        button.addEventListener('click', () => {
+          document.querySelectorAll('[data-filter]').forEach((item) => item.setAttribute('aria-pressed', String(item === button)))
+          drawEffectCatalog(button.dataset.filter)
+        })
+      })
+    </script>
+  </body>
+</html>

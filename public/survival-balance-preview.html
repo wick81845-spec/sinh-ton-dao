@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mô phỏng cân bằng đói khát</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #ecf4e8;
+        background: #101914;
+        font-synthesis: none;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 32px 18px;
+        background:
+          radial-gradient(ellipse at 12% 0%, #27412c 0, transparent 38%),
+          radial-gradient(ellipse at 100% 100%, #21352b 0, transparent 34%),
+          #101914;
+      }
+
+      main { width: min(950px, 100%); margin: 0 auto; }
+      .eyebrow { color: #b7ce8c; font-size: .75rem; font-weight: 800; letter-spacing: .16em; }
+      h1 { margin: 8px 0; font-size: clamp(1.8rem, 5vw, 3rem); }
+      .intro { max-width: 700px; color: #becbc0; line-height: 1.65; }
+      .notice {
+        margin: 22px 0;
+        border: 1px solid #d5ac55;
+        border-radius: 12px;
+        padding: 13px 15px;
+        color: #f5dfac;
+        background: #352c18;
+        line-height: 1.5;
+      }
+
+      .controls, .comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+      .card {
+        border: 1px solid #34463a;
+        border-radius: 16px;
+        padding: 20px;
+        background: linear-gradient(145deg, #1a251e, #151e19);
+        box-shadow: 0 16px 38px #0003;
+      }
+
+      .card h2 { margin: 0 0 14px; font-size: 1.05rem; }
+      .current h2 { color: #b5c3b9; }
+      .proposal h2 { color: #d3ec9f; }
+      .field-label { display: block; margin: 14px 0 7px; color: #c5d0c6; font-size: .9rem; }
+      .number-row { display: flex; align-items: center; gap: 10px; }
+      input[type="number"] {
+        width: 96px;
+        border: 1px solid #536856;
+        border-radius: 9px;
+        padding: 9px 10px;
+        color: #f4f6ed;
+        background: #101712;
+        font: inherit;
+      }
+
+      input[type="range"] { width: 100%; accent-color: #b8d77e; }
+      .unit { color: #93a398; font-size: .86rem; }
+      .meter { margin-top: 20px; }
+      .meter-heading { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 7px; font-size: .9rem; }
+      .meter-track { height: 13px; overflow: hidden; border-radius: 99px; background: #344039; }
+      .meter-value { height: 100%; width: 100%; border-radius: inherit; background: linear-gradient(90deg, #e59b51, #f3d16f); transition: width .2s ease; }
+      .thirst-meter .meter-value { background: linear-gradient(90deg, #4aabce, #91dcec); }
+      .warning { min-height: 20px; margin: 6px 0 0; color: #eab17a; font-size: .8rem; }
+      .timeline { margin-top: 18px; border-top: 1px solid #34463a; padding-top: 14px; }
+      .timeline h3 { margin: 0 0 10px; font-size: .9rem; color: #b6c8b7; }
+      .time-row { display: grid; grid-template-columns: 55px 1fr 1fr; gap: 10px; padding: 6px 0; color: #dce5dc; font-size: .86rem; }
+      .time-row span:first-child { color: #9faf9f; }
+      .time-row strong { font-variant-numeric: tabular-nums; }
+      .effects { display: grid; gap: 8px; margin-top: 16px; }
+      .effect {
+        border: 1px solid #39483c;
+        border-left: 3px solid #718871;
+        border-radius: 9px;
+        padding: 10px 12px;
+        color: #bac8bc;
+        background: #141d17;
+        font-size: .84rem;
+        line-height: 1.45;
+      }
+      .effect strong { display: block; margin-bottom: 3px; color: #e2eadd; }
+      .effect.warning { border-left-color: #d9a64a; }
+      .effect.danger { border-left-color: #d47656; }
+      .effect.critical { border-left-color: #d45858; }
+      .effect.healthy { border-left-color: #8cb67b; }
+      .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+      button {
+        border: 1px solid #526653;
+        border-radius: 10px;
+        padding: 10px 14px;
+        color: #e9f1e7;
+        background: #202c23;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button:hover, button:focus-visible { border-color: #c6df8e; background: #2a3b2b; }
+      button[aria-pressed="true"] { border-color: #d2e99b; color: #e1efb5; background: #354c32; }
+      .summary {
+        margin-top: 16px;
+        border-radius: 12px;
+        padding: 14px 16px;
+        color: #c7d4ca;
+        background: #18231c;
+        line-height: 1.55;
+      }
+
+      .death-clock {
+        margin-top: 16px;
+        border: 1px solid #70443d;
+        border-radius: 12px;
+        padding: 14px 15px;
+        color: #efc3ab;
+        background: #2a1b19;
+        line-height: 1.5;
+      }
+
+      .death-clock strong { color: #ffcfad; }
+      .footnote { margin-top: 18px; color: #93a398; font-size: .82rem; line-height: 1.55; }
+      @media (max-width: 700px) {
+        body { padding: 22px 13px; }
+        .controls, .comparison { grid-template-columns: 1fr; }
+        .card { padding: 16px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="eyebrow">HẢI GIỚI SINH TỒN · BẢN THỬ CÂN BẰNG</span>
+      <h1>Đói & khát khi sinh tồn</h1>
+      <p class="intro">
+        Chọn nghỉ hay làm việc và tua thời gian để xem nhu cầu giảm thế nào.
+        Đây chỉ là mô phỏng để chốt nhịp chơi; chưa thay đổi dữ liệu hay luật trong game.
+      </p>
+      <div class="notice">
+        <strong>Phương án đang thử:</strong> lúc nghỉ đói giảm 10 và khát giảm 14 mỗi giờ;
+        lúc làm việc giảm nhanh hơn 50% (15 và 21 mỗi giờ). Trời nóng vẫn làm khát tăng thêm.
+      </div>
+
+      <section class="controls" aria-label="Điều khiển mô phỏng">
+        <article class="card">
+          <h2>Trạng thái hiện tại</h2>
+          <label class="field-label" for="initial-hunger">Đói ban đầu</label>
+          <div class="number-row">
+            <input id="initial-hunger" type="number" min="0" max="100" value="100">
+            <span class="unit">/ 100</span>
+          </div>
+          <label class="field-label" for="initial-thirst">Khát ban đầu</label>
+          <div class="number-row">
+            <input id="initial-thirst" type="number" min="0" max="100" value="100">
+            <span class="unit">/ 100</span>
+          </div>
+        </article>
+        <article class="card">
+          <h2>Thử tình huống</h2>
+          <span class="field-label">Bạn đang làm gì?</span>
+          <div class="actions" role="group" aria-label="Chọn trạng thái hoạt động">
+            <button type="button" data-mode="idle" aria-pressed="true">Đang nghỉ / đi lại</button>
+            <button type="button" data-mode="working" aria-pressed="false">Đang làm việc</button>
+          </div>
+          <label class="field-label" for="hours">Tua thời gian: <strong id="hours-label">2 giờ</strong></label>
+          <input id="hours" type="range" min="0" max="12" step="0.5" value="2">
+          <label class="number-row" style="margin-top: 15px">
+            <input id="hot-weather" type="checkbox">
+            <span class="unit">Thời tiết nóng (khát tăng thêm 50%)</span>
+          </label>
+          <div class="actions">
+            <button type="button" id="reset">Đặt lại 100 / 100</button>
+          </div>
+        </article>
+      </section>
+
+      <div class="comparison" aria-live="polite">
+        <article class="card current">
+          <h2>Mức hiện tại trong game · đang nghỉ</h2>
+          <div class="meter">
+            <div class="meter-heading"><span>Đói</span><strong id="current-hunger">100</strong></div>
+            <div class="meter-track"><div class="meter-value" id="current-hunger-bar"></div></div>
+            <p class="warning" id="current-hunger-warning"></p>
+          </div>
+          <div class="meter thirst-meter">
+            <div class="meter-heading"><span>Khát</span><strong id="current-thirst">100</strong></div>
+            <div class="meter-track"><div class="meter-value" id="current-thirst-bar"></div></div>
+            <p class="warning" id="current-thirst-warning"></p>
+          </div>
+          <div class="timeline" id="current-timeline"></div>
+          <div class="effects" id="current-effects" aria-label="Bất lợi tại mức hiện tại"></div>
+        </article>
+        <article class="card proposal">
+          <h2>Phương án đề xuất · <span id="mode-label">đang nghỉ</span></h2>
+          <div class="meter">
+            <div class="meter-heading"><span>Đói</span><strong id="proposed-hunger">100</strong></div>
+            <div class="meter-track"><div class="meter-value" id="proposed-hunger-bar"></div></div>
+            <p class="warning" id="proposed-hunger-warning"></p>
+          </div>
+          <div class="meter thirst-meter">
+            <div class="meter-heading"><span>Khát</span><strong id="proposed-thirst">100</strong></div>
+            <div class="meter-track"><div class="meter-value" id="proposed-thirst-bar"></div></div>
+            <p class="warning" id="proposed-thirst-warning"></p>
+          </div>
+          <div class="timeline" id="proposed-timeline"></div>
+          <div class="effects" id="proposed-effects" aria-label="Bất lợi theo phương án đề xuất"></div>
+        </article>
+      </div>
+      <p class="summary" id="summary" role="status"></p>
+      <p class="death-clock" id="death-clock" role="status"></p>
+      <p class="footnote">
+        Quy ước trong bản thử: chỉ số chạy theo thời gian thực khi người chơi đang online;
+        khi đang làm việc, đói/khát tăng tốc theo thời lượng hoạt động. Chưa trừ một khoản cố định
+        mỗi lần bấm để tránh bị phạt kép cùng với hao hụt theo thời gian. Đồng hồ tử vong chỉ tính
+        từ lúc thanh tương ứng chạm 0; ăn hoặc uống sẽ đặt lại đồng hồ nhu cầu đó.
+      </p>
+    </main>
+    <script>
+      const byId = (id) => document.getElementById(id)
+      const initialHunger = byId('initial-hunger')
+      const initialThirst = byId('initial-thirst')
+      const hours = byId('hours')
+      const hotWeather = byId('hot-weather')
+      const modeButtons = [...document.querySelectorAll('[data-mode]')]
+      let mode = 'idle'
+
+      function safeNumber(input) {
+        const value = Number(input.value)
+        return Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0))
+      }
+
+      function remaining(start, loss) {
+        return Math.max(0, start - loss)
+      }
+
+      function formatDuration(hours) {
+        const totalMinutes = Math.max(0, Math.ceil(hours * 60))
+        const wholeHours = Math.floor(totalMinutes / 60)
+        const minutes = totalMinutes % 60
+        if (wholeHours === 0) return `${minutes} phút`
+        if (minutes === 0) return `${wholeHours} giờ`
+        return `${wholeHours} giờ ${minutes} phút`
+      }
+
+      function stateLabel(value, need) {
+        if (value <= 0) return need === 'hunger' ? 'Đói lả' : 'Mất nước nghiêm trọng'
+        if (value <= 10) return need === 'hunger' ? 'Suy dinh dưỡng' : 'Mất nước'
+        if (value <= 25) return need === 'hunger' ? 'Đói' : 'Khát'
+        if (value <= 50) return need === 'hunger' ? 'Đói cồn cào' : 'Khát nhiều'
+        if (value <= 75) return need === 'hunger' ? 'Bắt đầu đói' : 'Bắt đầu khát'
+        return 'Ổn định'
+      }
+
+      function getEffects(hunger, thirst) {
+        const level = Math.min(hunger, thirst)
+        const effects = []
+        if (level <= 10) {
+          effects.push({
+            className: 'critical',
+            title: 'Nguy kịch',
+            text: 'Hoa mắt rõ, tay run; sức khỏe bắt đầu giảm. Khi đói hoặc khát chạm 0, sức khỏe tụt nhanh hơn và có thể gục ngã.',
+          })
+        } else if (level <= 25) {
+          effects.push({
+            className: 'danger',
+            title: 'Kiệt quệ',
+            text: 'Choáng khi hoạt động nặng; tốn thêm 25% thể lực cho thu thập, câu cá và thám hiểm. Hồi thể lực khi nghỉ giảm 50%.',
+          })
+        } else if (level <= 50) {
+          effects.push({
+            className: 'warning',
+            title: 'Đói cồn cào / khát nhiều',
+            text: 'Thỉnh thoảng hoa mắt, khó tập trung; hồi thể lực khi nghỉ giảm 20%. Chưa mất máu chỉ vì chạm mốc này.',
+          })
+        } else if (level <= 75) {
+          effects.push({
+            className: '',
+            title: 'Bắt đầu thiếu hụt',
+            text: 'Bụng cồn cào hoặc khô miệng; chưa có phạt gameplay để người chơi kịp chuẩn bị.',
+          })
+        } else {
+          effects.push({
+            className: 'healthy',
+            title: 'Thể trạng ổn',
+            text: 'Chưa có bất lợi do đói hoặc khát.',
+          })
+        }
+
+        if (hunger <= 50 && thirst <= 50) {
+          effects.push({
+            className: 'warning',
+            title: 'Cả hai nhu cầu đều thấp',
+            text: 'Mệt lả và khó tập trung hơn; hiệu ứng hoa mắt xuất hiện thường xuyên hơn.',
+          })
+        }
+
+        return effects
+      }
+
+      function paint(prefix, hunger, thirst, timeline, duration, hungerRate, thirstRate, effectsElement) {
+        for (const [need, value] of [['hunger', hunger], ['thirst', thirst]]) {
+          byId(`${prefix}-${need}`).textContent = value.toFixed(1).replace(/\.0$/, '')
+          byId(`${prefix}-${need}-bar`).style.width = `${value}%`
+          const warning = byId(`${prefix}-${need}-warning`)
+          const label = stateLabel(value, need)
+          warning.textContent = label === 'Ổn định' ? '' : `Trạng thái: ${label}`
+        }
+        const marks = [...new Set([0, 1, 2, 4, 8, 12].filter((mark) => mark <= duration))]
+        if (!marks.includes(duration)) marks.push(duration)
+        timeline.innerHTML = `<h3>Dự kiến theo thời gian · Đói / Khát</h3>${marks.map((mark) => {
+          const hungerAt = remaining(safeNumber(initialHunger), hungerRate * mark)
+          const thirstAt = remaining(safeNumber(initialThirst), thirstRate * mark)
+          return `<div class="time-row"><span>${mark} giờ</span><strong>${hungerAt.toFixed(1)} đói</strong><strong>${thirstAt.toFixed(1)} khát</strong></div>`
+        }).join('')}`
+        effectsElement.innerHTML = getEffects(hunger, thirst).map((effect) => (
+          `<div class="effect ${effect.className}"><strong>${effect.title}</strong>${effect.text}</div>`
+        )).join('')
+      }
+
+      function render() {
+        const duration = Number(hours.value)
+        const startHunger = safeNumber(initialHunger)
+        const startThirst = safeNumber(initialThirst)
+        const multiplier = mode === 'working' ? 1.5 : 1
+        const currentThirstRate = 9 * (hotWeather.checked ? 1.5 : 1)
+        const proposedThirstRate = 14 * multiplier * (hotWeather.checked ? 1.5 : 1)
+        const currentHungerRate = 6
+        const proposedHungerRate = 10 * multiplier
+        const currentHunger = remaining(startHunger, currentHungerRate * duration)
+        const currentThirst = remaining(startThirst, currentThirstRate * duration)
+        const proposedHunger = remaining(startHunger, proposedHungerRate * duration)
+        const proposedThirst = remaining(startThirst, proposedThirstRate * duration)
+        byId('hours-label').textContent = `${duration} ${duration === 1 ? 'giờ' : 'giờ'}`
+        byId('mode-label').textContent = mode === 'working' ? 'đang làm việc' : 'đang nghỉ'
+        paint('current', currentHunger, currentThirst, byId('current-timeline'), duration, currentHungerRate, currentThirstRate, byId('current-effects'))
+        paint('proposed', proposedHunger, proposedThirst, byId('proposed-timeline'), duration, proposedHungerRate, proposedThirstRate, byId('proposed-effects'))
+        byId('summary').textContent = mode === 'working'
+          ? `Sau ${duration} giờ làm việc liên tục, phương án đề xuất còn ${proposedHunger.toFixed(1)} đói và ${proposedThirst.toFixed(1)} khát. Làm việc tiêu hao nhu cầu nhanh hơn nghỉ, nhưng không bị trừ thêm ngay khi bấm hành động.`
+          : `Sau ${duration} giờ nghỉ hoặc đi lại, phương án đề xuất còn ${proposedHunger.toFixed(1)} đói và ${proposedThirst.toFixed(1)} khát. Khi làm việc, mức tụt sẽ tăng thêm 50%.`
+
+        const hoursUntilHungerZero = startHunger / proposedHungerRate
+        const hoursUntilThirstZero = startThirst / proposedThirstRate
+        const hoursUntilStarvationDeath = hoursUntilHungerZero + 24
+        const hoursUntilDehydrationDeath = hoursUntilThirstZero + 6
+        const earlierDeath = Math.min(hoursUntilStarvationDeath, hoursUntilDehydrationDeath)
+        const deathReason = hoursUntilDehydrationDeath <= hoursUntilStarvationDeath
+          ? 'mất nước'
+          : 'đói lả'
+        const remainingToDeath = Math.max(0, earlierDeath - duration)
+        const deathClock = byId('death-clock')
+        deathClock.innerHTML = earlierDeath <= duration
+          ? `<strong>Trong kịch bản này, nhân vật đã tử vong do ${deathReason}</strong> sau khoảng ${formatDuration(earlierDeath)} nếu không ăn hoặc uống.`
+          : `<strong>Ước tính tử vong sớm nhất do ${deathReason}:</strong> khoảng ${formatDuration(earlierDeath)} kể từ lúc bắt đầu ở mức hiện tại. Còn khoảng ${formatDuration(remainingToDeath)} sau mốc mô phỏng đang chọn.`
+      }
+
+      for (const input of [initialHunger, initialThirst, hours, hotWeather]) {
+        input.addEventListener('input', render)
+        input.addEventListener('change', render)
+      }
+      modeButtons.forEach((button) => button.addEventListener('click', () => {
+        mode = button.dataset.mode
+        modeButtons.forEach((entry) => entry.setAttribute('aria-pressed', String(entry === button)))
+        render()
+      }))
+      byId('reset').addEventListener('click', () => {
+        initialHunger.value = '100'
+        initialThirst.value = '100'
+        hours.value = '2'
+        hotWeather.checked = false
+        mode = 'idle'
+        modeButtons.forEach((entry) => entry.setAttribute('aria-pressed', String(entry.dataset.mode === mode)))
+        render()
+      })
+      render()
+    </script>
+  </body>
+</html>

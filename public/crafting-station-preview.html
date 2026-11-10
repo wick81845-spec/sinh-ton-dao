@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mô phỏng chế tạo tại công trình</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #101914;
+        color: #e8eee6;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+      }
+      * { box-sizing: border-box; }
+      body {
+        min-width: 320px;
+        margin: 0;
+        padding: 28px 18px 54px;
+        background: radial-gradient(ellipse at 9% 4%, #203629 0, transparent 40%), radial-gradient(ellipse at 92% 17%, #26382b 0, transparent 33%), #101914;
+      }
+      button { font: inherit; }
+      button:focus-visible { outline: 2px solid #d5bd79; outline-offset: 3px; }
+      button:disabled { cursor: not-allowed; opacity: .46; }
+      .page { width: min(1120px, 100%); margin: 0 auto; }
+      .eyebrow, .kicker { color: #a9bd8c; font-size: .72rem; font-weight: 800; letter-spacing: .15em; }
+      h1 { margin: 9px 0 7px; font-size: clamp(1.75rem, 5vw, 2.45rem); letter-spacing: -.04em; }
+      h2 { margin: 5px 0 0; font-size: 1.15rem; }
+      h3 { margin: 0; font-size: .95rem; }
+      .intro { max-width: 760px; margin: 0; color: #aebbad; line-height: 1.65; }
+      .notice { margin: 22px 0; padding: 13px 15px; border: 1px solid #796a3d; border-radius: 12px; background: #282619; color: #e5d9ae; font-size: .9rem; line-height: 1.55; }
+      .notice strong { color: #f1e7c2; }
+      .layout { display: grid; grid-template-columns: minmax(0, 1fr) 315px; gap: 16px; align-items: start; }
+      .main-column, .side-column { display: grid; gap: 15px; }
+      .panel { border: 1px solid #35443a; border-radius: 16px; background: linear-gradient(150deg, #1d2921, #17211b 64%); box-shadow: 0 14px 36px #07100b55; }
+      .panel-pad { padding: 18px; }
+      .panel-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+      .muted { color: #a5b2a4; font-size: .78rem; line-height: 1.5; }
+      .station-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 14px; }
+      .station { display: grid; grid-template-columns: 39px minmax(0,1fr) auto; gap: 9px; align-items: center; padding: 10px; border: 1px solid #39483e; border-radius: 11px; background: #17211a; }
+      .station-icon { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid #4d5942; border-radius: 10px; background: #2b3426; font-size: 1.32rem; }
+      .station strong { display: block; font-size: .78rem; }
+      .station small { display: block; margin-top: 3px; color: #9baa99; font-size: .68rem; line-height: 1.35; }
+      .toggle { min-height: 31px; padding: 0 9px; border: 1px solid #647454; border-radius: 8px; color: #e2e8d7; background: #35422e; font-size: .71rem; font-weight: 700; cursor: pointer; }
+      .toggle.off { border-color: #4a544b; color: #aab4aa; background: #222b24; }
+      .station.on { border-color: #697e54; background: linear-gradient(120deg, #26352a, #1c2820); }
+      .filter-tabs { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+      .tab, .secondary, .craft-button, .fuel-button { min-height: 34px; padding: 0 11px; border: 1px solid #3c4b40; border-radius: 8px; color: #c3cec1; background: #202b23; font-size: .75rem; font-weight: 700; cursor: pointer; }
+      .tab[aria-pressed="true"] { border-color: #91a778; color: #f3f0d7; background: #35432f; }
+      .recipe-list { display: grid; gap: 10px; margin-top: 14px; }
+      .recipe { padding: 14px; border: 1px solid #3a493e; border-radius: 12px; background: #17211a; }
+      .recipe-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+      .recipe-name { display: flex; gap: 10px; align-items: center; }
+      .recipe-icon { display: grid; width: 42px; height: 42px; flex: 0 0 42px; place-items: center; border: 1px solid #536147; border-radius: 12px; background: #303b2b; font-size: 1.45rem; }
+      .recipe-title small { display: block; margin-top: 4px; color: #96a594; font-size: .68rem; }
+      .recipe-note { margin: 10px 0 0; color: #a7b3a5; font-size: .73rem; line-height: 1.45; }
+      .recipe-output { flex: 0 0 auto; color: #e5d89d; font-size: .75rem; font-weight: 800; }
+      .ingredients { display: grid; gap: 6px; margin-top: 12px; }
+      .ingredient { display: flex; justify-content: space-between; gap: 10px; padding: 7px 9px; border: 1px solid #303d33; border-radius: 8px; color: #c1ccbf; background: #121b15; font-size: .73rem; }
+      .ingredient strong { color: #9bc889; white-space: nowrap; }
+      .ingredient.missing { border-color: #68473e; color: #d7b6a8; background: #281c19; }
+      .ingredient.missing strong { color: #e79578; }
+      .recipe-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; }
+      .availability { color: #9ead9d; font-size: .72rem; line-height: 1.4; }
+      .availability.ok { color: #a8d19b; }
+      .availability.blocked { color: #e4a087; }
+      .craft-button { border-color: #829462; color: #f0eed8; background: #465339; }
+      .craft-button:not(:disabled):hover, .toggle:not(.off):hover { background: #586846; }
+      .side-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      .item-list { display: grid; gap: 7px; margin-top: 13px; }
+      .item-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 8px 9px; border: 1px solid #344238; border-radius: 9px; color: #c8d2c5; background: #17211a; font-size: .75rem; }
+      .item-row strong { color: #e1e7dc; }
+      .output-empty { padding: 13px 10px; border: 1px dashed #49584c; border-radius: 9px; color: #9daa9b; font-size: .75rem; text-align: center; }
+      .fuel-card { margin-top: 13px; padding: 12px; border: 1px solid #6c6848; border-radius: 11px; background: #29291f; }
+      .fuel-title { display: flex; justify-content: space-between; gap: 8px; font-size: .8rem; }
+      .fuel-title strong { color: #edd68e; }
+      .fuel-button { width: 100%; margin-top: 9px; border-color: #726743; color: #e8ddb4; background: #383321; }
+      .message { min-height: 36px; margin: 13px 0 0; color: #d7cb97; font-size: .75rem; line-height: 1.45; }
+      .footnote { margin: 17px 2px 0; color: #8e9d8f; font-size: .76rem; line-height: 1.55; }
+      @media (max-width: 850px) { .layout { grid-template-columns: 1fr; } .side-column { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+      @media (max-width: 600px) {
+        body { padding: 20px 11px 38px; }
+        .panel-pad { padding: 14px; }
+        .station-grid, .side-column { grid-template-columns: 1fr; }
+        .recipe-top { flex-direction: column; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <span class="eyebrow">HẢI GIỚI SINH TỒN · BẢN THỬ CHẾ TẠO</span>
+      <h1>Chế tạo tại trạm sản xuất</h1>
+      <p class="intro">Xem danh mục công thức từ sinh tồn ban đầu đến định cư phát triển; mỗi món hiển thị nguyên liệu đang có, còn thiếu và điều kiện cấp độ/đảo học nghề.</p>
+      <div class="notice"><strong>Bản mô phỏng đề xuất — chưa thay đổi game thật.</strong> Công thức đang có và ý tưởng mới được phân biệt rõ. Lọc theo nhóm, chọn cấp độ hoặc ghé đảo trong mô phỏng để học công thức. Các đảo không có trong thế giới hiện tại được đánh dấu “mô phỏng”; nguyên liệu chưa có trong game sẽ hiện là thiếu.</div>
+      <div class="layout">
+        <div class="main-column">
+          <section class="panel panel-pad" aria-labelledby="stations-title">
+            <div class="panel-head"><div><span class="kicker">CÔNG TRÌNH CỦA BẠN</span><h2 id="stations-title">Bật / tắt trạm sản xuất</h2></div></div>
+            <p class="muted">Bật công trình giả lập để xem công thức gắn với trạm đó. Tắt trạm thì không thể bắt đầu công thức tại đó.</p>
+            <label class="muted" for="player-level">Cấp nhân vật mô phỏng:
+              <select id="player-level" style="margin-left:7px;min-height:32px;border:1px solid #53634e;border-radius:8px;padding:0 9px;color:#e6ebdf;background:#17211a;font:inherit">
+                <option value="1">Cấp 1 — Tân thủ</option><option value="2">Cấp 2 — Người sinh tồn</option><option value="3">Cấp 3 — Thợ thủ công</option><option value="4">Cấp 4 — Người dựng trại</option><option value="5">Cấp 5 — Người khai phá</option><option value="6">Cấp 6 — Thợ lành nghề</option><option value="7">Cấp 7 — Người định cư</option><option value="8">Cấp 8 — Bậc thầy chế tác</option><option value="9">Cấp 9 — Nhà kiến tạo</option><option value="10">Cấp 10 — Người khai đảo</option>
+              </select>
+            </label>
+            <label class="muted" for="current-island" style="display:inline-block;margin:8px 0 0 14px">Đang ở:
+              <select id="current-island" style="margin-left:7px;min-height:32px;border:1px solid #53634e;border-radius:8px;padding:0 9px;color:#e6ebdf;background:#17211a;font:inherit">
+                <option value="island_001">Đảo Mầm Xanh (đảo nhà)</option>
+                <option value="island_002">Đảo Rừng Dạt</option>
+                <option value="island_rocky">Đảo Đá (mô phỏng)</option>
+                <option value="island_volcanic">Đảo Núi Lửa (mô phỏng)</option>
+                <option value="island_mangrove">Đảo Rừng Ngập Mặn (mô phỏng)</option>
+                <option value="island_coral">Đảo San Hô (mô phỏng)</option>
+                <option value="island_frozen">Đảo Băng Giá (mô phỏng)</option>
+                <option value="island_desert">Đảo Khô Hạn (mô phỏng)</option>
+                <option value="island_003">Tàn Tích San Hô</option>
+              </select>
+            </label>
+            <div class="station-grid" id="station-grid" aria-live="polite"></div>
+          </section>
+          <section class="panel panel-pad" aria-labelledby="recipes-title">
+            <div class="panel-head"><div><span class="kicker">NGUYÊN LIỆU & ĐIỀU KIỆN</span><h2 id="recipes-title">Công thức</h2></div></div>
+            <div class="filter-tabs" role="group" aria-label="Lọc công thức" id="station-tabs"></div>
+            <div class="recipe-list" id="recipe-list" aria-live="polite"></div>
+          </section>
+        </div>
+        <aside class="side-column" aria-label="Túi đồ và thành phẩm">
+          <section class="panel panel-pad" aria-labelledby="materials-title">
+            <div class="side-title"><div><span class="kicker">NGUYÊN LIỆU HIỆN CÓ</span><h2 id="materials-title">Túi đồ mô phỏng</h2></div><span class="recipe-output" id="inventory-count"></span></div>
+            <p class="muted">Dựa trên túi đồ save mẫu ban đầu (12 gỗ, 8 đá, 5 quả dại); nguyên liệu chưa có sẽ hiện số lượng bằng 0 trong từng công thức.</p>
+            <div class="item-list" id="materials-list" aria-live="polite"></div>
+            <div class="fuel-card">
+              <div class="fuel-title"><span>🔥 Nhiên liệu lửa trại</span><strong id="fuel-count">Chưa nhóm</strong></div>
+              <p class="muted">Lửa cần cành cây để cháy. Mỗi lần nấu tiêu hao 1 nhiên liệu; lửa tắt khi hết.</p>
+              <button type="button" class="fuel-button" id="light-fire">Dùng 1 cành nhóm lửa</button>
+            </div>
+            <p class="message" id="status" role="status">Chọn công thức để xem nguyên liệu cần có, số đang thiếu và trạm bắt buộc.</p>
+          </section>
+          <section class="panel panel-pad" aria-labelledby="outputs-title">
+            <div class="side-title"><div><span class="kicker">SẢN PHẨM ĐÃ LÀM</span><h2 id="outputs-title">Thành phẩm</h2></div></div>
+            <div class="item-list" id="outputs-list" aria-live="polite"></div>
+          </section>
+        </aside>
+      </div>
+      <p class="footnote">Trong game hiện tại, hàng đợi chế tạo có tối đa 3 việc và nguyên liệu được trừ khi bắt đầu. Bản này tập trung minh họa chọn đúng trạm, báo rõ thiếu hụt, nhiên liệu và kết quả; thao tác không lưu vào game.</p>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id)
+      const stations = [
+        { id: 'hand', name: 'Chế tạo tay', icon: '🧰', description: 'Công thức không cần công trình.', active: true },
+        { id: 'workbench', name: 'Bàn chế tạo', icon: '🪚', description: 'Dùng cho đồ nghề và sơ chế gỗ.', active: false },
+        { id: 'kiln', name: 'Lò nung', icon: '🏺', description: 'Cần dựng lò để nung vật liệu.', active: false },
+        { id: 'campfire', name: 'Lửa trại', icon: '🔥', description: 'Phải có nhiên liệu để nấu.', active: false },
+        { id: 'dryingRack', name: 'Giàn phơi', icon: '☀️', description: 'Phơi thực phẩm và nguyên liệu.', active: false },
+        { id: 'smokehouse', name: 'Lò hun khói', icon: '🏚️', description: 'Hun khói để bảo quản thực phẩm.', active: false },
+        { id: 'saltJar', name: 'Hũ muối', icon: '🧂', description: 'Ướp cá hoặc thịt với muối.', active: false },
+        { id: 'cookingStove', name: 'Bếp nấu', icon: '🍳', description: 'Nấu canh, cháo và món hầm.', active: false },
+        { id: 'oven', name: 'Lò nướng', icon: '🔥', description: 'Nướng bánh và thực phẩm.', active: false },
+        { id: 'potteryKiln', name: 'Lò gốm', icon: '🏺', description: 'Nung đồ gốm từ đất sét.', active: false },
+        { id: 'forge', name: 'Lò luyện kim', icon: '⚒️', description: 'Gia công dụng cụ kim loại.', active: false },
+        { id: 'tanningBench', name: 'Bàn thuộc da', icon: '🪑', description: 'Xử lý da thú.', active: false },
+        { id: 'loom', name: 'Khung dệt', icon: '🧶', description: 'Dệt sợi thành vải và lưới.', active: false },
+        { id: 'boatYard', name: 'Bàn đóng thuyền', icon: '⛵', description: 'Đóng phương tiện đi biển.', active: false },
+        { id: 'sawmill', name: 'Xưởng cưa', icon: '🪚', description: 'Xẻ gỗ thành ván.', active: false },
+        { id: 'repairShop', name: 'Xưởng sửa chữa', icon: '🔧', description: 'Gia công hoặc sửa thiết bị.', active: false },
+        { id: 'mortarPestle', name: 'Cối giã', icon: '🪨', description: 'Nghiền, ép và giã nguyên liệu.', active: false },
+        { id: 'oilPress', name: 'Xưởng ép dầu', icon: '🫗', description: 'Ép dầu từ hạt và quả.', active: false },
+        { id: 'fermenter', name: 'Xưởng lên men', icon: '🫙', description: 'Ủ và bảo quản thực phẩm.', active: false },
+      ]
+      const definitions = {
+        wood: { name: 'Gỗ trôi dạt', icon: '🪵' },
+        softWood: { name: 'Gỗ mềm', icon: '🌳' },
+        stone: { name: 'Đá cuội', icon: '🪨' },
+        branch: { name: 'Cành cây', icon: '🌿' },
+        bark: { name: 'Vỏ cây', icon: '🪹' },
+        palmLeaf: { name: 'Lá cọ', icon: '🌴' },
+        fiber: { name: 'Sợi thực vật', icon: '🧵' },
+        herb: { name: 'Thảo mộc dại', icon: '🌱' },
+        wildFruit: { name: 'Quả dại', icon: '🫐' },
+        freshFish: { name: 'Cá tươi', icon: '🐟' },
+        crab: { name: 'Cua nhỏ', icon: '🦀' },
+        charcoal: { name: 'Than củi', icon: '⬛' },
+        planks: { name: 'Ván gỗ', icon: '🪚' },
+        driedFruit: { name: 'Trái cây sấy', icon: '🥭' },
+        woodenAxe: { name: 'Rìu gỗ', icon: '🪓' },
+        cookedCrab: { name: 'Cua nướng', icon: '🍲' },
+        cookedFish: { name: 'Cá nướng', icon: '🐠' },
+        stoneSpear: { name: 'Giáo đá', icon: '🔱' },
+        stoneKnife: { name: 'Dao đá', icon: '🔪' },
+        torch: { name: 'Đuốc', icon: '🔥' },
+        rope: { name: 'Dây bện', icon: '➰' },
+        bandage: { name: 'Băng vải', icon: '🩹' },
+        herbalMedicine: { name: 'Thuốc thảo mộc', icon: '🧪' },
+        waterFilter: { name: 'Bộ lọc nước thô', icon: '🫗' },
+        rainCollector: { name: 'Bộ hứng nước mưa', icon: '🪣' },
+        backpack: { name: 'Ba lô dã chiến', icon: '🎒' },
+        bedroll: { name: 'Túi ngủ lá', icon: '🛏️' },
+        fishTrap: { name: 'Bẫy cá đơn giản', icon: '🪤' },
+        shelterKit: { name: 'Bộ dựng lều lá', icon: '⛺' },
+        workbench: { name: 'Bàn chế tạo', icon: '🪚' },
+        kiln: { name: 'Lò nung', icon: '🏺' },
+        storageChest: { name: 'Rương chứa đồ', icon: '📦' },
+        campfire: { name: 'Lửa trại', icon: '🔥' },
+        raft: { name: 'Bè gỗ', icon: '🛶' },
+        reed: { name: 'Tre / sậy', icon: '🎋' },
+        clay: { name: 'Đất sét', icon: '🟤' },
+        thatch: { name: 'Lá tranh', icon: '🌾' },
+        hardWood: { name: 'Gỗ cứng', icon: '🪵' },
+        peg: { name: 'Cọc gỗ', icon: '📍' },
+        sand: { name: 'Cát', icon: '🏖️' },
+        gravel: { name: 'Sỏi', icon: '🪨' },
+        limestone: { name: 'Đá vôi', icon: '⛰️' },
+        mortar: { name: 'Vữa vôi', icon: '🧱' },
+        sealant: { name: 'Nhựa trám', icon: '🟠' },
+        freshWater: { name: 'Nước sạch', icon: '💧' },
+        dirtyWater: { name: 'Nước đục', icon: '🌊' },
+        salt: { name: 'Muối biển', icon: '🧂' },
+        coconut: { name: 'Dừa', icon: '🥥' },
+        coconutMilk: { name: 'Nước cốt dừa', icon: '🥛' },
+        edibleGreens: { name: 'Rau ăn được', icon: '🥬' },
+        mushroom: { name: 'Nấm ăn được', icon: '🍄' },
+        shrimp: { name: 'Tôm', icon: '🦐' },
+        shellfish: { name: 'Ốc biển', icon: '🐚' },
+        squid: { name: 'Mực', icon: '🦑' },
+        seaweed: { name: 'Rong biển', icon: '🌿' },
+        tuber: { name: 'Củ ăn được', icon: '🥔' },
+        fruit: { name: 'Trái cây chín', icon: '🍌' },
+        rice: { name: 'Gạo', icon: '🌾' },
+        grain: { name: 'Hạt ngũ cốc', icon: '🌽' },
+        meat: { name: 'Thịt thú', icon: '🍖' },
+        egg: { name: 'Trứng', icon: '🥚' },
+        bone: { name: 'Xương', icon: '🦴' },
+        hide: { name: 'Da thú', icon: '🐂' },
+        resin: { name: 'Nhựa cây', icon: '🟡' },
+        oil: { name: 'Dầu thực vật', icon: '🫗' },
+        wick: { name: 'Bấc đèn', icon: '🧵' },
+        metal: { name: 'Kim loại', icon: '🔩' },
+        iron: { name: 'Sắt', icon: '⚙️' },
+        copper: { name: 'Đồng', icon: '🟠' },
+        glass: { name: 'Thủy tinh', icon: '🔷' },
+        paper: { name: 'Giấy / vỏ cây ép', icon: '📜' },
+        compassNeedle: { name: 'Kim nam châm', icon: '🧭' },
+        planksBundle: { name: 'Bó ván gỗ', icon: '🪚' },
+        stakes: { name: 'Cọc gia cố', icon: '🪵' },
+        wicker: { name: 'Liếp đan', icon: '🧺' },
+        basket: { name: 'Giỏ đựng', icon: '🧺' },
+        clothBag: { name: 'Túi vải', icon: '👝' },
+        leatherBag: { name: 'Túi da', icon: '🎒' },
+        bambooBottle: { name: 'Bình tre', icon: '🎍' },
+        potteryJar: { name: 'Hũ gốm', icon: '🏺' },
+        woodenBowl: { name: 'Bát gỗ', icon: '🥣' },
+        leafPlate: { name: 'Đĩa lá', icon: '🍃' },
+        woodenSpoon: { name: 'Thìa gỗ', icon: '🥄' },
+        mat: { name: 'Chiếu nằm', icon: '🟫' },
+        hideBlanket: { name: 'Chăn da', icon: '🧣' },
+        hammock: { name: 'Võng', icon: '🛌' },
+        lantern: { name: 'Đèn lồng', icon: '🏮' },
+        anchor: { name: 'Neo đá', icon: '⚓' },
+        oar: { name: 'Mái chèo', icon: '🛶' },
+        buoy: { name: 'Phao gỗ', icon: '🛟' },
+        dugoutCanoe: { name: 'Thuyền độc mộc', icon: '🛶' },
+        sailboat: { name: 'Thuyền ghép ván', icon: '⛵' },
+        sail: { name: 'Buồm lá', icon: '⛵' },
+        cargoCrate: { name: 'Thùng hàng', icon: '📦' },
+        map: { name: 'Bản đồ hàng hải', icon: '🗺️' },
+        clayPot: { name: 'Nồi đất', icon: '🍲' },
+        wovenCloth: { name: 'Vải dệt', icon: '🧶' },
+        curedHide: { name: 'Da thuộc', icon: '🟫' },
+        tinder: { name: 'Bùi nhùi khô', icon: '🍂' },
+        charcoalFilter: { name: 'Than lọc thô', icon: '⬛' },
+        filterKit: { name: 'Bộ lọc cặn', icon: '🫗' },
+        boilingWater: { name: 'Nước đã đun', icon: '♨️' },
+        rainTank: { name: 'Bể hứng nước', icon: '🛢️' },
+        canal: { name: 'Máng dẫn nước', icon: '🪵' },
+        well: { name: 'Giếng gia cố', icon: '🪣' },
+        latrine: { name: 'Nhà vệ sinh hố đất', icon: '🚻' },
+        washArea: { name: 'Khu tắm rửa', icon: '🚿' },
+        drainage: { name: 'Rãnh thoát nước', icon: '〰️' },
+        smokehouse: { name: 'Lò hun khói', icon: '🏚️' },
+        saltJar: { name: 'Hũ muối bảo quản', icon: '🧂' },
+        coolCellar: { name: 'Hầm chứa mát', icon: '🕳️' },
+        mill: { name: 'Cối nghiền', icon: '⚙️' },
+        mortarPestle: { name: 'Cối giã', icon: '🪨' },
+        oven: { name: 'Lò nướng', icon: '🔥' },
+        cookingStove: { name: 'Bếp đất', icon: '🍳' },
+        limeKiln: { name: 'Lò nung vôi', icon: '🏺' },
+        forge: { name: 'Lò luyện kim', icon: '⚒️' },
+        tanningBench: { name: 'Bàn thuộc da', icon: '🪑' },
+        loom: { name: 'Khung dệt', icon: '🧶' },
+        boatYard: { name: 'Bàn đóng thuyền', icon: '⛵' },
+        sawmill: { name: 'Xưởng cưa', icon: '🪚' },
+        repairShop: { name: 'Xưởng sửa chữa', icon: '🔧' },
+        dryingRack: { name: 'Giàn phơi', icon: '☀️' },
+        potteryKiln: { name: 'Lò gốm', icon: '🏺' },
+        gardenBed: { name: 'Luống trồng rau', icon: '🪴' },
+        fruitOrchard: { name: 'Vườn cây ăn quả', icon: '🌳' },
+        herbGarden: { name: 'Vườn dược liệu', icon: '🌿' },
+        nursery: { name: 'Nhà ươm giống', icon: '🌱' },
+        irrigation: { name: 'Hệ thống tưới', icon: '💦' },
+        compostPit: { name: 'Hố ủ phân', icon: '♻️' },
+        chickenCoop: { name: 'Chuồng gà', icon: '🐓' },
+        goatPen: { name: 'Chuồng dê', icon: '🐐' },
+        pigPen: { name: 'Chuồng lợn', icon: '🐖' },
+        fishPond: { name: 'Ao nuôi cá', icon: '🐟' },
+        seaPen: { name: 'Bể nuôi hải sản', icon: '🪸' },
+        farmingKit: { name: 'Bộ làm vườn', icon: '🪴' },
+        seedling: { name: 'Cây giống', icon: '🌱' },
+        compost: { name: 'Phân hữu cơ', icon: '🟤' },
+        flatbread: { name: 'Bánh dẹt', icon: '🫓' },
+        coconutRice: { name: 'Cơm dừa ống tre', icon: '🍚' },
+        fishSoup: { name: 'Canh cá', icon: '🍲' },
+        fishPorridge: { name: 'Cháo cá', icon: '🥣' },
+        grilledFishLeaf: { name: 'Cá nướng lá', icon: '🐟' },
+        smokedFish: { name: 'Cá hun khói', icon: '🐟' },
+        saltedFish: { name: 'Cá khô muối', icon: '🐟' },
+        driedShrimp: { name: 'Tôm khô', icon: '🦐' },
+        seafoodCoconutStew: { name: 'Hải sản nấu nước dừa', icon: '🥘' },
+        grilledSquid: { name: 'Mực nướng', icon: '🦑' },
+        steamedShrimp: { name: 'Tôm hấp', icon: '🦐' },
+        boiledShellfish: { name: 'Ốc luộc', icon: '🐚' },
+        seaweedSoup: { name: 'Súp rong biển', icon: '🥣' },
+        grilledTuber: { name: 'Khoai nướng', icon: '🥔' },
+        boiledTuber: { name: 'Khoai luộc', icon: '🥔' },
+        boiledGreens: { name: 'Rau rừng luộc', icon: '🥬' },
+        mushroomSoup: { name: 'Canh nấm', icon: '🍄' },
+        rootPorridge: { name: 'Cháo củ', icon: '🥣' },
+        fruitSalad: { name: 'Salad trái cây', icon: '🍇' },
+        fruitJuice: { name: 'Nước ép trái cây', icon: '🧃' },
+        fruitJam: { name: 'Mứt trái cây', icon: '🍯' },
+        cassavaFlour: { name: 'Bột củ khô', icon: '🥣' },
+        roastedSeeds: { name: 'Hạt rang', icon: '🌰' },
+        driedVegetables: { name: 'Rau củ phơi khô', icon: '🥬' },
+        grilledMeat: { name: 'Thịt thú nướng', icon: '🍖' },
+        meatStew: { name: 'Thịt hầm', icon: '🥘' },
+        meatSkewer: { name: 'Thịt xiên nướng', icon: '🍢' },
+        smokedMeat: { name: 'Thịt hun khói', icon: '🥩' },
+        boiledEgg: { name: 'Trứng luộc', icon: '🥚' },
+        boneBroth: { name: 'Canh xương', icon: '🍲' },
+        meatStock: { name: 'Nước dùng thịt', icon: '🥣' },
+        saltedMeat: { name: 'Thịt muối', icon: '🥩' },
+        bread: { name: 'Bánh mì', icon: '🍞' },
+        fishRice: { name: 'Cơm cá', icon: '🍱' },
+        meatRice: { name: 'Cơm thịt', icon: '🍛' },
+        fishStew: { name: 'Cá kho', icon: '🍲' },
+        vegetableMeatStew: { name: 'Thịt hầm rau củ', icon: '🥘' },
+        meatPorridge: { name: 'Cháo thịt', icon: '🥣' },
+        seafoodSoup: { name: 'Súp hải sản', icon: '🍜' },
+        cannedFish: { name: 'Cá đóng hộp', icon: '🥫' },
+        cannedMeat: { name: 'Thịt đóng hộp', icon: '🥫' },
+        pickledVegetables: { name: 'Rau củ muối', icon: '🫙' },
+        vegetableOil: { name: 'Dầu thực vật', icon: '🫗' },
+        cheese: { name: 'Phô mai', icon: '🧀' },
+        yogurt: { name: 'Sữa chua', icon: '🥛' },
+        seaBiscuit: { name: 'Bánh quy đi biển', icon: '🍪' },
+        leafBed: { name: 'Chỗ ngủ bằng lá', icon: '🍃' },
+        aFrameTent: { name: 'Lều chữ A', icon: '⛺' },
+        leanTo: { name: 'Lều nghiêng', icon: '🏕️' },
+        lowStiltHut: { name: 'Chòi sàn thấp', icon: '🛖' },
+        highStiltHut: { name: 'Chòi sàn cao', icon: '🛖' },
+        thatchHouse: { name: 'Nhà tranh', icon: '🏠' },
+        earthHouse: { name: 'Nhà vách đất', icon: '🏡' },
+        woodHouse: { name: 'Nhà gỗ', icon: '🏘️' },
+        stoneHouse: { name: 'Nhà đá', icon: '🏛️' },
+        coastalHouse: { name: 'Nhà sàn ven biển', icon: '🏠' },
+        multiRoomHouse: { name: 'Nhà nhiều phòng', icon: '🏘️' },
+        storageHouse: { name: 'Nhà kho', icon: '🏚️' },
+        rainCatch: { name: 'Hố hứng nước mưa', icon: '🌧️' },
+        waterTrough: { name: 'Máng dẫn nước', icon: '🪵' },
+        smallCistern: { name: 'Bể chứa nước nhỏ', icon: '🛢️' },
+        largeCistern: { name: 'Bể chứa nước lớn', icon: '🛢️' },
+        reinforcedWell: { name: 'Giếng đào gia cố', icon: '🪣' },
+        safeBoiler: { name: 'Bếp đun nước', icon: '♨️' },
+        washHouse: { name: 'Khu tắm rửa', icon: '🚿' },
+        sanitation: { name: 'Nhà vệ sinh hố đất', icon: '🚻' },
+        drainageDitch: { name: 'Rãnh thoát nước', icon: '〰️' },
+        improvedKitchen: { name: 'Bếp đất', icon: '🍳' },
+        potteryKilnBuilding: { name: 'Lò đất nung gốm', icon: '🏺' },
+        limeKilnBuilding: { name: 'Lò nung vôi', icon: '🏺' },
+        charcoalKiln: { name: 'Lò than', icon: '🔥' },
+        smelter: { name: 'Lò luyện kim', icon: '⚒️' },
+        tanningStation: { name: 'Bàn thuộc da', icon: '🪑' },
+        weavingLoom: { name: 'Khung dệt', icon: '🧶' },
+        boatWorkbench: { name: 'Bàn đóng thuyền', icon: '⛵' },
+        sawmillBuilding: { name: 'Xưởng cưa', icon: '🪚' },
+        repairWorkshop: { name: 'Xưởng sửa chữa', icon: '🔧' },
+        stoneAxe: { name: 'Rìu đá', icon: '🪓' },
+        stoneHammer: { name: 'Búa đá', icon: '🔨' },
+        woodenHoe: { name: 'Cuốc gỗ', icon: '⛏️' },
+        woodenShovel: { name: 'Xẻng gỗ', icon: '🪏' },
+        stonePickaxe: { name: 'Cuốc đá', icon: '⛏️' },
+        copperAxe: { name: 'Rìu đồng', icon: '🪓' },
+        ironAxe: { name: 'Rìu sắt', icon: '🪓' },
+        handSaw: { name: 'Cưa tay', icon: '🪚' },
+        chisel: { name: 'Đục', icon: '🪛' },
+        handDrill: { name: 'Khoan tay', icon: '🛠️' },
+        woodenSpear: { name: 'Lao gỗ', icon: '🔱' },
+        boneSpear: { name: 'Lao xương', icon: '🔱' },
+        fishingRod: { name: 'Cần câu thô', icon: '🎣' },
+        bambooRod: { name: 'Cần câu tre', icon: '🎣' },
+        fishingNet: { name: 'Lưới cá', icon: '🥅' },
+        fishCreel: { name: 'Rọ cá', icon: '🧺' },
+        crabBasket: { name: 'Giỏ bắt cua', icon: '🧺' },
+        animalCage: { name: 'Bẫy lồng thú nhỏ', icon: '🪤' },
+        bow: { name: 'Cung gỗ', icon: '🏹' },
+        snare: { name: 'Bẫy chân', icon: '🪤' },
+        metalHook: { name: 'Móc câu kim loại', icon: '🪝' },
+        basketItem: { name: 'Giỏ đựng', icon: '🧺' },
+        clothBagItem: { name: 'Túi vải', icon: '👝' },
+        leatherBagItem: { name: 'Túi da', icon: '🎒' },
+        bambooBottleItem: { name: 'Bình tre', icon: '🎍' },
+        potteryJarItem: { name: 'Bình gốm', icon: '🏺' },
+        bowlItem: { name: 'Bát gỗ', icon: '🥣' },
+        leafPlateItem: { name: 'Đĩa lá', icon: '🍃' },
+        spoonItem: { name: 'Thìa gỗ', icon: '🥄' },
+        chopsticks: { name: 'Đũa gỗ', icon: '🥢' },
+        matItem: { name: 'Chiếu nằm', icon: '🟫' },
+        blanketItem: { name: 'Chăn da', icon: '🧣' },
+        hammockItem: { name: 'Võng', icon: '🛌' },
+        oilLamp: { name: 'Đèn dầu', icon: '🪔' },
+        lanternItem: { name: 'Đèn lồng', icon: '🏮' },
+        ropeAnchor: { name: 'Dây neo', icon: '➰' },
+        woodFloat: { name: 'Phao gỗ', icon: '🛟' },
+        dugoutItem: { name: 'Thuyền độc mộc', icon: '🛶' },
+        plankBoat: { name: 'Thuyền ghép ván', icon: '⛵' },
+        leafSail: { name: 'Buồm lá', icon: '⛵' },
+        cargoBox: { name: 'Thùng hàng', icon: '📦' },
+        compassItem: { name: 'La bàn thô', icon: '🧭' },
+        chartItem: { name: 'Bản đồ hàng hải', icon: '🗺️' },
+        smokerBuilding: { name: 'Lò hun khói', icon: '🏚️' },
+        saltVat: { name: 'Hũ muối bảo quản', icon: '🧂' },
+        coolCellarBuilding: { name: 'Hầm chứa mát', icon: '🕳️' },
+        grinderBuilding: { name: 'Cối nghiền', icon: '⚙️' },
+        poundingMortar: { name: 'Cối giã', icon: '🪨' },
+        ovenBuilding: { name: 'Lò nướng', icon: '🔥' },
+        oilPress: { name: 'Xưởng ép dầu', icon: '🫗' },
+        fermenter: { name: 'Xưởng lên men', icon: '🫙' },
+        coldCellar: { name: 'Hầm lạnh', icon: '🧊' },
+        vegBed: { name: 'Luống trồng rau', icon: '🪴' },
+        fruitGarden: { name: 'Vườn cây ăn quả', icon: '🌳' },
+        herbGardenBed: { name: 'Vườn dược liệu', icon: '🌿' },
+        rootField: { name: 'Ruộng khoai', icon: '🥔' },
+        coconutGrove: { name: 'Vườn dừa', icon: '🥥' },
+        tropicalOrchard: { name: 'Vườn cây nhiệt đới', icon: '🍌' },
+        seedNursery: { name: 'Nhà ươm giống', icon: '🌱' },
+        irrigationWorks: { name: 'Hệ thống tưới', icon: '💦' },
+        compostHeap: { name: 'Hố ủ phân', icon: '♻️' },
+        henHouse: { name: 'Chuồng gà', icon: '🐓' },
+        goatShelter: { name: 'Chuồng dê', icon: '🐐' },
+        pigShelter: { name: 'Chuồng lợn', icon: '🐖' },
+        fishPondItem: { name: 'Ao nuôi cá', icon: '🐟' },
+        seafoodPen: { name: 'Bể nuôi hải sản', icon: '🪸' },
+        farmerKit: { name: 'Bộ làm vườn', icon: '🪴' },
+        seedlingItem: { name: 'Cây giống', icon: '🌱' },
+        compostItem: { name: 'Phân hữu cơ', icon: '🟤' },
+        boiledWaterItem: { name: 'Nước đã đun', icon: '♨️' },
+        cleanWaterItem: { name: 'Nước đã xử lý an toàn', icon: '💧' },
+        honey: { name: 'Mật ong', icon: '🍯' },
+      }
+      const recipes = [
+        { id: 'axe', name: 'Rìu gỗ', icon: '🪓', group: 'tools', station: 'hand', ingredients: { wood: 3, stone: 2 }, output: { id: 'woodenAxe', quantity: 1 }, duration: 6, live: true },
+        { id: 'planks', name: 'Xẻ ván gỗ', icon: '🪚', group: 'materials', station: 'workbench', ingredients: { softWood: 3 }, output: { id: 'planks', quantity: 2 }, duration: 8, live: true, technology: { id: 'tech_basic_tools', name: 'Dụng cụ cơ bản' } },
+        { id: 'charcoal', name: 'Nung than củi', icon: '🏺', group: 'materials', station: 'kiln', ingredients: { softWood: 3 }, output: { id: 'charcoal', quantity: 2 }, duration: 12, live: true, level: 2, technology: { id: 'tech_advanced_production', name: 'Sản xuất nâng cao' } },
+        { id: 'driedFruit', name: 'Phơi trái cây', icon: '🥭', group: 'food', station: 'hand', ingredients: { wildFruit: 3 }, output: { id: 'driedFruit', quantity: 2 }, duration: 10, live: true, technology: { id: 'tech_seafaring', name: 'Đi biển' } },
+        { id: 'spear', name: 'Giáo đá', icon: '🔱', group: 'tools', station: 'hand', ingredients: { branch: 2, stone: 1, fiber: 2 }, output: { id: 'stoneSpear', quantity: 1 }, duration: 10 },
+        { id: 'knife', name: 'Dao đá', icon: '🔪', group: 'tools', station: 'hand', ingredients: { stone: 2, fiber: 1 }, output: { id: 'stoneKnife', quantity: 1 }, duration: 7 },
+        { id: 'torch', name: 'Đuốc', icon: '🔥', group: 'tools', station: 'hand', ingredients: { branch: 2, bark: 1 }, output: { id: 'torch', quantity: 2 }, duration: 5 },
+        { id: 'rope', name: 'Bện dây thực vật', icon: '➰', group: 'materials', station: 'hand', ingredients: { fiber: 5 }, output: { id: 'rope', quantity: 1 }, duration: 8 },
+        { id: 'bandage', name: 'Băng vải thô', icon: '🩹', group: 'survival', station: 'hand', ingredients: { fiber: 3, herb: 1 }, output: { id: 'bandage', quantity: 2 }, duration: 8 },
+        { id: 'medicine', name: 'Thuốc thảo mộc', icon: '🧪', group: 'survival', station: 'hand', ingredients: { herb: 3, wildFruit: 1 }, output: { id: 'herbalMedicine', quantity: 1 }, duration: 15 },
+        { id: 'filter', name: 'Bộ lọc nước thô', icon: '🫗', group: 'survival', station: 'workbench', ingredients: { charcoal: 2, stone: 3, fiber: 2 }, output: { id: 'waterFilter', quantity: 1 }, duration: 18 },
+        { id: 'rainCollector', name: 'Bộ hứng nước mưa', icon: '🪣', group: 'survival', station: 'workbench', ingredients: { wood: 5, palmLeaf: 4, fiber: 2 }, output: { id: 'rainCollector', quantity: 1 }, duration: 20 },
+        { id: 'backpack', name: 'Ba lô dã chiến', icon: '🎒', group: 'tools', station: 'workbench', ingredients: { palmLeaf: 6, fiber: 8, rope: 2 }, output: { id: 'backpack', quantity: 1 }, duration: 25 },
+        { id: 'bedroll', name: 'Túi ngủ lá', icon: '🛏️', group: 'survival', station: 'workbench', ingredients: { palmLeaf: 5, fiber: 4 }, output: { id: 'bedroll', quantity: 1 }, duration: 18 },
+        { id: 'fishTrap', name: 'Bẫy cá đơn giản', icon: '🪤', group: 'tools', station: 'workbench', ingredients: { branch: 5, fiber: 4, rope: 1 }, output: { id: 'fishTrap', quantity: 1 }, duration: 20 },
+        { id: 'cookedCrab', name: 'Nướng cua', icon: '🍲', group: 'food', station: 'campfire', ingredients: { crab: 2 }, output: { id: 'cookedCrab', quantity: 1 }, duration: 8, fuel: 1 },
+        { id: 'cookedFish', name: 'Nướng cá', icon: '🐠', group: 'food', station: 'campfire', ingredients: { freshFish: 1 }, output: { id: 'cookedFish', quantity: 1 }, duration: 10, fuel: 1 },
+      ]
+      const constructionRecipes = [
+        { id: 'buildWorkbench', name: 'Xây bàn chế tạo', icon: '🪚', group: 'structures', station: 'hand', ingredients: { wood: 8, stone: 3 }, output: { id: 'workbench', quantity: 1 }, duration: 6, live: true },
+        { id: 'buildKiln', name: 'Xây lò nung', icon: '🏺', group: 'structures', station: 'hand', ingredients: { planks: 4, stone: 6 }, output: { id: 'kiln', quantity: 1 }, duration: 14, live: true },
+        { id: 'buildStorage', name: 'Xây rương chứa đồ', icon: '📦', group: 'structures', station: 'hand', ingredients: { wood: 6, stone: 4 }, output: { id: 'storageChest', quantity: 1 }, duration: 8, live: true },
+        { id: 'buildCampfire', name: 'Dựng lửa trại', icon: '🔥', group: 'structures', station: 'hand', ingredients: { branch: 3, stone: 2 }, output: { id: 'campfire', quantity: 1 }, duration: 5, live: true },
+        { id: 'buildShelter', name: 'Dựng lều lá', icon: '⛺', group: 'structures', station: 'hand', ingredients: { palmLeaf: 4, fiber: 2 }, output: { id: 'shelterKit', quantity: 1 }, duration: 12, live: true },
+        { id: 'buildRaft', name: 'Đóng bè gỗ', icon: '🛶', group: 'structures', station: 'hand', ingredients: { wood: 10, stone: 4 }, output: { id: 'raft', quantity: 1 }, duration: 10, live: true },
+      ]
+      const proposedRecipes = [
+        { id: 'leafBed', name: 'Chỗ ngủ bằng lá', icon: '🍃', group: 'structures', station: 'hand', ingredients: { palmLeaf: 5, branch: 3 }, output: { id: 'leafBed', quantity: 1 }, duration: 8, level: 1, learnAt: 'island_001' },
+        { id: 'aFrameTent', name: 'Lều chữ A', icon: '⛺', group: 'structures', station: 'hand', ingredients: { branch: 6, rope: 2, palmLeaf: 5 }, output: { id: 'aFrameTent', quantity: 1 }, duration: 14, level: 1, learnAt: 'island_001' },
+        { id: 'leanTo', name: 'Lều nghiêng', icon: '🏕️', group: 'structures', station: 'hand', ingredients: { wood: 5, palmLeaf: 6, rope: 2 }, output: { id: 'leanTo', quantity: 1 }, duration: 16, level: 2 },
+        { id: 'lowStiltHut', name: 'Chòi sàn thấp', icon: '🛖', group: 'structures', station: 'workbench', ingredients: { wood: 8, peg: 6, rope: 3 }, output: { id: 'lowStiltHut', quantity: 1 }, duration: 24, level: 3 },
+        { id: 'highStiltHut', name: 'Chòi sàn cao', icon: '🛖', group: 'structures', station: 'workbench', ingredients: { hardWood: 12, peg: 10, rope: 5, thatch: 6 }, output: { id: 'highStiltHut', quantity: 1 }, duration: 36, level: 5, learnAt: 'island_mangrove' },
+        { id: 'thatchHouse', name: 'Nhà tranh', icon: '🏠', group: 'structures', station: 'workbench', ingredients: { wood: 12, thatch: 12, rope: 6 }, output: { id: 'thatchHouse', quantity: 1 }, duration: 32, level: 4 },
+        { id: 'earthHouse', name: 'Nhà vách đất', icon: '🏡', group: 'structures', station: 'workbench', ingredients: { wood: 10, clay: 12, thatch: 8 }, output: { id: 'earthHouse', quantity: 1 }, duration: 38, level: 5, learnAt: 'island_002' },
+        { id: 'woodHouse', name: 'Nhà gỗ', icon: '🏘️', group: 'structures', station: 'sawmill', ingredients: { planks: 24, hardWood: 12, metal: 8 }, output: { id: 'woodHouse', quantity: 1 }, duration: 55, level: 7 },
+        { id: 'stoneHouse', name: 'Nhà đá', icon: '🏛️', group: 'structures', station: 'workbench', ingredients: { stone: 30, clay: 12, mortar: 10 }, output: { id: 'stoneHouse', quantity: 1 }, duration: 60, level: 8, learnAt: 'island_rocky' },
+        { id: 'coastalHouse', name: 'Nhà sàn ven biển', icon: '🏠', group: 'structures', station: 'boatYard', ingredients: { hardWood: 16, peg: 12, thatch: 10, rope: 8 }, output: { id: 'coastalHouse', quantity: 1 }, duration: 52, level: 7, learnAt: 'island_mangrove' },
+        { id: 'multiRoomHouse', name: 'Nhà nhiều phòng', icon: '🏘️', group: 'structures', station: 'sawmill', ingredients: { planks: 36, stone: 24, metal: 12, glass: 8 }, output: { id: 'multiRoomHouse', quantity: 1 }, duration: 90, level: 10, learnAt: 'island_003' },
+        { id: 'storageHouse', name: 'Nhà kho', icon: '🏚️', group: 'structures', station: 'workbench', ingredients: { wood: 16, stone: 8, thatch: 10 }, output: { id: 'storageHouse', quantity: 1 }, duration: 35, level: 4 },
+
+        { id: 'rainCatch', name: 'Hố hứng nước mưa', icon: '🌧️', group: 'survival', station: 'hand', ingredients: { palmLeaf: 6, stone: 4, clay: 3 }, output: { id: 'rainCatch', quantity: 1 }, duration: 12, level: 1 },
+        { id: 'waterTrough', name: 'Máng dẫn nước', icon: '🪵', group: 'survival', station: 'workbench', ingredients: { reed: 6, wood: 4, bark: 3 }, output: { id: 'waterTrough', quantity: 1 }, duration: 16, level: 2, learnAt: 'island_002' },
+        { id: 'smallCistern', name: 'Bể chứa nước nhỏ', icon: '🛢️', group: 'survival', station: 'potteryKiln', ingredients: { wood: 8, clay: 12, sealant: 3 }, output: { id: 'smallCistern', quantity: 1 }, duration: 28, level: 4 },
+        { id: 'largeCistern', name: 'Bể chứa nước lớn', icon: '🛢️', group: 'survival', station: 'workbench', ingredients: { stone: 22, mortar: 12, sealant: 8 }, output: { id: 'largeCistern', quantity: 1 }, duration: 48, level: 7 },
+        { id: 'well', name: 'Giếng đào gia cố', icon: '🪣', group: 'survival', station: 'workbench', ingredients: { stone: 18, wood: 8, rope: 3 }, output: { id: 'reinforcedWell', quantity: 1 }, duration: 42, level: 6, learnAt: 'island_desert', note: 'Chỉ có thể khai thác nước ngầm nếu đảo có mạch nước phù hợp.' },
+        { id: 'roughFilter', name: 'Bộ lọc nước thô', icon: '🫗', group: 'survival', station: 'workbench', ingredients: { gravel: 5, sand: 4, charcoal: 3, fiber: 2 }, output: { id: 'filterKit', quantity: 1 }, duration: 18, level: 3, note: 'Chỉ giảm cặn nhìn thấy; không bảo đảm loại bỏ vi khuẩn, virus hoặc mọi chất độc. Nước uống vẫn cần xử lý an toàn.' },
+        { id: 'boilingStove', name: 'Bếp đun nước', icon: '♨️', group: 'survival', station: 'campfire', ingredients: { stone: 8, clay: 5, wood: 4 }, output: { id: 'safeBoiler', quantity: 1 }, duration: 22, level: 3, note: 'Bản mô phỏng nước đã đun là một bước xử lý riêng; lọc cặn không thay thế bước này.' },
+        { id: 'latrine', name: 'Nhà vệ sinh hố đất', icon: '🚻', group: 'structures', station: 'hand', ingredients: { wood: 5, palmLeaf: 6, clay: 5 }, output: { id: 'sanitation', quantity: 1 }, duration: 18, level: 3 },
+        { id: 'washArea', name: 'Khu tắm rửa', icon: '🚿', group: 'structures', station: 'workbench', ingredients: { wood: 8, stone: 6, reed: 4 }, output: { id: 'washHouse', quantity: 1 }, duration: 24, level: 4 },
+        { id: 'drainage', name: 'Rãnh thoát nước', icon: '〰️', group: 'structures', station: 'hand', ingredients: { stone: 10, gravel: 8, wood: 3 }, output: { id: 'drainageDitch', quantity: 1 }, duration: 20, level: 4, learnAt: 'island_mangrove' },
+
+        { id: 'stoneAxe', name: 'Rìu đá', icon: '🪓', group: 'tools', station: 'hand', ingredients: { stone: 3, hardWood: 1, fiber: 2 }, output: { id: 'stoneAxe', quantity: 1 }, duration: 12, level: 2 },
+        { id: 'hammer', name: 'Búa đá', icon: '🔨', group: 'tools', station: 'hand', ingredients: { stone: 3, branch: 2, rope: 1 }, output: { id: 'stoneHammer', quantity: 1 }, duration: 12, level: 2 },
+        { id: 'woodenHoe', name: 'Cuốc gỗ', icon: '⛏️', group: 'tools', station: 'hand', ingredients: { hardWood: 3, rope: 1 }, output: { id: 'woodenHoe', quantity: 1 }, duration: 10, level: 2 },
+        { id: 'woodenShovel', name: 'Xẻng gỗ', icon: '🪏', group: 'tools', station: 'hand', ingredients: { hardWood: 3, fiber: 2 }, output: { id: 'woodenShovel', quantity: 1 }, duration: 10, level: 2 },
+        { id: 'stonePickaxe', name: 'Cuốc đá', icon: '⛏️', group: 'tools', station: 'workbench', ingredients: { stone: 5, hardWood: 2, rope: 2 }, output: { id: 'stonePickaxe', quantity: 1 }, duration: 18, level: 4, learnAt: 'island_rocky' },
+        { id: 'copperAxe', name: 'Rìu đồng', icon: '🪓', group: 'tools', station: 'forge', ingredients: { copper: 4, hardWood: 2, rope: 2 }, output: { id: 'copperAxe', quantity: 1 }, duration: 28, level: 6, learnAt: 'island_volcanic' },
+        { id: 'ironAxe', name: 'Rìu sắt', icon: '🪓', group: 'tools', station: 'forge', ingredients: { iron: 5, hardWood: 2, metal: 2 }, output: { id: 'ironAxe', quantity: 1 }, duration: 36, level: 8, learnAt: 'island_003' },
+        { id: 'handSaw', name: 'Cưa tay', icon: '🪚', group: 'tools', station: 'forge', ingredients: { metal: 4, wood: 2 }, output: { id: 'handSaw', quantity: 1 }, duration: 24, level: 6 },
+        { id: 'chisel', name: 'Đục gia công', icon: '🪛', group: 'tools', station: 'forge', ingredients: { metal: 3, hardWood: 1 }, output: { id: 'chisel', quantity: 1 }, duration: 22, level: 6 },
+        { id: 'handDrill', name: 'Khoan tay', icon: '🛠️', group: 'tools', station: 'workbench', ingredients: { hardWood: 3, metal: 2, stone: 1 }, output: { id: 'handDrill', quantity: 1 }, duration: 26, level: 7 },
+        { id: 'woodSpear', name: 'Lao gỗ', icon: '🔱', group: 'tools', station: 'hand', ingredients: { hardWood: 3, resin: 1 }, output: { id: 'woodenSpear', quantity: 1 }, duration: 8, level: 1 },
+        { id: 'boneSpear', name: 'Lao xương', icon: '🔱', group: 'tools', station: 'workbench', ingredients: { hardWood: 2, bone: 2, fiber: 2 }, output: { id: 'boneSpear', quantity: 1 }, duration: 14, level: 3, learnAt: 'island_002' },
+        { id: 'fishingRod', name: 'Cần câu thô', icon: '🎣', group: 'tools', station: 'hand', ingredients: { branch: 3, fiber: 3, bone: 1 }, output: { id: 'fishingRod', quantity: 1 }, duration: 12, level: 2 },
+        { id: 'bambooRod', name: 'Cần câu tre', icon: '🎣', group: 'tools', station: 'workbench', ingredients: { reed: 3, rope: 2, metal: 1 }, output: { id: 'bambooRod', quantity: 1 }, duration: 20, level: 5, learnAt: 'island_002' },
+        { id: 'fishingNet', name: 'Lưới cá', icon: '🥅', group: 'tools', station: 'loom', ingredients: { fiber: 12, rope: 3 }, output: { id: 'fishingNet', quantity: 1 }, duration: 32, level: 5 },
+        { id: 'fishCreel', name: 'Rọ cá', icon: '🧺', group: 'tools', station: 'hand', ingredients: { reed: 6, branch: 3 }, output: { id: 'fishCreel', quantity: 1 }, duration: 16, level: 3, learnAt: 'island_mangrove' },
+        { id: 'crabBasket', name: 'Giỏ bắt cua', icon: '🧺', group: 'tools', station: 'hand', ingredients: { reed: 4, rope: 2, wildFruit: 1 }, output: { id: 'crabBasket', quantity: 1 }, duration: 14, level: 3, learnAt: 'island_coral' },
+        { id: 'animalCage', name: 'Bẫy lồng thú nhỏ', icon: '🪤', group: 'tools', station: 'workbench', ingredients: { wood: 6, rope: 3, fiber: 4 }, output: { id: 'animalCage', quantity: 1 }, duration: 22, level: 5, learnAt: 'island_002' },
+        { id: 'bow', name: 'Cung gỗ', icon: '🏹', group: 'tools', station: 'workbench', ingredients: { hardWood: 4, rope: 3 }, output: { id: 'bow', quantity: 1 }, duration: 24, level: 5, learnAt: 'island_002' },
+        { id: 'snare', name: 'Bẫy chân', icon: '🪤', group: 'tools', station: 'workbench', ingredients: { hardWood: 3, rope: 2, metal: 1 }, output: { id: 'snare', quantity: 1 }, duration: 24, level: 6, learnAt: 'island_002' },
+        { id: 'metalHook', name: 'Móc câu kim loại', icon: '🪝', group: 'tools', station: 'forge', ingredients: { metal: 2 }, output: { id: 'metalHook', quantity: 3 }, duration: 16, level: 6, learnAt: 'island_003' },
+
+        { id: 'basket', name: 'Giỏ đựng', icon: '🧺', group: 'tools', station: 'hand', ingredients: { reed: 5, fiber: 2, palmLeaf: 2 }, output: { id: 'basketItem', quantity: 1 }, duration: 12, level: 1 },
+        { id: 'clothBag', name: 'Túi vải', icon: '👝', group: 'tools', station: 'loom', ingredients: { wovenCloth: 4, rope: 1 }, output: { id: 'clothBagItem', quantity: 1 }, duration: 20, level: 5 },
+        { id: 'leatherBag', name: 'Túi da', icon: '🎒', group: 'tools', station: 'tanningBench', ingredients: { curedHide: 4, rope: 2 }, output: { id: 'leatherBagItem', quantity: 1 }, duration: 25, level: 6, learnAt: 'island_002' },
+        { id: 'bambooBottle', name: 'Bình tre', icon: '🎍', group: 'tools', station: 'hand', ingredients: { reed: 3, resin: 1 }, output: { id: 'bambooBottleItem', quantity: 1 }, duration: 10, level: 2, learnAt: 'island_002' },
+        { id: 'potteryJar', name: 'Bình gốm', icon: '🏺', group: 'tools', station: 'potteryKiln', ingredients: { clay: 5 }, output: { id: 'potteryJarItem', quantity: 1 }, duration: 18, level: 4 },
+        { id: 'bowl', name: 'Bát gỗ', icon: '🥣', group: 'tools', station: 'workbench', ingredients: { wood: 2 }, output: { id: 'bowlItem', quantity: 2 }, duration: 9, level: 2 },
+        { id: 'leafPlate', name: 'Đĩa lá', icon: '🍃', group: 'tools', station: 'hand', ingredients: { palmLeaf: 2 }, output: { id: 'leafPlateItem', quantity: 3 }, duration: 4, level: 1 },
+        { id: 'spoon', name: 'Thìa gỗ', icon: '🥄', group: 'tools', station: 'workbench', ingredients: { wood: 1 }, output: { id: 'spoonItem', quantity: 1 }, duration: 7, level: 2 },
+        { id: 'chopsticks', name: 'Đũa gỗ', icon: '🥢', group: 'tools', station: 'hand', ingredients: { branch: 1 }, output: { id: 'chopsticks', quantity: 2 }, duration: 3, level: 1 },
+        { id: 'mat', name: 'Chiếu nằm', icon: '🟫', group: 'survival', station: 'loom', ingredients: { palmLeaf: 8, fiber: 4 }, output: { id: 'matItem', quantity: 1 }, duration: 22, level: 3 },
+        { id: 'hideBlanket', name: 'Chăn da', icon: '🧣', group: 'survival', station: 'tanningBench', ingredients: { curedHide: 3, fiber: 2 }, output: { id: 'blanketItem', quantity: 1 }, duration: 28, level: 6, learnAt: 'island_frozen' },
+        { id: 'hammock', name: 'Võng', icon: '🛌', group: 'survival', station: 'loom', ingredients: { fiber: 10, rope: 2 }, output: { id: 'hammockItem', quantity: 1 }, duration: 25, level: 4 },
+        { id: 'oilLamp', name: 'Đèn dầu', icon: '🪔', group: 'tools', station: 'potteryKiln', ingredients: { clay: 3, oil: 2, wick: 2 }, output: { id: 'oilLamp', quantity: 1 }, duration: 18, level: 4 },
+        { id: 'lantern', name: 'Đèn lồng', icon: '🏮', group: 'tools', station: 'workbench', ingredients: { wood: 3, glass: 2, metal: 2 }, output: { id: 'lanternItem', quantity: 1 }, duration: 28, level: 7, learnAt: 'island_003' },
+
+        { id: 'anchor', name: 'Neo đá', icon: '⚓', group: 'transport', station: 'hand', ingredients: { stone: 5, rope: 2 }, output: { id: 'anchor', quantity: 1 }, duration: 15, level: 2 },
+        { id: 'anchorRope', name: 'Dây neo', icon: '➰', group: 'transport', station: 'hand', ingredients: { fiber: 8 }, output: { id: 'ropeAnchor', quantity: 1 }, duration: 12, level: 2 },
+        { id: 'woodFloat', name: 'Phao gỗ', icon: '🛟', group: 'transport', station: 'workbench', ingredients: { wood: 4, rope: 2 }, output: { id: 'woodFloat', quantity: 1 }, duration: 12, level: 3 },
+        { id: 'dugout', name: 'Thuyền độc mộc', icon: '🛶', group: 'transport', station: 'boatYard', ingredients: { hardWood: 18, stone: 4 }, output: { id: 'dugoutItem', quantity: 1 }, duration: 48, level: 6, learnAt: 'island_002' },
+        { id: 'plankBoat', name: 'Thuyền ghép ván', icon: '⛵', group: 'transport', station: 'boatYard', ingredients: { planks: 24, rope: 10, sealant: 6, metal: 4 }, output: { id: 'plankBoat', quantity: 1 }, duration: 75, level: 9, learnAt: 'island_003' },
+        { id: 'leafSail', name: 'Buồm lá', icon: '⛵', group: 'transport', station: 'loom', ingredients: { thatch: 12, rope: 5, hardWood: 4 }, output: { id: 'leafSail', quantity: 1 }, duration: 36, level: 7 },
+        { id: 'cargoBox', name: 'Thùng hàng', icon: '📦', group: 'transport', station: 'workbench', ingredients: { planks: 8, metal: 4 }, output: { id: 'cargoBox', quantity: 1 }, duration: 26, level: 6 },
+        { id: 'compass', name: 'La bàn thô', icon: '🧭', group: 'transport', station: 'workbench', ingredients: { compassNeedle: 1, wood: 2, glass: 1 }, output: { id: 'compassItem', quantity: 1 }, duration: 30, level: 8, learnAt: 'island_003' },
+        { id: 'chart', name: 'Bản đồ hàng hải', icon: '🗺️', group: 'transport', station: 'workbench', ingredients: { paper: 4, compassItem: 1 }, output: { id: 'chartItem', quantity: 1 }, duration: 35, level: 8, learnAt: 'island_003' },
+
+        { id: 'grilledFishLeaf', name: 'Cá nướng lá', icon: '🐟', group: 'food', station: 'campfire', ingredients: { freshFish: 1, palmLeaf: 1, salt: 1 }, output: { id: 'grilledFishLeaf', quantity: 1 }, duration: 12, fuel: 1, level: 2, learnAt: 'island_001' },
+        { id: 'fishSoup', name: 'Canh cá', icon: '🍲', group: 'food', station: 'cookingStove', ingredients: { freshFish: 1, freshWater: 2, edibleGreens: 2 }, output: { id: 'fishSoup', quantity: 1 }, duration: 18, level: 4 },
+        { id: 'smokedFish', name: 'Cá hun khói', icon: '🐟', group: 'food', station: 'smokehouse', ingredients: { freshFish: 2, wood: 3 }, output: { id: 'smokedFish', quantity: 2 }, duration: 24, level: 5, learnAt: 'island_002' },
+        { id: 'saltedFish', name: 'Cá khô muối', icon: '🐟', group: 'food', station: 'saltJar', ingredients: { freshFish: 2, salt: 4 }, output: { id: 'saltedFish', quantity: 2 }, duration: 30, level: 5, learnAt: 'island_coral' },
+        { id: 'driedShrimp', name: 'Tôm khô', icon: '🦐', group: 'food', station: 'dryingRack', ingredients: { shrimp: 4, salt: 1 }, output: { id: 'driedShrimp', quantity: 2 }, duration: 24, level: 4, learnAt: 'island_coral' },
+        { id: 'coconutStew', name: 'Hải sản nấu nước dừa', icon: '🥘', group: 'food', station: 'cookingStove', ingredients: { shrimp: 2, crab: 1, coconutMilk: 2, edibleGreens: 1 }, output: { id: 'seafoodCoconutStew', quantity: 1 }, duration: 26, level: 6, learnAt: 'island_coral' },
+        { id: 'grilledSquid', name: 'Mực nướng', icon: '🦑', group: 'food', station: 'campfire', ingredients: { squid: 1, salt: 1 }, output: { id: 'grilledSquid', quantity: 1 }, duration: 14, fuel: 1, level: 3, learnAt: 'island_coral' },
+        { id: 'steamedShrimp', name: 'Tôm hấp', icon: '🦐', group: 'food', station: 'cookingStove', ingredients: { shrimp: 3, freshWater: 1 }, output: { id: 'steamedShrimp', quantity: 1 }, duration: 16, level: 4 },
+        { id: 'boiledShellfish', name: 'Ốc luộc', icon: '🐚', group: 'food', station: 'cookingStove', ingredients: { shellfish: 4, freshWater: 1 }, output: { id: 'boiledShellfish', quantity: 1 }, duration: 15, level: 3, learnAt: 'island_coral' },
+        { id: 'seaweedSoup', name: 'Súp rong biển', icon: '🥣', group: 'food', station: 'cookingStove', ingredients: { seaweed: 3, freshWater: 2, shellfish: 1 }, output: { id: 'seaweedSoup', quantity: 1 }, duration: 18, level: 4, learnAt: 'island_coral' },
+        { id: 'grilledTuber', name: 'Khoai nướng', icon: '🥔', group: 'food', station: 'campfire', ingredients: { tuber: 2 }, output: { id: 'grilledTuber', quantity: 1 }, duration: 14, fuel: 1, level: 2 },
+        { id: 'boiledTuber', name: 'Khoai luộc', icon: '🥔', group: 'food', station: 'cookingStove', ingredients: { tuber: 2, freshWater: 1 }, output: { id: 'boiledTuber', quantity: 1 }, duration: 16, level: 3 },
+        { id: 'boiledGreens', name: 'Rau rừng luộc', icon: '🥬', group: 'food', station: 'cookingStove', ingredients: { edibleGreens: 3, freshWater: 1 }, output: { id: 'boiledGreens', quantity: 1 }, duration: 14, level: 3 },
+        { id: 'mushroomSoup', name: 'Canh nấm', icon: '🍄', group: 'food', station: 'cookingStove', ingredients: { mushroom: 3, freshWater: 2 }, output: { id: 'mushroomSoup', quantity: 1 }, duration: 18, level: 4, learnAt: 'island_002' },
+        { id: 'rootPorridge', name: 'Cháo củ', icon: '🥣', group: 'food', station: 'cookingStove', ingredients: { tuber: 2, freshWater: 2 }, output: { id: 'rootPorridge', quantity: 1 }, duration: 18, level: 4 },
+        { id: 'fruitSalad', name: 'Salad trái cây', icon: '🍇', group: 'food', station: 'hand', ingredients: { fruit: 3, wildFruit: 2 }, output: { id: 'fruitSalad', quantity: 1 }, duration: 8, level: 2 },
+        { id: 'fruitJuice', name: 'Nước ép trái cây', icon: '🧃', group: 'food', station: 'mortarPestle', ingredients: { fruit: 3, freshWater: 1 }, output: { id: 'fruitJuice', quantity: 1 }, duration: 12, level: 3 },
+        { id: 'fruitJam', name: 'Mứt trái cây', icon: '🍯', group: 'food', station: 'cookingStove', ingredients: { fruit: 4, honey: 1 }, output: { id: 'fruitJam', quantity: 2 }, duration: 22, level: 5 },
+        { id: 'cassavaFlour', name: 'Bột củ khô', icon: '🥣', group: 'food', station: 'mortarPestle', ingredients: { tuber: 5 }, output: { id: 'cassavaFlour', quantity: 2 }, duration: 25, level: 5, learnAt: 'island_002' },
+        { id: 'roastedSeeds', name: 'Hạt rang', icon: '🌰', group: 'food', station: 'campfire', ingredients: { grain: 3 }, output: { id: 'roastedSeeds', quantity: 2 }, duration: 12, fuel: 1, level: 3 },
+        { id: 'driedVegetables', name: 'Rau củ phơi khô', icon: '🥬', group: 'preservation', station: 'dryingRack', ingredients: { edibleGreens: 4, tuber: 2 }, output: { id: 'driedVegetables', quantity: 2 }, duration: 30, level: 5 },
+        { id: 'grilledMeat', name: 'Thịt thú nướng', icon: '🍖', group: 'food', station: 'campfire', ingredients: { meat: 2 }, output: { id: 'grilledMeat', quantity: 1 }, duration: 18, fuel: 1, level: 4, learnAt: 'island_002' },
+        { id: 'meatStew', name: 'Thịt hầm', icon: '🥘', group: 'food', station: 'cookingStove', ingredients: { meat: 2, freshWater: 2, edibleGreens: 1 }, output: { id: 'meatStew', quantity: 1 }, duration: 28, level: 6 },
+        { id: 'meatSkewer', name: 'Thịt xiên nướng', icon: '🍢', group: 'food', station: 'campfire', ingredients: { meat: 1, branch: 1 }, output: { id: 'meatSkewer', quantity: 2 }, duration: 14, fuel: 1, level: 4 },
+        { id: 'smokedMeat', name: 'Thịt hun khói', icon: '🥩', group: 'preservation', station: 'smokehouse', ingredients: { meat: 3, wood: 4, salt: 1 }, output: { id: 'smokedMeat', quantity: 2 }, duration: 34, level: 6, learnAt: 'island_002' },
+        { id: 'boiledEgg', name: 'Trứng luộc', icon: '🥚', group: 'food', station: 'cookingStove', ingredients: { egg: 2, freshWater: 1 }, output: { id: 'boiledEgg', quantity: 2 }, duration: 15, level: 5 },
+        { id: 'boneBroth', name: 'Canh xương', icon: '🍲', group: 'food', station: 'cookingStove', ingredients: { bone: 3, freshWater: 3, edibleGreens: 1 }, output: { id: 'boneBroth', quantity: 1 }, duration: 30, level: 6 },
+        { id: 'meatStock', name: 'Nước dùng thịt', icon: '🥣', group: 'food', station: 'cookingStove', ingredients: { meat: 1, bone: 2, freshWater: 3 }, output: { id: 'meatStock', quantity: 1 }, duration: 26, level: 6 },
+        { id: 'saltedMeat', name: 'Thịt muối', icon: '🥩', group: 'preservation', station: 'saltJar', ingredients: { meat: 2, salt: 4 }, output: { id: 'saltedMeat', quantity: 2 }, duration: 32, level: 7, learnAt: 'island_coral' },
+        { id: 'flatbread', name: 'Bánh dẹt', icon: '🫓', group: 'food', station: 'oven', ingredients: { cassavaFlour: 2, freshWater: 1 }, output: { id: 'flatbread', quantity: 2 }, duration: 20, level: 6 },
+        { id: 'coconutRice', name: 'Cơm dừa ống tre', icon: '🍚', group: 'food', station: 'campfire', ingredients: { rice: 2, coconutMilk: 2, reed: 1 }, output: { id: 'coconutRice', quantity: 1 }, duration: 25, fuel: 1, level: 6, learnAt: 'island_002' },
+        { id: 'fishPorridge', name: 'Cháo cá', icon: '🥣', group: 'food', station: 'cookingStove', ingredients: { freshFish: 1, rice: 2, freshWater: 2 }, output: { id: 'fishPorridge', quantity: 1 }, duration: 26, level: 6 },
+        { id: 'fishRice', name: 'Cơm cá', icon: '🍱', group: 'food', station: 'cookingStove', ingredients: { freshFish: 1, rice: 2, edibleGreens: 1 }, output: { id: 'fishRice', quantity: 1 }, duration: 28, level: 7 },
+        { id: 'meatRice', name: 'Cơm thịt', icon: '🍛', group: 'food', station: 'cookingStove', ingredients: { meat: 1, rice: 2 }, output: { id: 'meatRice', quantity: 1 }, duration: 28, level: 7 },
+        { id: 'fishStew', name: 'Cá kho', icon: '🍲', group: 'food', station: 'cookingStove', ingredients: { freshFish: 2, salt: 1, coconutMilk: 1 }, output: { id: 'fishStew', quantity: 1 }, duration: 26, level: 7, learnAt: 'island_coral' },
+        { id: 'vegetableMeatStew', name: 'Thịt hầm rau củ', icon: '🥘', group: 'food', station: 'cookingStove', ingredients: { meat: 2, tuber: 2, edibleGreens: 2, freshWater: 2 }, output: { id: 'vegetableMeatStew', quantity: 1 }, duration: 34, level: 8 },
+        { id: 'meatPorridge', name: 'Cháo thịt', icon: '🥣', group: 'food', station: 'cookingStove', ingredients: { meat: 1, grain: 2, freshWater: 2 }, output: { id: 'meatPorridge', quantity: 1 }, duration: 28, level: 7 },
+        { id: 'seafoodSoup', name: 'Súp hải sản', icon: '🍜', group: 'food', station: 'cookingStove', ingredients: { freshFish: 1, shrimp: 2, seaweed: 2, freshWater: 2 }, output: { id: 'seafoodSoup', quantity: 1 }, duration: 34, level: 8, learnAt: 'island_coral' },
+        { id: 'cannedFish', name: 'Cá đóng hộp', icon: '🥫', group: 'preservation', station: 'repairShop', ingredients: { freshFish: 3, metal: 2, salt: 2 }, output: { id: 'cannedFish', quantity: 2 }, duration: 40, level: 9, learnAt: 'island_003' },
+        { id: 'cannedMeat', name: 'Thịt đóng hộp', icon: '🥫', group: 'preservation', station: 'repairShop', ingredients: { meat: 3, metal: 2, salt: 2 }, output: { id: 'cannedMeat', quantity: 2 }, duration: 42, level: 9, learnAt: 'island_003' },
+        { id: 'pickledVegetables', name: 'Rau củ muối', icon: '🫙', group: 'preservation', station: 'fermenter', ingredients: { edibleGreens: 4, salt: 3, potteryJarItem: 1 }, output: { id: 'pickledVegetables', quantity: 2 }, duration: 36, level: 7 },
+        { id: 'fruitOil', name: 'Ép dầu thực vật', icon: '🫗', group: 'materials', station: 'oilPress', ingredients: { grain: 5, fruit: 2 }, output: { id: 'vegetableOil', quantity: 2 }, duration: 38, level: 8, learnAt: 'island_002' },
+        { id: 'cheese', name: 'Phô mai', icon: '🧀', group: 'food', station: 'fermenter', ingredients: { freshWater: 1, salt: 1 }, output: { id: 'cheese', quantity: 1 }, duration: 50, level: 9, learnAt: 'island_002', note: 'Cần bổ sung nguồn sữa/chăn nuôi trước khi công thức này có thể dùng thực tế.' },
+        { id: 'yogurt', name: 'Sữa chua', icon: '🥛', group: 'food', station: 'fermenter', ingredients: { freshWater: 1 }, output: { id: 'yogurt', quantity: 1 }, duration: 44, level: 9, learnAt: 'island_002', note: 'Cần nguồn sữa ổn định và điều kiện lên men phù hợp.' },
+        { id: 'seaBiscuit', name: 'Bánh quy đi biển', icon: '🍪', group: 'food', station: 'oven', ingredients: { grain: 4, cassavaFlour: 2, freshWater: 1 }, output: { id: 'seaBiscuit', quantity: 4 }, duration: 42, level: 8, learnAt: 'island_003' },
+
+        { id: 'buildRainCatch', name: 'Lắp hố hứng nước mưa', icon: '🌧️', group: 'structures', station: 'hand', ingredients: { palmLeaf: 6, stone: 4, clay: 3 }, output: { id: 'rainCatch', quantity: 1 }, duration: 12, level: 1 },
+        { id: 'buildStorageHouse', name: 'Xây nhà kho', icon: '🏚️', group: 'structures', station: 'hand', ingredients: { wood: 16, stone: 8, thatch: 10 }, output: { id: 'storageHouse', quantity: 1 }, duration: 35, level: 4 },
+        { id: 'buildSmokehouse', name: 'Xây lò hun khói', icon: '🏚️', group: 'structures', station: 'hand', ingredients: { wood: 10, clay: 8, stone: 6 }, output: { id: 'smokerBuilding', quantity: 1 }, duration: 28, level: 5 },
+        { id: 'buildSaltVat', name: 'Làm hũ muối bảo quản', icon: '🧂', group: 'structures', station: 'hand', ingredients: { potteryJarItem: 2, salt: 4 }, output: { id: 'saltVat', quantity: 1 }, duration: 18, level: 5, learnAt: 'island_coral' },
+        { id: 'buildCoolCellar', name: 'Đào hầm chứa mát', icon: '🕳️', group: 'structures', station: 'hand', ingredients: { stone: 18, wood: 8, clay: 6 }, output: { id: 'coolCellarBuilding', quantity: 1 }, duration: 45, level: 7, learnAt: 'island_rocky' },
+        { id: 'buildGardenBed', name: 'Làm luống trồng rau', icon: '🪴', group: 'agriculture', station: 'hand', ingredients: { wood: 5, compostItem: 2 }, output: { id: 'vegBed', quantity: 1 }, duration: 16, level: 3 },
+        { id: 'buildOrchard', name: 'Trồng vườn cây ăn quả', icon: '🌳', group: 'agriculture', station: 'hand', ingredients: { seedlingItem: 3, compostItem: 4, freshWater: 2 }, output: { id: 'fruitGarden', quantity: 1 }, duration: 22, level: 5, learnAt: 'island_002' },
+        { id: 'buildHerbGarden', name: 'Làm vườn dược liệu', icon: '🌿', group: 'agriculture', station: 'hand', ingredients: { seedlingItem: 3, compostItem: 3, palmLeaf: 2 }, output: { id: 'herbGardenBed', quantity: 1 }, duration: 20, level: 4, learnAt: 'island_002' },
+        { id: 'buildRootField', name: 'Làm ruộng khoai', icon: '🥔', group: 'agriculture', station: 'hand', ingredients: { wood: 5, tuber: 3, compostItem: 4 }, output: { id: 'rootField', quantity: 1 }, duration: 22, level: 4 },
+        { id: 'buildCoconutGrove', name: 'Trồng vườn dừa', icon: '🥥', group: 'agriculture', station: 'hand', ingredients: { coconut: 4, compostItem: 4, freshWater: 2 }, output: { id: 'coconutGrove', quantity: 1 }, duration: 25, level: 5, learnAt: 'island_001' },
+        { id: 'buildNursery', name: 'Dựng nhà ươm giống', icon: '🌱', group: 'agriculture', station: 'workbench', ingredients: { wood: 8, palmLeaf: 8, fiber: 4 }, output: { id: 'seedNursery', quantity: 1 }, duration: 28, level: 6 },
+        { id: 'buildIrrigation', name: 'Lắp hệ thống tưới', icon: '💦', group: 'agriculture', station: 'workbench', ingredients: { wood: 8, reed: 8, rope: 4 }, output: { id: 'irrigationWorks', quantity: 1 }, duration: 30, level: 6 },
+        { id: 'buildCompost', name: 'Đào hố ủ phân', icon: '♻️', group: 'agriculture', station: 'hand', ingredients: { wood: 4, palmLeaf: 4 }, output: { id: 'compostHeap', quantity: 1 }, duration: 15, level: 3 },
+        { id: 'buildChickenCoop', name: 'Dựng chuồng gà', icon: '🐓', group: 'agriculture', station: 'workbench', ingredients: { wood: 10, reed: 6, rope: 2 }, output: { id: 'henHouse', quantity: 1 }, duration: 28, level: 6, learnAt: 'island_002' },
+        { id: 'buildGoatPen', name: 'Dựng chuồng dê', icon: '🐐', group: 'agriculture', station: 'workbench', ingredients: { wood: 12, stone: 8, rope: 3 }, output: { id: 'goatShelter', quantity: 1 }, duration: 32, level: 7, learnAt: 'island_rocky' },
+        { id: 'buildPigPen', name: 'Dựng chuồng lợn', icon: '🐖', group: 'agriculture', station: 'workbench', ingredients: { wood: 12, palmLeaf: 8, rope: 3 }, output: { id: 'pigShelter', quantity: 1 }, duration: 30, level: 7, learnAt: 'island_002' },
+        { id: 'buildFishPond', name: 'Làm ao nuôi cá', icon: '🐟', group: 'agriculture', station: 'hand', ingredients: { stone: 12, clay: 8, sealant: 3 }, output: { id: 'fishPondItem', quantity: 1 }, duration: 35, level: 8, learnAt: 'island_002', note: 'Chỉ phù hợp đảo có nguồn nước ngọt.' },
+        { id: 'buildSeaPen', name: 'Làm bể nuôi hải sản', icon: '🪸', group: 'agriculture', station: 'boatYard', ingredients: { wood: 8, rope: 6, reed: 8 }, output: { id: 'seafoodPen', quantity: 1 }, duration: 34, level: 8, learnAt: 'island_coral', note: 'Cần vùng nước biển phù hợp; không đặt được ở mọi đảo.' },
+      ]
+      let inventory = { wood: 12, softWood: 0, stone: 8, branch: 0, bark: 0, palmLeaf: 0, fiber: 0, herb: 0, wildFruit: 5, freshFish: 0, crab: 0, charcoal: 0, planks: 0, rope: 0 }
+      let outputs = {}
+      let fuel = 0
+      let selectedCategory = 'all'
+      const unlockedTechs = new Set()
+      const learnedRecipes = new Set()
+      const levelTitles = ['Tân thủ', 'Người sinh tồn', 'Thợ thủ công', 'Người dựng trại', 'Người khai phá', 'Thợ lành nghề', 'Người định cư', 'Bậc thầy chế tác', 'Nhà kiến tạo', 'Người khai đảo']
+      const categories = ['all', 'current', 'proposed', 'structures', 'survival', 'tools', 'transport', 'food', 'preservation', 'agriculture', 'materials']
+      const categoryNames = { all: 'Tất cả', current: 'Đang có trong game', proposed: 'Đề xuất mới', tools: 'Công cụ', transport: 'Hàng hải', food: 'Chế biến thức ăn', materials: 'Vật liệu', survival: 'Nước & sinh hoạt', preservation: 'Bảo quản', agriculture: 'Nông nghiệp', structures: 'Công trình' }
+
+      function getStation(recipe) {
+        if (recipe.station === 'hand') return { id: 'hand', name: 'Chế tạo tay', active: true }
+        return stations.find((station) => station.id === recipe.station)
+      }
+      function islandName(id) {
+        return $('current-island').querySelector(`option[value="${id}"]`)?.textContent ?? 'đảo khám phá bổ sung'
+      }
+      function levelName(level) {
+        return levelTitles[(level ?? 1) - 1] ?? levelTitles[0]
+      }
+      function assess(recipe) {
+        const missing = Object.entries(recipe.ingredients).map(([id, needed]) => ({ id, needed, have: inventory[id] ?? 0, shortage: Math.max(0, needed - (inventory[id] ?? 0)) }))
+        const station = getStation(recipe)
+        const stationReady = station?.active ?? false
+        const levelReady = (Number($('player-level').value) || 1) >= (recipe.level ?? 1)
+        const techReady = !recipe.technology || unlockedTechs.has(recipe.technology.id)
+        const islandLearned = !recipe.learnAt || learnedRecipes.has(recipe.id)
+        const islandReadyToLearn = recipe.learnAt === $('current-island').value
+        const fuelReady = !recipe.fuel || fuel >= recipe.fuel
+        return { missing, station, stationReady, levelReady, techReady, islandLearned, islandReadyToLearn, fuelReady, canCraft: missing.every((item) => item.shortage === 0) && stationReady && levelReady && techReady && islandLearned && fuelReady }
+      }
+      function render() {
+        $('station-grid').innerHTML = stations.filter((station) => station.id !== 'hand').map((station) => `
+          <article class="station ${station.active ? 'on' : ''}">
+            <span class="station-icon" aria-hidden="true">${station.icon}</span>
+            <span><strong>${station.name}</strong><small>${station.description}</small></span>
+            <button type="button" class="toggle ${station.active ? '' : 'off'}" data-toggle-station="${station.id}" aria-pressed="${station.active}">${station.active ? 'Đang bật' : 'Chưa dựng'}</button>
+          </article>`).join('')
+        document.querySelectorAll('[data-toggle-station]').forEach((button) => button.addEventListener('click', () => {
+          const station = stations.find((item) => item.id === button.dataset.toggleStation)
+          station.active = !station.active
+          $('status').textContent = station.active ? `Đã bật ${station.name} trong mô phỏng.` : `Đã tắt ${station.name}; công thức cần trạm này sẽ bị khóa.`
+          render()
+        }))
+        $('player-level').onchange = () => render()
+        $('current-island').onchange = () => render()
+        $('station-tabs').innerHTML = categories.map((id) => `
+          <button type="button" class="tab" data-filter-category="${id}" aria-pressed="${id === selectedCategory}">${categoryNames[id]}</button>`).join('')
+        document.querySelectorAll('[data-filter-category]').forEach((button) => button.addEventListener('click', () => {
+          selectedCategory = button.dataset.filterCategory
+          render()
+        }))
+        const allRecipes = [...recipes, ...constructionRecipes, ...proposedRecipes]
+        const shownRecipes = allRecipes.filter((recipe) => (
+          selectedCategory === 'all'
+          || (selectedCategory === 'current' && recipe.live)
+          || (selectedCategory === 'proposed' && !recipe.live)
+          || recipe.group === selectedCategory
+        ))
+        $('recipes-title').textContent = `Công thức · ${shownRecipes.length}/${allRecipes.length}`
+        $('station-tabs').setAttribute('aria-label', 'Lọc theo nhóm công thức')
+        $('recipe-list').innerHTML = shownRecipes.map((recipe) => {
+          const assessment = assess(recipe)
+          const ingredients = assessment.missing.map((item) => `
+            <div class="ingredient ${item.shortage ? 'missing' : ''}">
+              <span>${definitions[item.id].icon} ${definitions[item.id].name}</span>
+              <strong>${item.have} / ${item.needed}${item.shortage ? ` · thiếu ${item.shortage}` : ' · đủ'}</strong>
+            </div>`).join('')
+          const condition = !assessment.stationReady
+            ? `Cần dựng hoặc bật ${assessment.station?.name ?? 'trạm sản xuất'} trước.`
+            : !assessment.levelReady
+              ? `Cần đạt cấp ${recipe.level}.`
+              : !assessment.techReady
+                ? `Cần nghiên cứu công nghệ ${recipe.technology.name}.`
+                : !assessment.islandLearned
+                  ? `Chưa học công thức — cần ghé ${islandName(recipe.learnAt)}.`
+                  : !assessment.fuelReady
+                    ? `Cần thêm ${recipe.fuel - fuel} nhiên liệu cho lửa trại.`
+                    : assessment.missing.some((item) => item.shortage)
+                      ? `Còn thiếu ${assessment.missing.filter((item) => item.shortage).map((item) => `${item.shortage} ${definitions[item.id].name}`).join(', ')}.`
+                      : 'Đủ điều kiện — có thể bắt đầu.'
+          return `<article class="recipe">
+            <div class="recipe-top">
+              <div class="recipe-name"><span class="recipe-icon" aria-hidden="true">${recipe.icon}</span>
+                    <span class="recipe-title"><h3>${recipe.name}</h3><small>${assessment.station?.name ?? 'Trạm'} · Cấp ${recipe.level ?? 1} — ${levelName(recipe.level)} · ${recipe.duration} giây · ${recipe.live ? 'Đang có trong game' : 'Đề xuất mô phỏng'}</small></span>
+              </div>
+              <span class="recipe-output">${definitions[recipe.output.id].icon} ×${recipe.output.quantity}</span>
+            </div>
+            <div class="ingredients">${ingredients}</div>
+            <div class="recipe-foot"><span class="availability ${assessment.canCraft ? 'ok' : 'blocked'}">${condition}</span>
+              <span>
+                ${recipe.learnAt && !assessment.islandLearned && assessment.islandReadyToLearn ? `<button type="button" class="secondary" data-learn-recipe="${recipe.id}">Học công thức tại đảo này</button> ` : ''}
+                ${recipe.technology && !assessment.techReady ? `<button type="button" class="secondary" data-unlock-tech="${recipe.technology.id}">Mở thử công nghệ</button> ` : ''}
+                <button type="button" class="craft-button" data-craft="${recipe.id}" ${assessment.canCraft ? '' : 'disabled'}>Thử chế tạo</button>
+              </span>
+            </div>
+          </article>`
+        }).join('')
+        document.querySelectorAll('[data-craft]').forEach((button) => button.addEventListener('click', () => craft(button.dataset.craft)))
+        document.querySelectorAll('[data-learn-recipe]').forEach((button) => button.addEventListener('click', () => {
+          const recipe = proposedRecipes.find((item) => item.id === button.dataset.learnRecipe)
+          if (!recipe || recipe.learnAt !== $('current-island').value) return
+          learnedRecipes.add(recipe.id)
+          $('status').textContent = `Đã học công thức ${recipe.name} tại đảo này.`
+          render()
+        }))
+        document.querySelectorAll('[data-unlock-tech]').forEach((button) => button.addEventListener('click', () => {
+          unlockedTechs.add(button.dataset.unlockTech)
+          $('status').textContent = 'Đã mở khóa công nghệ giả lập. Kiểm tra cấp độ, trạm và nguyên liệu còn thiếu.'
+          render()
+        }))
+        $('materials-list').innerHTML = Object.entries(inventory).filter(([, quantity]) => quantity > 0).map(([id, quantity]) => `
+          <div class="item-row"><span>${definitions[id].icon} ${definitions[id].name}</span><strong>× ${quantity}</strong></div>`).join('')
+        $('inventory-count').textContent = `${Object.values(inventory).reduce((sum, quantity) => sum + quantity, 0)} món`
+        $('outputs-list').innerHTML = Object.entries(outputs).length ? Object.entries(outputs).map(([id, quantity]) => `
+          <div class="item-row"><span>${definitions[id].icon} ${definitions[id].name}</span><strong>× ${quantity}</strong></div>`).join('') : '<div class="output-empty">Chưa có thành phẩm.</div>'
+        $('fuel-count').textContent = fuel ? `${fuel} lượt đốt` : 'Chưa nhóm'
+        $('light-fire').disabled = (inventory.branch ?? 0) < 1
+      }
+      function craft(id) {
+        const recipe = [...recipes, ...constructionRecipes, ...proposedRecipes].find((item) => item.id === id)
+        if (!recipe) return
+        const state = assess(recipe)
+        if (!state.canCraft) {
+          $('status').textContent = 'Chưa đủ điều kiện chế tạo.'
+          return
+        }
+        for (const [ingredientId, quantity] of Object.entries(recipe.ingredients)) inventory[ingredientId] -= quantity
+        if (recipe.fuel) fuel -= recipe.fuel
+        outputs[recipe.output.id] = (outputs[recipe.output.id] ?? 0) + recipe.output.quantity
+        if (recipe.id === 'buildWorkbench') stations.find((station) => station.id === 'workbench').active = true
+        if (recipe.id === 'buildKiln') stations.find((station) => station.id === 'kiln').active = true
+        if (recipe.id === 'buildCampfire') stations.find((station) => station.id === 'campfire').active = true
+        $('status').textContent = `Đã hoàn thành ${recipe.name} trong mô phỏng (thời gian tham khảo: ${recipe.duration} giây). Thành phẩm ${definitions[recipe.output.id].name} ×${recipe.output.quantity} đã được thêm vào mục thành phẩm.`
+        render()
+      }
+      $('light-fire').addEventListener('click', () => {
+        if ((inventory.branch ?? 0) < 1) return
+        inventory.branch -= 1
+        fuel += 1
+        $('status').textContent = 'Đã dùng 1 cành cây làm nhiên liệu. Lửa trại cháy đủ cho 1 lần nấu.'
+        render()
+      })
+      $('player-level').addEventListener('change', () => render())
+      render()
+    </script>
+  </body>
+</html>
