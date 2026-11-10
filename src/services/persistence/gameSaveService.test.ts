@@ -144,7 +144,7 @@ describe('gameSaveService', () => {
     await service.save(initialGameState, timestamp)
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       savedAt: '2026-11-08T00:00:00.000Z',
       data: initialGameState,
     })
@@ -212,10 +212,10 @@ describe('gameSaveService', () => {
     })
 
     const restored = await service.load()
-    expect(restored?.schemaVersion).toBe(11)
+    expect(restored?.schemaVersion).toBe(12)
     expect(restored?.data.inventory.slots.find((slot) => slot.itemId === 'item_wild_fruit')?.expiresAt)
       .toBe(savedAt + 3 * 60 * 60 * 1000)
-    await expect(storage.get('game.save')).resolves.toMatchObject({ schemaVersion: 11 })
+    await expect(storage.get('game.save')).resolves.toMatchObject({ schemaVersion: 12 })
   })
 
   it('migrates version 6 saves to include empty campfire fuel state', async () => {
@@ -228,7 +228,7 @@ describe('gameSaveService', () => {
     })
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       data: { campfireFuel: {} },
     })
   })
@@ -243,7 +243,7 @@ describe('gameSaveService', () => {
     })
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       data: { ailments: [] },
     })
   })
@@ -258,7 +258,7 @@ describe('gameSaveService', () => {
     })
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       data: { farmPlots: [] },
     })
   })
@@ -273,7 +273,7 @@ describe('gameSaveService', () => {
     })
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       data: { livestockPens: [] },
     })
   })
@@ -288,9 +288,38 @@ describe('gameSaveService', () => {
     })
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       data: { waterCollectors: {} },
     })
+  })
+
+  it('migrates old fish in version 11 saves to generic fresh fish', async () => {
+    const storage = new MemoryStorage()
+    const service = createGameSaveService(storage)
+    const oldState = {
+      ...initialGameState,
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [
+          ...initialGameState.inventory.slots,
+          { itemId: 'item_leviathan', quantity: 2 },
+          { itemId: 'item_anchovy', quantity: 3 },
+        ],
+      },
+      itemDurability: { item_golden_tuna: 4, item_wooden_axe: 12 },
+    }
+    await storage.set('game.save', {
+      schemaVersion: 11,
+      savedAt: '2026-11-08T00:00:00.000Z',
+      data: oldState,
+    })
+
+    const restored = await service.load()
+    expect(restored?.schemaVersion).toBe(12)
+    expect(restored?.data.inventory.slots).toContainEqual({ itemId: 'item_fresh_fish', quantity: 2 })
+    expect(restored?.data.inventory.slots).toContainEqual({ itemId: 'item_anchovy', quantity: 3 })
+    expect(restored?.data.itemDurability).toEqual({ item_wooden_axe: 12 })
+    await expect(storage.get('game.save')).resolves.toMatchObject({ schemaVersion: 12 })
   })
 
   it('keeps player saves separate when using different storage keys', async () => {
@@ -350,7 +379,7 @@ describe('gameSaveService', () => {
     })
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       data: {
         character: initialGameState.character,
         survival: initialGameState.survival,
@@ -404,7 +433,7 @@ describe('gameSaveService', () => {
     })
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       data: {
         character: initialGameState.character,
         inventory: initialGameState.inventory,
@@ -454,7 +483,7 @@ describe('gameSaveService', () => {
     })
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       data: {
         character: initialGameState.character,
         inventory: initialGameState.inventory,
@@ -495,7 +524,7 @@ describe('gameSaveService', () => {
     })
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       data: {
         character: initialGameState.character,
         discoveredIslandIds: initialGameState.discoveredIslandIds,
@@ -529,7 +558,7 @@ describe('gameSaveService', () => {
     await storage.set('game.save', incompleteSave)
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       data: {
         character: initialGameState.character,
         inventory: initialGameState.inventory,
@@ -542,6 +571,6 @@ describe('gameSaveService', () => {
         combatLog: [],
       },
     })
-    await expect(storage.get('game.save')).resolves.toMatchObject({ schemaVersion: 11, data: { friendIds: [] } })
+    await expect(storage.get('game.save')).resolves.toMatchObject({ schemaVersion: 12, data: { friendIds: [] } })
   })
 })

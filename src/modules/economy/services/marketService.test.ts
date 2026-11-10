@@ -75,7 +75,7 @@ describe('marketService', () => {
     expect(buyMarketItem({
       ...initialGameState,
       character: { ...initialGameState.character, currentLocationId: 'island_003', coins: 100 },
-    }, 'item_giant_grouper_rare').ok).toBe(true)
+    }, 'item_red_snapper').ok).toBe(true)
   })
 
   it('rejects legendary fish for purchase and sale', () => {
@@ -88,15 +88,15 @@ describe('marketService', () => {
       },
       inventory: {
         ...initialGameState.inventory,
-        slots: [...initialGameState.inventory.slots, { itemId: 'item_leviathan' as const, quantity: 1 }],
+        slots: [...initialGameState.inventory.slots, { itemId: 'item_king_mackerel' as const, quantity: 1 }],
       },
     }
 
-    expect(buyMarketItem(stateWithLegendary, 'item_leviathan')).toEqual({
+    expect(buyMarketItem(stateWithLegendary, 'item_king_mackerel')).toEqual({
       ok: false,
       message: 'Vật phẩm này chỉ dành cho sưu tầm, không thể giao dịch.',
     })
-    expect(sellMarketItem(stateWithLegendary, 'item_leviathan', 1)).toEqual({
+    expect(sellMarketItem(stateWithLegendary, 'item_king_mackerel', 1)).toEqual({
       ok: false,
       message: 'Vật phẩm này chỉ dành cho sưu tầm, không thể giao dịch.',
     })

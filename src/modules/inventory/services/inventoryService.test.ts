@@ -353,6 +353,16 @@ describe('inventoryService', () => {
       ],
     },
     {
+      itemId: 'item_shovel',
+      maximum: 24,
+      equipped: false,
+      materials: [
+        { itemId: 'item_stone', quantity: 1 },
+        { itemId: 'item_branch', quantity: 1 },
+        { itemId: 'item_rope', quantity: 1 },
+      ],
+    },
+    {
       itemId: 'item_copper_axe',
       maximum: 60,
       equipped: false,
@@ -377,6 +387,16 @@ describe('inventoryService', () => {
       maximum: 12,
       equipped: false,
       materials: [{ itemId: 'item_branch', quantity: 1 }, { itemId: 'item_plant_fiber', quantity: 1 }],
+    },
+    {
+      itemId: 'item_fishing_spear',
+      maximum: 18,
+      equipped: false,
+      materials: [
+        { itemId: 'item_stone', quantity: 1 },
+        { itemId: 'item_branch', quantity: 1 },
+        { itemId: 'item_rope', quantity: 1 },
+      ],
     },
   ] as const)(
     'repairs $itemId at the workbench using its own materials',

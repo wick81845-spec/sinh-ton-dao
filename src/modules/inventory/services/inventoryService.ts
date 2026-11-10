@@ -57,6 +57,16 @@ const toolRepairCosts: Partial<Record<ItemId, readonly ItemQuantity[]>> = {
     { itemId: 'item_branch', quantity: 1 },
     { itemId: 'item_rope', quantity: 1 },
   ],
+  item_shovel: [
+    { itemId: 'item_stone', quantity: 1 },
+    { itemId: 'item_branch', quantity: 1 },
+    { itemId: 'item_rope', quantity: 1 },
+  ],
+  item_fishing_spear: [
+    { itemId: 'item_stone', quantity: 1 },
+    { itemId: 'item_branch', quantity: 1 },
+    { itemId: 'item_rope', quantity: 1 },
+  ],
   item_copper_axe: [
     { itemId: 'item_copper_ingot', quantity: 1 },
     { itemId: 'item_branch', quantity: 1 },

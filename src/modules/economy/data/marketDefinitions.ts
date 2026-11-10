@@ -15,7 +15,7 @@ export const marketListings: readonly MarketListing[] = [
   { islandId: 'island_002', itemId: 'item_sturgeon', buyPrice: 12, sellPrice: 6 },
   { islandId: 'island_003', itemId: 'item_stone', buyPrice: 3, sellPrice: 1 },
   { islandId: 'island_003', itemId: 'item_charcoal', buyPrice: 7, sellPrice: 3 },
-  { islandId: 'island_003', itemId: 'item_giant_grouper_rare', buyPrice: 40, sellPrice: 20 },
+  { islandId: 'island_003', itemId: 'item_red_snapper', buyPrice: 40, sellPrice: 20 },
   { islandId: 'island_003', itemId: 'item_moray_eel', buyPrice: 40, sellPrice: 20 },
 ]
 

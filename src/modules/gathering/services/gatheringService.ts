@@ -10,7 +10,16 @@ import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import { addItems, degradeItemDurability, hasItemOrEquipped } from '../../inventory/services/inventoryService'
 import type { GameSnapshot, ItemId, ItemQuantity, ResourceNodeState } from '../../../shared/types/game'
 import { awardExperience } from '../../progression/services/progressionService'
-import { getFishingLootAvailableAt, getFishAvailableAt, fishingActivity, rollFishCatch } from '../data/fishingConfig'
+import {
+  getFishingLootAvailableAt,
+  getFishAvailableAt,
+  getFishingMethod,
+  getSpearFishAvailableAt,
+  isSpearFishingZone,
+  isFishingActivityId,
+  fishingActivity,
+  rollFishCatch,
+} from '../data/fishingConfig'
 import { islandDefinitions } from '../../world/data/worldDefinitions'
 import { getFishingLootDefinition } from '../../../data/items/fishingLootCatalog'
 import { fishCatalog } from '../../../data/items/fishCatalog'
@@ -38,7 +47,9 @@ function addUpToQuantity(inventory: GameSnapshot['inventory'], itemId: ItemId, r
   return null
 }
 
-function getFishingIssue(state: GameSnapshot): string | null {
+function getFishingIssue(state: GameSnapshot, activityId: string): string | null {
+  const method = getFishingMethod(activityId)
+  if (!method) return 'Phương pháp đánh cá chưa được cấu hình đúng.'
   if (state.character.status !== 'alive') return 'Bạn cần hồi sinh trước khi câu cá.'
   if (state.activeCombat) return 'Hãy kết thúc trận chiến trước khi câu cá.'
   if (state.craftingQueue.length > 0) return 'Hãy chờ hàng đợi chế tạo hoàn tất trước.'
@@ -46,18 +57,27 @@ function getFishingIssue(state: GameSnapshot): string | null {
   if (state.voyages.some((voyage) => voyage.status === 'departed' || voyage.status === 'traveling')) {
     return 'Không thể câu cá khi đang trên hành trình.'
   }
-  if (state.survival.stamina < fishingActivity.staminaCost) return 'Không đủ thể lực để câu cá.'
+  const actionName = method === 'spear' ? 'đánh cá' : 'câu cá'
+  if (state.survival.stamina < fishingActivity.staminaCost) return `Không đủ thể lực để ${actionName}.`
 
   const island = islandDefinitions.find((entry) => entry.id === state.character.currentLocationId)
   if (!island) return 'Không tìm thấy vùng biển để câu cá.'
+  if (method === 'spear' && !isSpearFishingZone(island.oceanZoneId)) {
+    return 'Lao đánh cá chỉ dùng được ở vùng ven bờ hoặc rạn san hô.'
+  }
+  if (method === 'spear' && !hasItemOrEquipped(state, 'item_fishing_spear')) {
+    return 'Cần có Lao đánh cá trong túi hoặc ô trang bị.'
+  }
   const weatherId = state.weather?.locationId === island.id ? state.weather.weatherId : undefined
-  const availableFish = getFishAvailableAt(island.biomeId, weatherId, island.oceanZoneId)
-  const availableLoot = getFishingLootAvailableAt(island.oceanZoneId)
+  const availableFish = method === 'spear'
+    ? getSpearFishAvailableAt(island.biomeId, weatherId, island.oceanZoneId)
+    : getFishAvailableAt(island.biomeId, weatherId, island.oceanZoneId)
+  const availableLoot = method === 'spear' ? [] : getFishingLootAvailableAt(island.oceanZoneId)
   if (availableFish.length === 0 && availableLoot.length === 0) {
     return 'Vùng biển này hiện không có cá hay vật phẩm phù hợp.'
   }
   if (![...availableFish, ...availableLoot].some((item) => addItems(state.inventory, item.itemId, 1).ok)) {
-    return 'Túi đồ đã đầy; hãy cất bớt vật phẩm trước khi câu cá.'
+    return `Túi đồ đã đầy; hãy cất bớt vật phẩm trước khi ${actionName}.`
   }
   return null
 }
@@ -76,7 +96,7 @@ export function getNodeUnlockIssue(state: GameSnapshot, nodeId: string): string 
 }
 
 function getGatheringIssue(state: GameSnapshot, activityId: string, now: number): string | null {
-  if (activityId === fishingActivity.id) return getFishingIssue(state)
+  if (isFishingActivityId(activityId)) return getFishingIssue(state, activityId)
   const data = getGatheringActivityData(activityId)
   if (!data) return 'Hoạt động thu thập chưa được cấu hình đúng.'
   const { resource, node: nodeDefinition } = data
@@ -118,7 +138,7 @@ function getAvailableRandomGatheringActivities(state: GameSnapshot, now: number)
   const island = islandDefinitions.find((entry) => entry.id === state.character.currentLocationId)
   if (!island) return []
   return gatheringActivities.filter((activity) =>
-    activity.id !== fishingActivity.id
+    !isFishingActivityId(activity.id)
     && getGatheringActivityData(activity.id)?.resource.sources.biomes.includes(island.biomeId)
     && getGatheringIssue(state, activity.id, now) === null)
 }
@@ -186,11 +206,11 @@ export function startGathering(state: GameSnapshot, activityId: string, now: num
   const activity = gatheringActivities.find((entry) => entry.id === activityId)
   const data = getGatheringActivityData(activityId)
   if (!activity) return { ok: false, message: 'Hoạt động thu thập chưa được cấu hình đúng.' }
-  const durationSeconds = activityId === fishingActivity.id
+  const durationSeconds = isFishingActivityId(activityId)
     ? fishingActivity.durationSeconds
     : data?.resource.harvesting.durationSeconds
   if (!durationSeconds) return { ok: false, message: 'Hoạt động thu thập chưa được cấu hình đúng.' }
-  const outcome = activityId === fishingActivity.id ? undefined : rollGatheringOutcome()
+  const outcome = isFishingActivityId(activityId) ? undefined : rollGatheringOutcome()
   const effectiveDuration = durationSeconds + (outcome === 'adverse' ? 30 : 0)
 
   return {
@@ -221,7 +241,7 @@ export function completeGathering(
 ): GatheringCompletionResult {
   const active = state.activeGathering
   if (!active) return { status: 'failed', state, message: 'Không có hoạt động nào đang chờ hoàn tất.' }
-  if (active.activityId !== fishingActivity.id && now < active.completesAt) return { status: 'pending', state }
+  if (!isFishingActivityId(active.activityId) && now < active.completesAt) return { status: 'pending', state }
   if (active.activityId === randomGatheringActivityId) {
     const availableActivities = getAvailableRandomGatheringActivities(
       { ...state, activeGathering: null },
@@ -243,7 +263,7 @@ export function completeGathering(
 
   const issue = getGatheringIssue({ ...state, activeGathering: null }, active.activityId, now)
   const activity = gatheringActivities.find((entry) => entry.id === active.activityId)
-  if (active.activityId === fishingActivity.id && activity) {
+  if (isFishingActivityId(active.activityId) && activity) {
     if (issue) {
       return {
         status: 'failed',
@@ -252,13 +272,19 @@ export function completeGathering(
       }
     }
 
+    const method = getFishingMethod(active.activityId)
+    if (!method) {
+      return { status: 'failed', state: { ...state, activeGathering: null }, message: 'Phương pháp đánh cá chưa được cấu hình đúng.' }
+    }
     const island = islandDefinitions.find((entry) => entry.id === state.character.currentLocationId)
     if (!island) {
       return { status: 'failed', state: { ...state, activeGathering: null }, message: 'Không tìm thấy vùng biển để câu cá.' }
     }
     const weatherId = state.weather?.locationId === island.id ? state.weather.weatherId : undefined
-    const fishAtLocation = getFishAvailableAt(island.biomeId, weatherId, island.oceanZoneId)
-    const lootAtLocation = getFishingLootAvailableAt(island.oceanZoneId)
+    const fishAtLocation = method === 'spear'
+      ? getSpearFishAvailableAt(island.biomeId, weatherId, island.oceanZoneId)
+      : getFishAvailableAt(island.biomeId, weatherId, island.oceanZoneId)
+    const lootAtLocation = method === 'spear' ? [] : getFishingLootAvailableAt(island.oceanZoneId)
     const caughtFish = caughtItemId && fishAtLocation.some((fish) => fish.itemId === caughtItemId)
     const caughtLoot = caughtItemId
       && lootAtLocation.some((loot) => loot.itemId === caughtItemId)
@@ -283,22 +309,24 @@ export function completeGathering(
     if (!inventoryResult.ok) {
       return { status: 'failed', state: { ...state, activeGathering: null }, message: inventoryResult.message }
     }
-    const rodUse = hasItemOrEquipped(state, 'item_fishing_rod')
-      ? degradeItemDurability({ ...state, inventory: inventoryResult.container }, 'item_fishing_rod')
+    const toolItemId = method === 'spear' ? 'item_fishing_spear' : 'item_fishing_rod'
+    const toolUse = hasItemOrEquipped(state, toolItemId)
+      ? degradeItemDurability({ ...state, inventory: inventoryResult.container }, toolItemId)
       : { state: { ...state, inventory: inventoryResult.container }, remaining: 0, broke: false }
-    const rodMessage = hasItemOrEquipped(state, 'item_fishing_rod')
-      ? rodUse.broke
-        ? ' Cần câu đã hỏng.'
-        : ` Độ bền cần câu: ${rodUse.remaining}/${itemDefinitions.item_fishing_rod.maxDurability}.`
+    const toolName = method === 'spear' ? 'Lao đánh cá' : 'Cần câu'
+    const toolMessage = hasItemOrEquipped(state, toolItemId)
+      ? toolUse.broke
+        ? ` ${toolName} đã hỏng.`
+        : ` Độ bền ${toolName.toLowerCase()}: ${toolUse.remaining}/${itemDefinitions[toolItemId].maxDurability}.`
       : ''
 
     return {
       status: 'completed',
       state: {
-        ...rodUse.state,
+        ...toolUse.state,
         character: { ...awardExperience(state.character, 'gathering', 2) },
-        inventory: rodUse.state.inventory,
-        itemDurability: rodUse.state.itemDurability,
+        inventory: toolUse.state.inventory,
+        itemDurability: toolUse.state.itemDurability,
         activeGathering: null,
         survival: {
           ...state.survival,
@@ -309,7 +337,7 @@ export function completeGathering(
       itemId,
       quantity: fishingActivity.baseYield,
       rewards: [{ itemId, quantity: fishingActivity.baseYield }],
-      message: `${isFishReward ? 'Câu cá thành công' : 'Trục vớt thành công'}: ${itemDefinitions[itemId].name} × ${fishingActivity.baseYield}.${rodMessage}`,
+      message: `${method === 'spear' ? 'Đánh cá thành công' : isFishReward ? 'Câu cá thành công' : 'Trục vớt thành công'}: ${itemDefinitions[itemId].name} × ${fishingActivity.baseYield}.${toolMessage}`,
     }
   }
   const data = getGatheringActivityData(active.activityId)

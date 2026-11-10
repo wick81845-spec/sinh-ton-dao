@@ -14,6 +14,7 @@ import { attackCombat as resolveCombatTurn, retreatCombat as retreatFromCombat, 
 import { completeCrafting, queueRecipe } from '../../modules/crafting/services/craftingService'
 import { completeExploration, startExploration } from '../../modules/exploration/services/explorationService'
 import { cancelGathering, completeGathering, refreshResourceNodes, startGathering } from '../../modules/gathering/services/gatheringService'
+import { isFishingActivityId } from '../../modules/gathering/data/fishingConfig'
 import {
   consumeItem,
   discardItems,
@@ -240,8 +241,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const finishFishingAction = useCallback((castPower: number, caughtItemId: ItemId): FishingActionResult => {
     const currentState = stateRef.current
     if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
-    if (currentState.activeGathering?.activityId !== 'shore-fishing') {
-      return { ok: false, message: 'Bạn chưa có cá đang mắc câu.' }
+    if (!currentState.activeGathering || !isFishingActivityId(currentState.activeGathering.activityId)) {
+      return { ok: false, message: 'Bạn chưa bắt đầu hoạt động đánh cá.' }
     }
 
     const result = completeGathering(currentState, gameClock.now(), castPower, caughtItemId)
@@ -1071,7 +1072,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       const activeGathering = nextState.activeGathering
       if (activeGathering
-        && activeGathering.activityId !== 'shore-fishing'
+        && !isFishingActivityId(activeGathering.activityId)
         && now >= activeGathering.completesAt) {
         const result = completeGathering(nextState, now)
         if (result.status === 'completed') {

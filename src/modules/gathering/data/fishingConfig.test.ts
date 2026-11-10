@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { fishCatalog, fishRarities } from '../../../data/items/fishCatalog'
 import { getFishingLootAvailableAt } from '../../../data/items/fishingLootCatalog'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
-import { legacyFishItemIds } from '../../../shared/types/game'
+import { fishItemIds } from '../../../shared/types/fish'
 import { getMarketListing } from '../../economy/data/marketDefinitions'
 import { islandDefinitions } from '../../world/data/worldDefinitions'
 import {
   getFishAvailableAt,
   getFishFightProfile,
   getFishRarityChances,
+  getSpearFishAvailableAt,
   getFishingSkillCastPower,
   rollFishMeasurement,
   rollFishCatch,
@@ -16,17 +17,18 @@ import {
 } from './fishingConfig'
 
 describe('fishingConfig', () => {
-  it('defines exactly 70 unique fish with ten in each rarity tier', () => {
-    expect(fishCatalog).toHaveLength(70)
-    expect(new Set(fishCatalog.map((fish) => fish.itemId)).size).toBe(70)
+  it('defines exactly 89 unique fish across every rarity tier', () => {
+    expect(fishCatalog).toHaveLength(89)
+    expect(new Set(fishCatalog.map((fish) => fish.itemId)).size).toBe(89)
     for (const rarity of ['common', 'uncommon', 'unusual', 'rare', 'very_rare', 'epic', 'legendary']) {
-      expect(fishCatalog.filter((fish) => fish.rarity === rarity)).toHaveLength(10)
+      expect(fishCatalog.some((fish) => fish.rarity === rarity)).toBe(true)
     }
+    expect(fishItemIds).toHaveLength(89)
   })
 
-  it('registers individual artwork for every current species while keeping legendary species collectible only', () => {
+  it('uses the shared fish placeholder and keeps legendary species collectible only', () => {
     for (const fish of fishCatalog) {
-      expect(itemDefinitions[fish.itemId].image).toMatch(/^\/assets\/fish\/.+\.png$/)
+      expect(itemDefinitions[fish.itemId].image).toBe('/assets/resources/fresh-fish.svg')
       expect(itemDefinitions[fish.itemId].tradable).toBe(fish.rarity !== 'legendary')
       if (fish.rarity === 'legendary') expect(itemDefinitions[fish.itemId].usable).toBe(false)
     }
@@ -48,11 +50,10 @@ describe('fishingConfig', () => {
     }
   })
 
-  it('keeps archived fish IDs valid for existing saves without including them in the new catalog', () => {
-    const archivedIds = new Set<string>(legacyFishItemIds)
-
-    expect(fishCatalog.some((fish) => archivedIds.has(fish.itemId))).toBe(false)
-    for (const itemId of legacyFishItemIds) expect(itemDefinitions[itemId]).toBeDefined()
+  it('registers only the new fish species as individual inventory items', () => {
+    expect(fishCatalog.map((fish) => fish.itemId).sort()).toEqual([...fishItemIds].sort())
+    for (const itemId of fishItemIds) expect(itemDefinitions[itemId]).toBeDefined()
+    expect(Object.keys(itemDefinitions)).not.toContain('item_leviathan')
   })
 
   it('limits catches by biome and ocean zone', () => {
@@ -63,14 +64,25 @@ describe('fishingConfig', () => {
     const calmOffshoreFish = getFishAvailableAt('tropical_island', 'calm_sea', 'open_ocean')
     const stormOffshoreFish = getFishAvailableAt('tropical_island', 'thunderstorm', 'open_ocean')
 
-    expect(coastalFish.some((fish) => fish.itemId === 'item_damselfish')).toBe(true)
-    expect(coralFish.some((fish) => fish.itemId === 'item_damselfish')).toBe(true)
+    expect(coastalFish.some((fish) => fish.itemId === 'item_damselfish')).toBe(false)
+    expect(coralFish.some((fish) => fish.itemId === 'item_damselfish')).toBe(false)
     expect(desertCoastFish.length).toBeGreaterThan(0)
-    expect(coastalFish.some((fish) => fish.itemId === 'item_leviathan')).toBe(false)
-    expect(shipwreckFish.some((fish) => fish.itemId === 'item_leviathan')).toBe(true)
+    expect(coastalFish.some((fish) => fish.itemId === 'item_conger_eel')).toBe(false)
+    expect(shipwreckFish.some((fish) => fish.itemId === 'item_conger_eel')).toBe(true)
     expect(shipwreckFish.some((fish) => fish.itemId === 'item_anchovy')).toBe(false)
     expect(calmOffshoreFish.some((fish) => fish.itemId === 'item_yellowfin_tuna')).toBe(true)
     expect(stormOffshoreFish.some((fish) => fish.itemId === 'item_yellowfin_tuna')).toBe(false)
+  })
+
+  it('limits spear fishing to common and uncommon coastal and reef fish', () => {
+    const coastalFish = getSpearFishAvailableAt('tropical_island', undefined, 'coastal_water')
+    const reefFish = getSpearFishAvailableAt('coral_island', undefined, 'coral_sea')
+    const offshoreFish = getSpearFishAvailableAt('tropical_island', undefined, 'open_ocean')
+
+    expect(coastalFish.length).toBeGreaterThan(0)
+    expect(reefFish.length).toBeGreaterThan(0)
+    expect([...coastalFish, ...reefFish].every((fish) => ['common', 'uncommon'].includes(fish.rarity))).toBe(true)
+    expect(offshoreFish).toEqual([])
   })
 
   it('keeps fishing available in each of the 12 island sea regions', () => {
@@ -83,11 +95,11 @@ describe('fishingConfig', () => {
   it('lets a stronger cast improve the chance of a legendary catch', () => {
     const testFish = [
       fishCatalog.find((fish) => fish.itemId === 'item_anchovy')!,
-      fishCatalog.find((fish) => fish.itemId === 'item_leviathan')!,
+      fishCatalog.find((fish) => fish.rarity === 'legendary')!,
     ]
 
     expect(rollFishCatch(testFish, 0.9998, 0)).toBe('item_anchovy')
-    expect(rollFishCatch(testFish, 0.9998, 100)).toBe('item_leviathan')
+    expect(rollFishCatch(testFish, 0.9998, 100)).toBe(testFish[1].itemId)
   })
 
   it('rolls fish length and weight within rarity-based bounds', () => {

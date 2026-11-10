@@ -1,4 +1,5 @@
 import { initialGameState } from '../../data/mockGameState'
+import { fishCatalog } from '../../data/items/fishCatalog'
 import { itemDefinitions } from '../../data/items/itemDefinitions'
 import { buildingDefinitions, constructionQueueLimit } from '../../modules/building/data/buildingDefinitions'
 import { isBuildingDefinitionId } from '../../modules/building/data/buildingDefinitions'
@@ -49,8 +50,58 @@ import type { StorageAdapter } from '../storage/StorageAdapter'
 import { localStorageAdapter } from '../storage/localStorageAdapter'
 
 const gameSaveKey = 'game.save'
-const currentSchemaVersion = 11
+const currentSchemaVersion = 12
 const migratedStorageCapacity = 40
+const previousCatalogFishItemIds = [
+  'item_anchovy', 'item_sardine', 'item_herring', 'item_mullet', 'item_tilapia', 'item_goby',
+  'item_rabbitfish', 'item_scad', 'item_flying_fish', 'item_damselfish', 'item_small_mackerel',
+  'item_red_snapper', 'item_grouper', 'item_catfish', 'item_carp', 'item_snakehead',
+  'item_white_pomfret', 'item_spotted_rabbitfish', 'item_croaker', 'item_sea_bream',
+  'item_skipjack_tuna', 'item_amberjack', 'item_barracuda', 'item_seabass', 'item_trevally',
+  'item_leatherjacket', 'item_parrotfish', 'item_butterflyfish', 'item_lionfish', 'item_milkfish',
+  'item_yellowfin_tuna', 'item_bigeye_tuna', 'item_red_grouper', 'item_giant_grouper',
+  'item_shortbill_swordfish', 'item_mahi_mahi', 'item_sailfish', 'item_large_pomfret',
+  'item_devil_grouper', 'item_moray_eel', 'item_swordfish', 'item_blue_marlin',
+  'item_bluefin_tuna', 'item_giant_carp', 'item_sturgeon', 'item_whale_shark',
+  'item_ocean_sunfish', 'item_wolffish', 'item_giant_halibut', 'item_giant_grouper_rare',
+  'item_sea_dragon', 'item_oarfish', 'item_megamouth_shark', 'item_great_hammerhead',
+  'item_mako_shark', 'item_great_white_shark', 'item_tiger_shark', 'item_greenland_shark',
+  'item_giant_lanternfish', 'item_coelacanth', 'item_black_dragonfish', 'item_ancient_megamouth',
+  'item_giant_shark', 'item_giant_manta', 'item_white_orca', 'item_ancient_swordfish',
+  'item_golden_tuna', 'item_giant_sunfish', 'item_deep_sea_dragonfish', 'item_leviathan',
+] as const
+const archivedFishItemIds = [
+  'item_spotted_trout', 'item_golden_tench', 'item_mackerel', 'item_goldfish',
+  'item_striped_bream', 'item_needlefish', 'item_rainbow_trout', 'item_pink_sardine',
+  'item_green_minnow', 'item_bronze_roach', 'item_rose_perch', 'item_blue_sprat',
+  'item_parrot_minnow', 'item_angelfish', 'item_blue_tang', 'item_clownfish',
+  'item_yellow_clownfish', 'item_purple_basslet', 'item_blue_damselfish', 'item_dwarf_lionfish',
+  'item_regal_tang', 'item_cobalt_tang', 'item_tiger_grouper', 'item_blue_grouper',
+  'item_spotted_grouper', 'item_red_wrasse', 'item_reef_crabfish', 'item_purple_grouper',
+  'item_pink_anglerfish', 'item_rainbow_scorpionfish', 'item_seahorse_sun', 'item_seahorse_coral',
+  'item_golden_butterflyfish', 'item_clown_triggerfish', 'item_pufferfish',
+  'item_regal_butterflyfish', 'item_sole', 'item_tuna', 'item_kraken_octopus',
+  'item_starlight_manta',
+] as const
+const currentFishItemIds = new Set<string>(fishCatalog.map((fish) => fish.itemId))
+const obsoleteFishItemIds = new Set<string>(
+  [...previousCatalogFishItemIds, ...archivedFishItemIds]
+    .filter((itemId) => !currentFishItemIds.has(itemId)),
+)
+
+export function migrateLegacyFishReferences(value: unknown): unknown {
+  if (typeof value === 'string') return obsoleteFishItemIds.has(value) ? 'item_fresh_fish' : value
+  if (Array.isArray(value)) return value.map(migrateLegacyFishReferences)
+  if (!isRecord(value)) return value
+  return Object.fromEntries(Object.entries(value).flatMap(([key, entry]) => {
+    if (key === 'itemDurability' && isRecord(entry)) {
+      return [[key, Object.fromEntries(
+        Object.entries(entry).filter(([itemId]) => !obsoleteFishItemIds.has(itemId)),
+      )]]
+    }
+    return [[obsoleteFishItemIds.has(key) ? 'item_fresh_fish' : key, migrateLegacyFishReferences(entry)]]
+  }))
+}
 
 interface GameSnapshotV2 {
   character: Character
@@ -123,6 +174,12 @@ interface GameSaveV9 {
 
 interface GameSaveV10 {
   schemaVersion: 10
+  savedAt: string
+  data: GameSnapshot
+}
+
+interface GameSaveV11 {
+  schemaVersion: 11
   savedAt: string
   data: GameSnapshot
 }
@@ -978,16 +1035,29 @@ function migrateV9ToV10(value: Record<string, unknown>): GameSaveV10 {
   }
 }
 
-function migrateV10ToV11(value: Record<string, unknown>): GameSave {
+function migrateV10ToV11(value: Record<string, unknown>): GameSaveV11 {
   if (typeof value.savedAt !== 'string'
     || !Number.isFinite(Date.parse(value.savedAt))
     || !isGameSnapshot(value.data)) {
     throw new Error('Dữ liệu trò chơi phiên bản 10 không hợp lệ, không thể nâng cấp.')
   }
   return {
-    schemaVersion: currentSchemaVersion,
+    schemaVersion: 11,
     savedAt: value.savedAt,
     data: { ...value.data, waterCollectors: value.data.waterCollectors ?? {} },
+  }
+}
+
+function migrateV11ToV12(value: Record<string, unknown>): GameSave {
+  if (typeof value.savedAt !== 'string'
+    || !Number.isFinite(Date.parse(value.savedAt))
+    || !isGameSnapshot(value.data)) {
+    throw new Error('Dữ liệu trò chơi phiên bản 11 không hợp lệ, không thể nâng cấp.')
+  }
+  return {
+    schemaVersion: currentSchemaVersion,
+    savedAt: value.savedAt,
+    data: value.data,
   }
 }
 
@@ -1007,6 +1077,11 @@ export function createGameSaveService(storage: StorageAdapter = localStorageAdap
 
       let candidate: unknown = savedValue
       let wasMigrated = false
+      if (isRecord(candidate)
+        && typeof candidate.schemaVersion === 'number'
+        && candidate.schemaVersion <= 11) {
+        candidate = migrateLegacyFishReferences(candidate)
+      }
       if (isRecord(candidate) && candidate.schemaVersion === 1) {
         candidate = migrateV1ToV2(candidate)
         wasMigrated = true
@@ -1056,6 +1131,10 @@ export function createGameSaveService(storage: StorageAdapter = localStorageAdap
       }
       if (isRecord(candidate) && candidate.schemaVersion === 10) {
         candidate = migrateV10ToV11(candidate)
+        wasMigrated = true
+      }
+      if (isRecord(candidate) && candidate.schemaVersion === 11) {
+        candidate = migrateV11ToV12(candidate)
         wasMigrated = true
       }
 

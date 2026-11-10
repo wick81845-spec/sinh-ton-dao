@@ -115,6 +115,7 @@ export function getFishingSkillCastPower(castPower: number, skillLevel: number):
 }
 
 export const fishingZoneNames: Readonly<Record<string, string>> = {
+  freshwater: 'Sông, suối & hồ nước ngọt',
   coastal_water: 'Ven bờ & rạn san hô',
   coral_sea: 'Rạn san hô',
   open_ocean: 'Ngoài khơi',
@@ -122,6 +123,12 @@ export const fishingZoneNames: Readonly<Record<string, string>> = {
 }
 
 export const fishingZoneDefinitions = [
+  {
+    id: 'freshwater',
+    name: fishingZoneNames.freshwater,
+    image: '/assets/fishing/locations/coast.jpg',
+    description: 'Sông, suối và hồ trên các đảo; hoạt động đánh cá nước ngọt sẽ được bổ sung sau.',
+  },
   {
     id: 'coastal_water',
     name: fishingZoneNames.coastal_water,
@@ -166,6 +173,29 @@ export const fishingActivity = {
   staminaCost: 12,
   baseYield: 1,
 } as const
+
+export const spearFishingActivity = {
+  id: 'spear-fishing',
+  durationSeconds: fishingActivity.durationSeconds,
+  staminaCost: fishingActivity.staminaCost,
+  baseYield: fishingActivity.baseYield,
+} as const
+
+export type FishingMethod = 'rod' | 'spear'
+
+export function getFishingMethod(activityId: string): FishingMethod | null {
+  if (activityId === fishingActivity.id) return 'rod'
+  if (activityId === spearFishingActivity.id) return 'spear'
+  return null
+}
+
+export function isFishingActivityId(activityId: string): boolean {
+  return getFishingMethod(activityId) !== null
+}
+
+export function isSpearFishingZone(oceanZoneId?: string): boolean {
+  return oceanZoneId === 'coastal_water' || oceanZoneId === 'coral_sea'
+}
 
 export const fishDefinitions = fishCatalog
 
@@ -259,9 +289,20 @@ export function getFishRarityChances(
 }
 
 export function getFishAvailableAt(biomeId: BiomeId, weatherId?: string, oceanZoneId?: string): FishDefinition[] {
-  return fishDefinitions.filter((fish) => fish.biomes.includes(biomeId)
+  return fishDefinitions.filter((fish) => fish.catchable
+    && fish.biomes.includes(biomeId)
     && (!oceanZoneId || fish.oceanZones.includes(oceanZoneId))
     && (!fish.weatherIds || fish.weatherIds.includes(weatherId ?? '')))
+}
+
+export function getSpearFishAvailableAt(
+  biomeId: BiomeId,
+  weatherId?: string,
+  oceanZoneId?: string,
+): FishDefinition[] {
+  if (!isSpearFishingZone(oceanZoneId)) return []
+  return getFishAvailableAt(biomeId, weatherId, oceanZoneId)
+    .filter((fish) => fish.rarity === 'common' || fish.rarity === 'uncommon')
 }
 
 export function rollFishCatch(fish: FishDefinition[], randomValue: number, castPower = 0): FishItemId | undefined {

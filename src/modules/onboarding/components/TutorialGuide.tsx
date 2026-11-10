@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useGame } from '../../../app/providers/useGame'
 import { gameEventBus } from '../../../services/events/gameEvents'
+import { isFishingActivityId } from '../../gathering/data/fishingConfig'
 import { getNextTutorialStep, inferTutorialProgress, tutorialSteps } from '../tutorialSteps'
 
 const noCompletedSteps: string[] = []
@@ -39,7 +40,7 @@ export function TutorialGuide() {
 
     const subscriptions = [
       gameEventBus.on('gathering:completed', ({ activityId }) => {
-        if (activityId !== 'shore-fishing') completeIfCurrent('gather-resources')
+        if (!isFishingActivityId(activityId)) completeIfCurrent('gather-resources')
       }),
       gameEventBus.on('technology:researched', ({ technologyId }) => {
         if (technologyId === 'tech_basic_tools') completeIfCurrent('research-basic-tools')

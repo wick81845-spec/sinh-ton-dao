@@ -14,8 +14,11 @@ import {
 import { randomGatheringActivityId } from '../data/gatheringConfig'
 import {
   getFishAvailableAt,
+  getSpearFishAvailableAt,
   fishRarityNames,
   fishingActivity,
+  isFishingActivityId,
+  spearFishingActivity,
   fishingZoneDefinitions,
   rollFishMeasurement,
   type FishMeasurement,
@@ -126,7 +129,7 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
   useEffect(() => {
     if (!isMapInterface) return
     return gameEventBus.on('gathering:completed', ({ activityId, rewards }) => {
-      if (activityId !== fishingActivity.id) {
+      if (!isFishingActivityId(activityId)) {
         setGatheringResult((current) => ({ rewards, seed: (current?.seed ?? 0) + 1 }))
       }
     })
@@ -148,12 +151,12 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
     setFishingNotice(null)
   }, [])
   const startActivity = useCallback((activityId: string) => {
-    if (activityId === fishingActivity.id) setFishingOutcome(null)
+    if (isFishingActivityId(activityId)) setFishingOutcome(null)
     startGathering(activityId)
   }, [startGathering])
 
   const active = gameState?.activeGathering
-  const isFishingActive = active?.activityId === fishingActivity.id
+  const isFishingActive = active ? isFishingActivityId(active.activityId) : false
 
   useEffect(() => {
     if (!fishingNotice) return
@@ -184,10 +187,17 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
     ? getFishAvailableAt(currentIsland.biomeId, currentWeatherId, currentIsland.oceanZoneId)
       .filter((fish) => addItems(gameState.inventory, fish.itemId, 1).ok)
     : []
+  const currentSpearFishingFish = currentIsland
+    ? getSpearFishAvailableAt(currentIsland.biomeId, currentWeatherId, currentIsland.oceanZoneId)
+      .filter((fish) => addItems(gameState.inventory, fish.itemId, 1).ok)
+    : []
   const currentFishingLoot = currentIsland
     ? getFishingLootAvailableAt(currentIsland.oceanZoneId)
       .filter((loot) => addItems(gameState.inventory, loot.itemId, 1).ok)
     : []
+  const activeFishingMethod = active?.activityId === spearFishingActivity.id ? 'spear' : 'rod'
+  const activeFishingFish = activeFishingMethod === 'spear' ? currentSpearFishingFish : currentFishingFish
+  const activeFishingLoot = activeFishingMethod === 'spear' ? [] : currentFishingLoot
   const islandFishingZone = fishingZoneDefinitions.find((entry) => entry.id === currentIsland?.oceanZoneId)
   const islandResourceNodes = currentIsland
     ? resourceNodeDefinitions.filter((node) =>
@@ -210,7 +220,7 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
     : 'Điểm này chưa có hoạt động thu hoạch.'
   const randomGatheringIssue = getGatheringAvailability(gameState, randomGatheringActivityId, now)
   const fishingIssue = getGatheringAvailability(gameState, fishingActivity.id, now)
-  const mapFishingIssue = fishingIssue
+  const spearFishingIssue = getGatheringAvailability(gameState, spearFishingActivity.id, now)
   const progress = active
     ? Math.max(0, Math.min(100, ((now - active.startedAt) / (active.completesAt - active.startedAt)) * 100))
     : 0
@@ -226,8 +236,10 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
             fishingSkillLevel={skillLevelForExperience(gameState.character.skillExperience?.gathering ?? 0)}
             sceneImage={currentFishingZone?.image ?? ''}
             sceneName={currentFishingZone?.name ?? 'Vùng câu cá'}
-            fishPool={currentFishingFish}
-            lootPool={currentFishingLoot}
+            method={activeFishingMethod}
+            staminaCost={fishingActivity.staminaCost}
+            fishPool={activeFishingFish}
+            lootPool={activeFishingLoot}
             onFinish={finishFishing}
             onCancel={cancelGathering}
             onCaught={onFishCaught}
@@ -378,7 +390,7 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                     <span className="gathering-map-kicker">
                       {isFishingLocationSelected ? 'ĐIỂM CÂU CÁ' : 'ĐIỂM THU HOẠCH'}
                     </span>
-                    <h2>{isFishingLocationSelected ? 'Câu cá ven bờ' : selectedNode.name}</h2>
+                    <h2>{isFishingLocationSelected ? 'Điểm đánh bắt' : selectedNode.name}</h2>
                     {isFishingLocationSelected
                       ? <p>{islandFishingZone?.name ?? 'Vùng biển hiện tại'}</p>
                       : (
@@ -420,15 +432,26 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                   )}
                   <div className="gathering-map-buttons">
                     {isFishingLocationSelected ? (
-                      <button
-                        className="gathering-map-fishing-action"
-                        type="button"
-                        disabled={Boolean(mapFishingIssue)}
-                        onClick={() => startActivity(fishingActivity.id)}
-                      >
-                        <span aria-hidden="true">⌁</span>
-                        Bắt đầu câu cá
-                      </button>
+                      <>
+                        <button
+                          className="gathering-map-fishing-action"
+                          type="button"
+                          disabled={Boolean(fishingIssue)}
+                          onClick={() => startActivity(fishingActivity.id)}
+                        >
+                          <span aria-hidden="true">⌁</span>
+                          Bắt đầu câu cá
+                        </button>
+                        <button
+                          className="gathering-map-fishing-action"
+                          type="button"
+                          disabled={Boolean(spearFishingIssue)}
+                          onClick={() => startActivity(spearFishingActivity.id)}
+                        >
+                          <span aria-hidden="true">↗</span>
+                          Đánh cá bằng lao
+                        </button>
+                      </>
                     ) : (
                       <button
                         className="gathering-map-primary-action"
@@ -446,7 +469,12 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                     )}
                   </div>
                   {isFishingLocationSelected
-                    ? mapFishingIssue && !active && <small className="activity-blocked">{mapFishingIssue}</small>
+                    ? (
+                      <>
+                        {fishingIssue && !active && <small className="activity-blocked">{fishingIssue}</small>}
+                        {spearFishingIssue && !active && <small className="activity-blocked">{spearFishingIssue}</small>}
+                      </>
+                    )
                     : selectedGatheringIssue && !active && <small className="activity-blocked">{selectedGatheringIssue}</small>}
                 </div>
               </section>
@@ -494,8 +522,10 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
           fishingSkillLevel={skillLevelForExperience(gameState.character.skillExperience?.gathering ?? 0)}
           sceneImage={currentFishingZone?.image ?? ''}
           sceneName={currentFishingZone?.name ?? 'Vùng câu cá'}
-          fishPool={currentFishingFish}
-          lootPool={currentFishingLoot}
+          method={activeFishingMethod}
+          staminaCost={fishingActivity.staminaCost}
+          fishPool={activeFishingFish}
+          lootPool={activeFishingLoot}
           onFinish={finishFishing}
           onCancel={cancelGathering}
           onCaught={onFishCaught}
@@ -603,9 +633,11 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
           </article>
         )}
 
-        {gatheringActivities.filter((activity) => activity.id === fishingActivity.id).map((activity) => {
+        {gatheringActivities.filter((activity) => isFishingActivityId(activity.id)).map((activity) => {
           const issue = getGatheringAvailability(gameState, activity.id, now)
           const zone = currentFishingZone
+          const isSpearFishing = activity.id === spearFishingActivity.id
+          const activitySettings = isSpearFishing ? spearFishingActivity : fishingActivity
           return (
             <article className="gathering-activity fishing-activity" key={activity.id}>
               {zone && !isFishingActive && (
@@ -618,9 +650,10 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                 <h3>{activity.name}</h3>
                 <p>{activity.description}</p>
                 <div className="activity-requirements">
-                  <span>ϟ {fishingActivity.staminaCost}</span>
-                  <span>{fishingActivity.durationSeconds} giây</span>
-                  <span>Cá ngẫu nhiên × 1</span>
+                  <span>ϟ {activitySettings.staminaCost}</span>
+                  <span>{activitySettings.durationSeconds} giây</span>
+                  <span>{isSpearFishing ? 'Cá nhỏ ven bờ × 1' : 'Cá ngẫu nhiên × 1'}</span>
+                  {isSpearFishing && <span>Cần có lao đánh cá</span>}
                 </div>
                 {issue && !active && <small className="activity-blocked">{issue}</small>}
               </div>
@@ -630,7 +663,9 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                 disabled={Boolean(issue)}
                 onClick={() => startActivity(activity.id)}
               >
-                {isFishingActive ? 'Đang câu…' : issue ? 'Chưa thể' : 'Thả câu'}
+                {active?.activityId === activity.id
+                  ? isSpearFishing ? 'Đang phóng lao…' : 'Đang câu…'
+                  : issue ? 'Chưa thể' : isSpearFishing ? 'Đánh cá bằng lao' : 'Thả câu'}
               </button>
             </article>
           )
@@ -639,12 +674,12 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
       <details className="fish-zone-guide">
         <summary>
           <span>
-            <strong>Sổ tay 70 loài cá</strong>
-            <small>Phân bố theo vùng biển và quần xã</small>
+            <strong>Sổ tay {fishCatalog.length} loài cá</strong>
+            <small>Phân bố theo vùng nước và quần xã</small>
           </span>
           <span className="fish-guide-toggle" aria-hidden="true">⌄</span>
         </summary>
-        <p className="fish-guide-note">Một số loài xuất hiện ở nhiều vùng. Cá hiếm cần đúng quần xã; các loài huyền thoại thường ở ngoài khơi hoặc vùng xác tàu.</p>
+        <p className="fish-guide-note">Danh mục gồm cá biển và cá nước ngọt. Những loài chưa có cách đánh bắt phù hợp được ghi chú để cập nhật ở phần sau.</p>
         <div className="fish-zone-grid">
           {fishingZoneDefinitions.map((zone) => {
             const zoneFish = fishCatalog.filter((fish) => fish.oceanZones.includes(zone.id))
@@ -664,7 +699,7 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                       <img src={itemDefinitions[fish.itemId].image} alt="" aria-hidden="true" />
                       <div>
                         <strong>{fish.name}</strong>
-                        <small>{fishRarityNames[fish.rarity]}</small>
+                        <small>{fishRarityNames[fish.rarity]} · {fish.catchable ? 'Có thể đánh bắt' : 'Chưa mở cách đánh bắt'}</small>
                         <span>{fish.biomes.map((biomeId) => biomeDefinitionsById[biomeId].name).join(' · ')}</span>
                       </div>
                     </article>

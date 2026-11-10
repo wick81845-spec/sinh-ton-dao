@@ -197,6 +197,16 @@ export const gatheringActivities: readonly GatheringActivityDefinition[] = [
     adverseMessage: 'Sóng đánh ướt dụng cụ, bạn mất thêm thời gian.',
   },
   {
+    id: 'spear-fishing',
+    name: 'Đánh cá bằng lao',
+    description: 'Canh cá nhỏ ở vùng ven bờ hoặc rạn san hô rồi phóng lao bắt cá.',
+    nodeId: 'fishing-ground',
+    resourceId: 'fish',
+    ordinaryByproducts: [],
+    luckyDrop: { itemId: 'item_seashell', quantity: [1, 1], chance: 1 },
+    adverseMessage: 'Sóng làm cá hoảng sợ, bạn mất thêm thời gian.',
+  },
+  {
     id: 'collect-driftwood',
     name: 'Nhặt tài nguyên bãi biển',
     description: 'Nhặt gỗ trôi dạt và tìm vật liệu nhỏ dọc bờ biển.',

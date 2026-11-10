@@ -9,6 +9,7 @@ import {
   getFishFightProfile,
   getFishingSkillCastPower,
   rollFishingCatch,
+  type FishingMethod,
   type FishingCatch,
 } from '../data/fishingConfig'
 import { getFishingLootDefinition, type FishingLootEntry } from '../../../data/items/fishingLootCatalog'
@@ -20,6 +21,8 @@ interface FishingMinigameProps {
   fishingSkillLevel: number
   sceneImage: string
   sceneName: string
+  method: FishingMethod
+  staminaCost: number
   fishPool: FishDefinition[]
   lootPool: FishingLootEntry[]
   onFinish(castPower: number, caughtItemId: ItemId): FishingActionResult
@@ -41,6 +44,7 @@ function FishingScene({
   name,
   fightProfile,
   catchKind,
+  method,
 }: {
   phase: FishingPhase
   fighting: boolean
@@ -48,6 +52,7 @@ function FishingScene({
   name: string
   fightProfile: FishFightProfile | null
   catchKind: FishingCatch['kind'] | null
+  method: FishingMethod
 }) {
   return (
     <div className={`fishing-scene fishing-scene-${phase}${fightProfile ? ` fish-${fightProfile.movement}` : ''}${fighting ? ' is-fighting' : ''}`}>
@@ -58,18 +63,20 @@ function FishingScene({
         {phase === 'casting'
           ? name
           : phase === 'waiting'
-            ? 'Mồi câu đang trôi trên mặt nước'
+            ? method === 'spear' ? 'Đang quan sát cá gần bờ' : 'Mồi câu đang trôi trên mặt nước'
             : phase === 'bite'
             ? catchKind === 'fish'
-              ? 'Phao chìm — cá cắn câu!'
+            ? method === 'spear' ? 'Cá xuất hiện — phóng lao!' : 'Phao chìm — cá cắn câu!'
               : catchKind === 'trash'
                 ? 'Phao chìm — có rác mắc câu!'
                 : 'Phao chìm — có vật phẩm mắc câu!'
             : fighting ? `${fightProfile?.label ?? 'Cá'} đang vùng vẫy!` : 'Cá đã cắn câu!'}
       </div>
       <div className="fishing-current-rod">
-        <img src="/assets/fishing/rods/rod-1.png" alt="" />
-        <span>Cần tre tự chế</span>
+        {method === 'spear'
+          ? <span aria-hidden="true">↗</span>
+          : <img src="/assets/fishing/rods/rod-1.png" alt="" />}
+        <span>{method === 'spear' ? 'Lao đánh cá' : 'Cần tre tự chế'}</span>
       </div>
     </div>
   )
@@ -80,6 +87,8 @@ export function FishingMinigame({
   fishingSkillLevel,
   sceneImage,
   sceneName,
+  method,
+  staminaCost,
   fishPool,
   lootPool,
   onFinish,
@@ -131,7 +140,7 @@ export function FishingMinigame({
           || phaseRef.current === 'bite'
           || phaseRef.current === 'hooked')) {
         phaseRef.current = 'escaped'
-        setError('Thứ mắc câu đã trôi mất.')
+        setError(method === 'spear' ? 'Cá đã bơi khỏi tầm bắt.' : 'Thứ mắc câu đã trôi mất.')
         onEscapedRef.current()
         return
       }
@@ -153,7 +162,7 @@ export function FishingMinigame({
       if (phaseRef.current === 'bite') {
         if (castAtRef.current !== null && currentTime - castAtRef.current - getBiteDelay(startedAt) > 1_250) {
           phaseRef.current = 'escaped'
-          setError('Bạn giật cần chậm quá, cá đã nhả mồi.')
+          setError(method === 'spear' ? 'Bạn phóng lao chậm quá, cá đã bơi mất.' : 'Bạn giật cần chậm quá, cá đã nhả mồi.')
           onEscapedRef.current()
         }
         return
@@ -192,7 +201,7 @@ export function FishingMinigame({
 
       if (tensionRef.current >= 100) {
         phaseRef.current = 'escaped'
-        setError('Dây câu đứt mất rồi! Cá đã thoát.')
+        setError(method === 'spear' ? 'Cá vùng vẫy thoát khỏi mũi lao!' : 'Dây câu đứt mất rồi! Cá đã thoát.')
         onEscapedRef.current()
         return
       }
@@ -218,7 +227,7 @@ export function FishingMinigame({
     }, 100)
 
     return () => window.clearInterval(timer)
-  }, [startedAt])
+  }, [method, startedAt])
 
   function finishCatch(itemId: ItemId) {
     if (finishStartedRef.current) return
@@ -337,14 +346,18 @@ export function FishingMinigame({
     <section className="fishing-game-panel" aria-live="polite">
       <div className="fishing-game-heading">
         <div>
-          <span className="section-kicker">KỸ NĂNG THU THẬP CẤP {fishingSkillLevel} · TĂNG CƠ HỘI CÁ HIẾM, GIÚP KÉO CÁ DỄ HƠN</span>
+          <span className="section-kicker">
+            {method === 'spear'
+              ? 'ĐÁNH CÁ BẰNG LAO · CHỈ BẮT CÁ NHỎ Ở VÙNG VEN BỜ VÀ RẠN SAN HÔ'
+              : `KỸ NĂNG THU THẬP CẤP ${fishingSkillLevel} · TĂNG CƠ HỘI CÁ HIẾM, GIÚP KÉO CÁ DỄ HƠN`}
+          </span>
           <h2>{phase === 'casting'
-            ? 'Lấy đà ném mồi'
+            ? method === 'spear' ? 'Lấy đà phóng lao' : 'Lấy đà ném mồi'
             : phase === 'waiting'
-              ? 'Canh phao'
+              ? method === 'spear' ? 'Canh cá ven bờ' : 'Canh phao'
               : phase === 'bite'
                 ? catchKind === 'fish'
-                  ? 'Cá cắn câu!'
+                  ? method === 'spear' ? 'Cá nhỏ xuất hiện!' : 'Cá cắn câu!'
                   : catchKind === 'trash'
                     ? 'Mắc rác biển!'
                     : 'Mắc vật phẩm!'
@@ -360,16 +373,19 @@ export function FishingMinigame({
         name={sceneName}
         fightProfile={fightProfile}
         catchKind={catchKind}
+        method={method}
       />
 
       <div className="fishing-game-status">
         <strong>{phase === 'casting'
-          ? 'Nhấn giữ để tích lực, nhả tay để ném mồi.'
+          ? method === 'spear'
+            ? 'Nhấn giữ để lấy đà, nhả tay để phóng lao.'
+            : 'Nhấn giữ để tích lực, nhả tay để ném mồi.'
           : phase === 'waiting'
-            ? 'Mồi đã rơi xuống nước — chờ tín hiệu phao.'
+            ? method === 'spear' ? 'Quan sát mặt nước, phóng lao khi cá lộ diện.' : 'Mồi đã rơi xuống nước — chờ tín hiệu phao.'
             : phase === 'bite'
               ? catchKind === 'fish'
-                ? 'Nhấn ngay để giật cần và móc cá!'
+                ? method === 'spear' ? 'Nhấn ngay để phóng lao trúng cá!' : 'Nhấn ngay để giật cần và móc cá!'
                 : catchKind === 'trash'
                   ? 'Nhấn ngay để kéo rác lên khỏi biển!'
                   : 'Nhấn ngay để trục vớt vật phẩm!'
@@ -390,8 +406,8 @@ export function FishingMinigame({
       <div className="fishing-meters">
         {phase === 'casting' && (
           <div className="fishing-meter fishing-meter-full">
-            <div className="fishing-meter-heading"><span>Lực ném</span><strong>{Math.floor(castPower)}%</strong></div>
-            <div className="fishing-meter-track fishing-cast-track" role="progressbar" aria-label="Lực ném mồi" aria-valuenow={castPower} aria-valuemin={0} aria-valuemax={100}>
+            <div className="fishing-meter-heading"><span>{method === 'spear' ? 'Lực phóng lao' : 'Lực ném mồi'}</span><strong>{Math.floor(castPower)}%</strong></div>
+            <div className="fishing-meter-track fishing-cast-track" role="progressbar" aria-label={method === 'spear' ? 'Lực phóng lao' : 'Lực ném mồi'} aria-valuenow={castPower} aria-valuemin={0} aria-valuemax={100}>
               <span style={{ width: `${castPower}%` }} />
             </div>
           </div>
@@ -405,8 +421,8 @@ export function FishingMinigame({
               </div>
             </div>
             <div className="fishing-meter">
-              <div className="fishing-meter-heading"><span>Sức căng dây</span><strong>{Math.floor(tension)}%</strong></div>
-              <div className="fishing-meter-track fishing-tension-track" role="meter" aria-label="Sức căng dây câu" aria-valuenow={tension} aria-valuemin={0} aria-valuemax={100}>
+              <div className="fishing-meter-heading"><span>{method === 'spear' ? 'Sức ghì' : 'Sức căng dây'}</span><strong>{Math.floor(tension)}%</strong></div>
+              <div className="fishing-meter-track fishing-tension-track" role="meter" aria-label={method === 'spear' ? 'Sức ghì cá' : 'Sức căng dây câu'} aria-valuenow={tension} aria-valuemin={0} aria-valuemax={100}>
                 <span style={{ width: `${tension}%` }} />
               </div>
             </div>
@@ -444,32 +460,54 @@ export function FishingMinigame({
           onBlur={stopControl}
           onClick={() => { if (phaseRef.current === 'bite') hookFish() }}
           aria-label={phase === 'casting'
-            ? 'Nhấn giữ để tích lực và nhả tay để ném mồi'
+            ? method === 'spear' ? 'Nhấn giữ để lấy đà và nhả tay để phóng lao' : 'Nhấn giữ để tích lực và nhả tay để ném mồi'
             : phase === 'bite'
               ? catchKind === 'fish'
-                ? 'Giật cần ngay để móc cá'
-                : 'Giật cần ngay để kéo vật đang mắc câu'
-              : 'Nhấn và giữ khi cá dịu, nhả khi cá chạy'}
+                ? method === 'spear' ? 'Phóng lao ngay để bắt cá' : 'Giật cần ngay để móc cá'
+                : method === 'spear' ? 'Phóng lao để bắt cá' : 'Giật cần ngay để kéo vật đang mắc câu'
+              : method === 'spear' ? 'Nhấn giữ khi cá dịu, nhả khi cá vùng vẫy' : 'Nhấn và giữ khi cá dịu, nhả khi cá chạy'}
         >
           <span className="fishing-reel-handle" aria-hidden="true">{phase === 'casting' ? '↗' : phase === 'bite' ? '!' : '⤴'}</span>
           <span>{phase === 'casting'
-            ? isHolding ? 'ĐANG LẤY ĐÀ — NHẢ TAY ĐỂ NÉM' : 'NHẤN GIỮ ĐỂ LẤY ĐÀ, NHẢ ĐỂ NÉM'
+            ? method === 'spear'
+              ? isHolding ? 'ĐANG LẤY ĐÀ — NHẢ TAY ĐỂ PHÓNG LAO' : 'NHẤN GIỮ ĐỂ LẤY ĐÀ, NHẢ ĐỂ PHÓNG LAO'
+              : isHolding ? 'ĐANG LẤY ĐÀ — NHẢ TAY ĐỂ NÉM' : 'NHẤN GIỮ ĐỂ LẤY ĐÀ, NHẢ ĐỂ NÉM'
             : phase === 'bite'
               ? catchKind === 'fish'
-                ? 'GIẬT CẦN NGAY!'
-                : 'KÉO VẬT MẮC CÂU!'
-              : isHolding ? 'ĐANG KÉO — NHẢ NẾU CÁ CHẠY' : 'GIỮ ĐỂ KÉO · NHẢ KHI CÁ CHẠY'}</span>
+                ? method === 'spear' ? 'PHÓNG LAO NGAY!' : 'GIẬT CẦN NGAY!'
+                : method === 'spear' ? 'PHÓNG LAO BẮT CÁ!' : 'KÉO VẬT MẮC CÂU!'
+              : method === 'spear'
+                ? isHolding ? 'ĐANG GHÌ CÁ — NHẢ KHI CÁ VÙNG VẪY' : 'GIỮ ĐỂ GHÌ · NHẢ KHI CÁ VÙNG VẪY'
+                : isHolding ? 'ĐANG KÉO — NHẢ NẾU CÁ CHẠY' : 'GIỮ ĐỂ KÉO · NHẢ KHI CÁ CHẠY'}</span>
         </button>
       )}
 
-      {phase === 'casting' && <p className="fishing-game-hint">Giữ nút để ném xa hơn. Lực ném tốt tăng nhẹ cơ hội gặp cá hiếm. Khi đã đủ lực, nhả nút để thả mồi.</p>}
-      {phase === 'waiting' && <p className="fishing-game-hint">Canh dấu hiệu phao chìm rồi nhấn ngay nút để giật cần. Chậm một nhịp cá sẽ nhả mồi.</p>}
-      {phase === 'hooked' && <p className="fishing-game-hint">Khi cá dịu, nhấn giữ để kéo. Khi cá chạy và thanh căng dây tăng, nhả nút để dây không đứt.</p>}
+      {phase === 'casting' && (
+        <p className="fishing-game-hint">
+          {method === 'spear'
+            ? 'Canh hướng cá bơi; lấy đà vừa đủ rồi nhả tay để phóng lao.'
+            : 'Giữ nút để ném xa hơn. Lực ném tốt tăng nhẹ cơ hội gặp cá hiếm. Khi đã đủ lực, nhả nút để thả mồi.'}
+        </p>
+      )}
+      {phase === 'waiting' && (
+        <p className="fishing-game-hint">
+          {method === 'spear'
+            ? 'Chờ cá nhỏ lộ diện gần bờ rồi nhấn ngay để phóng lao.'
+            : 'Canh dấu hiệu phao chìm rồi nhấn ngay nút để giật cần. Chậm một nhịp cá sẽ nhả mồi.'}
+        </p>
+      )}
+      {phase === 'hooked' && (
+        <p className="fishing-game-hint">
+          {method === 'spear'
+            ? 'Khi cá dịu, nhấn giữ để ghì. Khi cá vùng vẫy, nhả nút để tránh tuột lao.'
+            : 'Khi cá dịu, nhấn giữ để kéo. Khi cá chạy và thanh căng dây tăng, nhả nút để dây không đứt.'}
+        </p>
+      )}
       {error && <p className="fishing-game-error" role="alert">{error}</p>}
 
       <div className="fishing-game-footer">
-        <span>ϟ 4 thể lực</span>
-        <span>Ném · Giật cần · Kéo và nhả dây</span>
+        <span>ϟ {staminaCost} thể lực</span>
+        <span>{method === 'spear' ? 'Lấy đà · Phóng lao · Ghì cá' : 'Ném · Giật cần · Kéo và nhả dây'}</span>
       </div>
     </section>
   )
@@ -486,7 +524,7 @@ export function FishingCatchReveal({
 }) {
   const item = itemDefinitions[itemId]
   const loot = getFishingLootDefinition(itemId)
-  const action = loot?.kind === 'trash' ? 'vớt được' : loot ? 'trục vớt được' : 'câu được'
+  const action = loot?.kind === 'trash' ? 'vớt được' : loot ? 'trục vớt được' : 'bắt được'
   return (
     <section className="fishing-catch-reveal" aria-live="polite">
       <div className="fishing-catch-illustration">
@@ -498,7 +536,7 @@ export function FishingCatchReveal({
       </div>
       <div className="fishing-catch-copy">
         <span className="section-kicker">
-          {loot?.kind === 'trash' ? 'RÁC BIỂN ĐÃ ĐƯỢC VỚT' : loot ? 'VẬT PHẨM ĐẶC BIỆT' : 'MẺ CÂU THÀNH CÔNG'}
+          {loot?.kind === 'trash' ? 'RÁC BIỂN ĐÃ ĐƯỢC VỚT' : loot ? 'VẬT PHẨM ĐẶC BIỆT' : 'MẺ ĐÁNH BẮT THÀNH CÔNG'}
         </span>
         <h2>Bạn {action} {item.name}!</h2>
         <p>{item.description}</p>
@@ -508,7 +546,7 @@ export function FishingCatchReveal({
           </p>
         )}
         <span className="fishing-catch-reward">+1 {item.name} · Đã cho vào túi đồ</span>
-        <button className="gather-button" type="button" onClick={onClose}>{loot ? 'Tiếp tục câu' : 'Câu tiếp'}</button>
+        <button className="gather-button" type="button" onClick={onClose}>Tiếp tục</button>
       </div>
     </section>
   )
@@ -525,7 +563,7 @@ export function FishingCatchToast({
 }) {
   const item = itemDefinitions[itemId]
   const loot = getFishingLootDefinition(itemId)
-  const action = loot?.kind === 'trash' ? 'vớt được' : loot ? 'trục vớt được' : 'câu được'
+  const action = loot?.kind === 'trash' ? 'vớt được' : loot ? 'trục vớt được' : 'bắt được'
   return (
     <aside className="fishing-catch-toast" role="status" aria-live="polite">
       <ItemArtwork itemId={itemId} />
@@ -547,9 +585,9 @@ export function FishingEscapeReveal({ onClose }: { onClose(): void }) {
     <section className="fishing-escape-reveal" aria-live="polite">
       <span className="fishing-escape-icon" aria-hidden="true">〰</span>
       <div>
-        <span className="section-kicker">MẺ CÂU THẤT BẠI</span>
+        <span className="section-kicker">ĐÁNH BẮT THẤT BẠI</span>
         <h2>Cá đã thoát mất rồi</h2>
-        <p>Dây quá căng hoặc cá vùng vẫy thoát khỏi lưỡi câu. Thử lại và nhả dây khi cá giằng nhé.</p>
+        <p>Cá vùng vẫy thoát khỏi tầm bắt. Thử lại và canh thời điểm chính xác hơn.</p>
       </div>
       <button className="gather-button" type="button" onClick={onClose}>Thử lại</button>
     </section>

@@ -1,11 +1,4 @@
-import {
-  legacyFishItemIds,
-  type FishItemId,
-  type FishingLootItemId,
-  type ItemId,
-  type LegacyFishItemId,
-  type SurvivalAilmentId,
-} from '../../shared/types/game'
+import type { FishItemId, FishingLootItemId, ItemId, SurvivalAilmentId } from '../../shared/types/game'
 import { fishCatalog } from './fishCatalog'
 import { fishingLootCatalog } from './fishingLootCatalog'
 
@@ -34,7 +27,7 @@ export interface ItemDefinition {
 
 type StaticItemId = Exclude<
   ItemId,
-  FishItemId | Exclude<FishingLootItemId, 'item_rope'> | LegacyFishItemId
+  FishItemId | Exclude<FishingLootItemId, 'item_rope'>
 >
 
 const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
@@ -417,6 +410,32 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
     usable: false,
     tradable: true,
     maxDurability: 30,
+  },
+  item_shovel: {
+    name: 'Xẻng đá',
+    description: 'Xẻng cán gỗ, mũi đá dùng để đào đất sét dọc bờ sông.',
+    category: 'tool',
+    maxStack: 1,
+    weight: 2,
+    icon: '⌁',
+    image: '/assets/resources/pebble.svg',
+    tone: 'stone',
+    usable: false,
+    tradable: true,
+    maxDurability: 24,
+  },
+  item_fishing_spear: {
+    name: 'Lao đánh cá',
+    description: 'Lao nhẹ dùng để phóng cá nhỏ ở vùng ven bờ và rạn san hô.',
+    category: 'tool',
+    maxStack: 1,
+    weight: 1.6,
+    icon: '↗',
+    image: '/assets/resources/pebble.svg',
+    tone: 'wood',
+    usable: false,
+    tradable: true,
+    maxDurability: 18,
   },
   item_copper_axe: {
     name: 'Rìu đồng',
@@ -935,7 +954,7 @@ const fishItemDefinitions = Object.fromEntries(fishCatalog.map((fish) => [
     maxStack: fish.rarity === 'legendary' ? 5 : 20,
     weight: fish.rarity === 'legendary' ? 2 : fish.rarity === 'epic' ? 1 : 0.5,
     icon: '≈',
-    image: `/assets/fish/${fish.itemId.replace('item_', '').replaceAll('_', '-')}.png`,
+    image: '/assets/resources/fresh-fish.svg',
     tone: 'fruit',
     usable: fish.rarity === 'legendary' ? false : fish.usable ?? true,
     tradable: fish.rarity !== 'legendary',
@@ -960,26 +979,8 @@ const fishingLootItemDefinitions = Object.fromEntries(fishingLootCatalog.map((lo
   },
 ])) as Record<FishingLootItemId, ItemDefinition>
 
-const legacyFishItemDefinitions = Object.fromEntries(legacyFishItemIds.map((itemId) => [
-  itemId,
-  {
-    name: 'Cá lưu trữ (loài cũ)',
-    description: 'Mẫu cá từ danh mục trước đây, được giữ lại để không ảnh hưởng dữ liệu đã lưu.',
-    category: 'food',
-    maxStack: 20,
-    weight: 0.5,
-    icon: '≈',
-    image: '/assets/resources/fresh-fish.svg',
-    tone: 'fruit',
-    usable: true,
-    tradable: true,
-    hungerRestore: 16,
-  },
-])) as Record<LegacyFishItemId, ItemDefinition>
-
 export const itemDefinitions: Record<ItemId, ItemDefinition> = {
   ...staticItemDefinitions,
   ...fishItemDefinitions,
   ...fishingLootItemDefinitions,
-  ...legacyFishItemDefinitions,
 }

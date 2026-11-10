@@ -1,4 +1,4 @@
-import { isValidGameSnapshot } from './gameSaveService'
+import { isValidGameSnapshot, migrateLegacyFishReferences } from './gameSaveService'
 import type { GameSnapshot } from '../../shared/types/game'
 
 export interface RemoteGameState {
@@ -17,8 +17,9 @@ export async function loadRemoteGameState(accessToken: string): Promise<RemoteGa
   })
   const payload: unknown = await response.json()
   if (!response.ok) throw new Error(readErrorMessage(payload, 'Không thể tải tiến trình từ máy chủ.'))
-  if (!isRemoteGameState(payload)) throw new Error('Dữ liệu tiến trình từ máy chủ không hợp lệ.')
-  return payload
+  const migratedPayload = migrateLegacyFishReferences(payload)
+  if (!isRemoteGameState(migratedPayload)) throw new Error('Dữ liệu tiến trình từ máy chủ không hợp lệ.')
+  return migratedPayload
 }
 
 export async function saveRemoteGameState(

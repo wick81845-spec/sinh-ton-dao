@@ -57,7 +57,7 @@ describe('socialService', () => {
     if (!visit.ok) throw new Error(visit.message)
 
     expect(proposeTrade(
-      visit.state, 'player_sora', 'item_leviathan', 1, 'item_wild_fruit', 1, 10_000,
+      visit.state, 'player_sora', 'item_king_mackerel', 1, 'item_wild_fruit', 1, 10_000,
     )).toEqual({ ok: false, message: 'Vật phẩm này chỉ dành cho sưu tầm, không thể giao dịch.' })
   })
 })

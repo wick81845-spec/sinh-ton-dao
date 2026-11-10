@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { initialGameState } from '../../../data/mockGameState'
 import { randomGatheringActivityId, resourceNodeDefinitions } from '../data/gatheringConfig'
-import { getFishAvailableAt } from '../data/fishingConfig'
+import {
+  getFishAvailableAt,
+  getSpearFishAvailableAt,
+  spearFishingActivity,
+} from '../data/fishingConfig'
 import {
   completeGathering,
   getGatheringAvailability,
@@ -163,13 +167,32 @@ describe('gatheringService', () => {
       .toContain('Cuốc chim đá')
   })
 
-  it('makes clay available on the discovered rainforest island', () => {
+  it('requires and wears down a shovel when digging clay on the discovered rainforest island', () => {
     const rainforestState = {
       ...exploredState,
       character: { ...exploredState.character, currentLocationId: 'island_002' },
     }
+    expect(getGatheringAvailability(rainforestState, 'dig-clay', 1000))
+      .toContain('Xẻng đá')
 
-    expect(getGatheringAvailability(rainforestState, 'dig-clay', 1000)).toBeNull()
+    const withShovel = {
+      ...rainforestState,
+      inventory: {
+        ...rainforestState.inventory,
+        slots: [...rainforestState.inventory.slots, { itemId: 'item_shovel' as const, quantity: 1 }],
+      },
+    }
+    expect(getGatheringAvailability(withShovel, 'dig-clay', 1000)).toBeNull()
+
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const started = startGathering(withShovel, 'dig-clay', 1000)
+    if (!started.ok) throw new Error(started.message)
+    const completed = completeGathering(started.state, started.state.activeGathering?.completesAt ?? 11_000)
+    random.mockRestore()
+
+    expect(completed.status).toBe('completed')
+    if (completed.status !== 'completed') throw new Error('Clay digging should complete.')
+    expect(completed.state.itemDurability?.item_shovel).toBe(23)
   })
 
   it('requires an iron axe to harvest hardwood on the rainforest island', () => {
@@ -283,7 +306,7 @@ describe('gatheringService', () => {
     if (caught.status !== 'completed') throw new Error('Fishing should complete.')
     expect(caught.itemId).toBe('item_sardine')
 
-    const wrongZone = completeGathering(started.state, 2000, 60, 'item_leviathan')
+    const wrongZone = completeGathering(started.state, 2000, 60, 'item_conger_eel')
     expect(wrongZone.status).toBe('failed')
     if (wrongZone.status !== 'failed') throw new Error('Fish from another zone must be rejected.')
     expect(wrongZone.message).toContain('không có ở vùng biển hiện tại')
@@ -376,6 +399,43 @@ describe('gatheringService', () => {
     if (completed.status !== 'completed') throw new Error('Fishing should complete.')
     expect(completed.state.itemDurability?.item_fishing_rod).toBe(11)
     expect(completed.message).toContain('Độ bền cần câu: 11/12')
+  })
+
+  it('requires a fishing spear, limits its catches to small coastal fish, and wears it down', () => {
+    expect(startGathering(initialGameState, spearFishingActivity.id, 1000))
+      .toMatchObject({ ok: false, message: 'Cần có Lao đánh cá trong túi hoặc ô trang bị.' })
+
+    const state = {
+      ...initialGameState,
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [...initialGameState.inventory.slots, { itemId: 'item_fishing_spear' as const, quantity: 1 }],
+      },
+    }
+    const offshoreState = {
+      ...state,
+      character: { ...state.character, currentLocationId: 'island_003' },
+    }
+    expect(startGathering(offshoreState, spearFishingActivity.id, 1000))
+      .toMatchObject({ ok: false, message: 'Lao đánh cá chỉ dùng được ở vùng ven bờ hoặc rạn san hô.' })
+
+    const started = startGathering(state, spearFishingActivity.id, 1000)
+    if (!started.ok) throw new Error(started.message)
+
+    const fish = getSpearFishAvailableAt('tropical_island', undefined, 'coastal_water')[0]
+    if (!fish) throw new Error('Expected a spear-eligible coastal fish.')
+    const caught = completeGathering(started.state, 2000, 60, fish.itemId)
+
+    expect(caught.status).toBe('completed')
+    if (caught.status !== 'completed') throw new Error('Spear fishing should complete.')
+    expect(caught.itemId).toBe(fish.itemId)
+    expect(caught.state.itemDurability?.item_fishing_spear).toBe(17)
+    expect(caught.message).toContain('Độ bền lao đánh cá: 17/18')
+
+    const offshoreFish = completeGathering(started.state, 2000, 60, 'item_blue_marlin')
+    expect(offshoreFish.status).toBe('failed')
+    if (offshoreFish.status !== 'failed') throw new Error('Spear fishing must reject offshore fish.')
+    expect(offshoreFish.message).toContain('không có ở vùng biển hiện tại')
   })
 
   it('catches a fish from the current biome and ocean zone', () => {

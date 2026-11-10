@@ -43,14 +43,14 @@ describe('explorationService', () => {
     expect(result.state.inventory.slots).toContainEqual({ itemId: 'item_wood', quantity: 16 })
   })
 
-  it('provides a sequential discovery route to all 12 islands', () => {
+  it('provides a sequential discovery route to all 12 islands beyond the starter island', () => {
     const discoveryTasks = explorationTasks.filter((task) => (
       task.discoveredIslandIds.length > 0 && !task.observedSpeciesId
     ))
     let state = initialGameState
     let now = 1_000
 
-    expect(discoveryTasks).toHaveLength(11)
+    expect(discoveryTasks).toHaveLength(12)
     for (const task of discoveryTasks) {
       state = {
         ...state,
@@ -67,6 +67,11 @@ describe('explorationService', () => {
     }
 
     expect(new Set(state.discoveredIslandIds)).toEqual(new Set(islandDefinitions.map((island) => island.id)))
+    expect(state.discoveredIslandIds).toContain('island_013')
+    expect(discoveryTasks.at(-1)).toMatchObject({
+      locationId: 'island_012',
+      discoveredIslandIds: ['island_013'],
+    })
   })
 
   it('records a safe wildlife sighting in the exploration journal', () => {

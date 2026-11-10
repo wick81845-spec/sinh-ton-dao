@@ -1,3 +1,7 @@
+import type { FishItemId } from './fish'
+
+export type { FishItemId } from './fish'
+
 export interface Character {
   id: string
   name: string
@@ -88,123 +92,6 @@ export interface WeatherState {
   globalOverride?: boolean
 }
 
-export type FishItemId =
-  | 'item_anchovy'
-  | 'item_sardine'
-  | 'item_herring'
-  | 'item_mullet'
-  | 'item_tilapia'
-  | 'item_goby'
-  | 'item_rabbitfish'
-  | 'item_scad'
-  | 'item_flying_fish'
-  | 'item_damselfish'
-  | 'item_small_mackerel'
-  | 'item_red_snapper'
-  | 'item_grouper'
-  | 'item_catfish'
-  | 'item_carp'
-  | 'item_snakehead'
-  | 'item_white_pomfret'
-  | 'item_spotted_rabbitfish'
-  | 'item_croaker'
-  | 'item_sea_bream'
-  | 'item_skipjack_tuna'
-  | 'item_amberjack'
-  | 'item_barracuda'
-  | 'item_seabass'
-  | 'item_trevally'
-  | 'item_leatherjacket'
-  | 'item_parrotfish'
-  | 'item_butterflyfish'
-  | 'item_lionfish'
-  | 'item_milkfish'
-  | 'item_yellowfin_tuna'
-  | 'item_bigeye_tuna'
-  | 'item_red_grouper'
-  | 'item_giant_grouper'
-  | 'item_shortbill_swordfish'
-  | 'item_mahi_mahi'
-  | 'item_sailfish'
-  | 'item_large_pomfret'
-  | 'item_devil_grouper'
-  | 'item_moray_eel'
-  | 'item_swordfish'
-  | 'item_blue_marlin'
-  | 'item_bluefin_tuna'
-  | 'item_giant_carp'
-  | 'item_sturgeon'
-  | 'item_whale_shark'
-  | 'item_ocean_sunfish'
-  | 'item_wolffish'
-  | 'item_giant_halibut'
-  | 'item_giant_grouper_rare'
-  | 'item_sea_dragon'
-  | 'item_oarfish'
-  | 'item_megamouth_shark'
-  | 'item_great_hammerhead'
-  | 'item_mako_shark'
-  | 'item_great_white_shark'
-  | 'item_tiger_shark'
-  | 'item_greenland_shark'
-  | 'item_giant_lanternfish'
-  | 'item_coelacanth'
-  | 'item_black_dragonfish'
-  | 'item_ancient_megamouth'
-  | 'item_giant_shark'
-  | 'item_giant_manta'
-  | 'item_white_orca'
-  | 'item_ancient_swordfish'
-  | 'item_golden_tuna'
-  | 'item_giant_sunfish'
-  | 'item_deep_sea_dragonfish'
-  | 'item_leviathan'
-
-export const legacyFishItemIds = [
-  'item_spotted_trout',
-  'item_golden_tench',
-  'item_mackerel',
-  'item_goldfish',
-  'item_striped_bream',
-  'item_needlefish',
-  'item_rainbow_trout',
-  'item_pink_sardine',
-  'item_green_minnow',
-  'item_bronze_roach',
-  'item_rose_perch',
-  'item_blue_sprat',
-  'item_parrot_minnow',
-  'item_angelfish',
-  'item_blue_tang',
-  'item_clownfish',
-  'item_yellow_clownfish',
-  'item_purple_basslet',
-  'item_blue_damselfish',
-  'item_dwarf_lionfish',
-  'item_regal_tang',
-  'item_cobalt_tang',
-  'item_tiger_grouper',
-  'item_blue_grouper',
-  'item_spotted_grouper',
-  'item_red_wrasse',
-  'item_reef_crabfish',
-  'item_purple_grouper',
-  'item_pink_anglerfish',
-  'item_rainbow_scorpionfish',
-  'item_seahorse_sun',
-  'item_seahorse_coral',
-  'item_golden_butterflyfish',
-  'item_clown_triggerfish',
-  'item_pufferfish',
-  'item_regal_butterflyfish',
-  'item_sole',
-  'item_tuna',
-  'item_kraken_octopus',
-  'item_starlight_manta',
-] as const
-
-export type LegacyFishItemId = typeof legacyFishItemIds[number]
-
 export type FishingLootItemId =
   | 'item_plastic_bag'
   | 'item_glass_bottle'
@@ -254,6 +141,8 @@ export type ItemId =
   | 'item_copper_ingot'
   | 'item_bronze_ingot'
   | 'item_stone_pickaxe'
+  | 'item_shovel'
+  | 'item_fishing_spear'
   | 'item_copper_axe'
   | 'item_iron_axe'
   | 'item_fresh_water'
@@ -294,7 +183,6 @@ export type ItemId =
   | 'item_spoiled_food'
   | FishingLootItemId
   | FishItemId
-  | LegacyFishItemId
 
 export interface InventorySlot {
   itemId: ItemId

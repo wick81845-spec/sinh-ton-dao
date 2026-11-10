@@ -1,5 +1,5 @@
 const currentReleaseChanges = [
-  'Bổ sung sổ tay 70 loài cá, chia thành 7 cấp độ hiếm và phân bố theo đảo, quần xã.',
+  'Bổ sung sổ tay 89 loài cá, chia thành 7 cấp độ hiếm và phân bố theo đảo, quần xã.',
   'Thêm minigame câu cá với cá giật dây, vùng vẫy và nguy cơ đứt dây hoặc thoát câu.',
   'Thêm kết quả câu cá theo tỷ lệ 75% cá, 18% rác biển và 7% vật phẩm đặc biệt.',
   'Dùng hình ảnh riêng cho 8 loại rác biển và 8 vật phẩm trục vớt.',
