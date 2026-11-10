@@ -24,14 +24,37 @@ export interface SurvivalStats {
   thirst: number
   stamina: number
   temperature: number
+  bodyTemperature?: number
+  wetness?: number
   conditions: string[]
 }
 
-export type SurvivalAilmentId = 'bleeding' | 'infection' | 'heatstroke' | 'hypothermia' | 'poisoning'
+export type SurvivalAilmentId =
+  | 'bleeding'
+  | 'infection'
+  | 'heatstroke'
+  | 'hypothermia'
+  | 'poisoning'
+  | 'sunburn'
+  | 'sprain'
+  | 'fracture'
+  | 'blisters'
+  | 'insectBites'
+  | 'tropicalFever'
+  | 'diarrhea'
+  | 'allergy'
+  | 'smoke'
+  | 'marineSting'
+  | 'dehydration'
+  | 'burns'
+  | 'frostbite'
+  | 'animalBite'
+  | 'exhaustion'
 
 export interface SurvivalAilment {
   id: SurvivalAilmentId
   elapsedMs: number
+  severity?: 'mild' | 'moderate' | 'severe'
 }
 
 export type CropId = 'fruit' | 'herb' | 'coconut'
@@ -62,6 +85,7 @@ export interface WeatherState {
   locationId: string
   changedAt: number
   changesAt: number
+  globalOverride?: boolean
 }
 
 export type FishItemId =
@@ -454,6 +478,7 @@ export interface GameSnapshot {
   character: Character
   survival: SurvivalStats
   ailments?: SurvivalAilment[]
+  appliedAdminCommandIds?: string[]
   farmPlots?: FarmPlot[]
   livestockPens?: LivestockPen[]
   waterCollectors?: Record<string, WaterCollectorState>

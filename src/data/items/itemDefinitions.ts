@@ -24,6 +24,7 @@ export interface ItemDefinition {
   hungerRestore?: number
   thirstRestore?: number
   healthRestore?: number
+  bodyTemperatureDelta?: number
   maxDurability?: number
   shelfLifeMs?: number
   equipmentSlot?: 'weapon'
@@ -638,7 +639,7 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
     usable: true,
     tradable: true,
     healthRestore: 12,
-    curesAilments: ['bleeding', 'infection'],
+    curesAilments: ['bleeding', 'infection', 'sprain', 'fracture', 'blisters', 'insectBites', 'marineSting', 'burns', 'animalBite'],
   },
   item_herbal_antidote: {
     name: 'Thuốc giải độc',
@@ -652,7 +653,7 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
     usable: true,
     tradable: true,
     healthRestore: 2,
-    curesAilments: ['poisoning'],
+    curesAilments: ['poisoning', 'tropicalFever', 'diarrhea', 'allergy', 'smoke'],
   },
   item_warm_tea: {
     name: 'Trà thảo mộc nóng',
@@ -667,7 +668,8 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
     tradable: true,
     thirstRestore: 12,
     healthRestore: 2,
-    curesAilments: ['hypothermia'],
+    bodyTemperatureDelta: 1.5,
+    curesAilments: ['hypothermia', 'frostbite', 'exhaustion'],
   },
   item_fruit_seed: {
     name: 'Hạt giống cây ăn quả',
@@ -717,7 +719,8 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
     usable: true,
     tradable: true,
     thirstRestore: 25,
-    curesAilments: ['heatstroke'],
+    bodyTemperatureDelta: -1,
+    curesAilments: ['heatstroke', 'sunburn', 'dehydration'],
   },
   item_filtered_water: {
     name: 'Nước đã lọc',

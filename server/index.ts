@@ -4,6 +4,7 @@ import { loadApiConfig } from './config.js'
 import { createSupabaseAuthenticationServices } from './auth/supabaseServices.js'
 import { createSupabaseGameStateService } from './game/gameStateService.js'
 import { createSupabaseWorldPresenceService } from './world/worldPresenceService.js'
+import { createSupabaseAdminControlService } from './admin/adminControlService.js'
 
 async function startServer(): Promise<void> {
   const config = loadApiConfig()
@@ -12,6 +13,7 @@ async function startServer(): Promise<void> {
     config.webOrigin,
     createSupabaseGameStateService(config),
     createSupabaseWorldPresenceService(config),
+    createSupabaseAdminControlService(config),
   )
   await app.listen({ host: config.host, port: config.port })
 }

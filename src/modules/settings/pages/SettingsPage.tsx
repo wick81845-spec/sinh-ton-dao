@@ -5,9 +5,10 @@ import { useThemePreference } from '../../../app/providers/useThemePreference'
 import { localStorageAdapter } from '../../../services/storage/localStorageAdapter'
 import { avatarOptions, backgroundOptions, isGameBackground, type GameBackground } from '../settingsPreferences'
 import { applyGameBackground, isStoredImage, prepareImageUpload } from '../imagePreferences'
+import { AdminControlsPanel } from '../components/AdminControlsPanel'
 
 export function SettingsPage() {
-  const { session, signOut } = useAuth()
+  const { session, signOut, isAdmin, isAdminLoading, adminError } = useAuth()
   const { theme, themeReady, toggleTheme } = useThemePreference()
   const navigate = useNavigate()
   const avatarInputRef = useRef<HTMLInputElement>(null)
@@ -244,6 +245,12 @@ export function SettingsPage() {
             />
             <p className="settings-note">Ảnh đại diện sẽ được cắt vuông, thu nhỏ và chỉ lưu trên thiết bị này.</p>
           </section>
+
+          {session && isAdminLoading && <p className="account-state">Đang xác minh quyền quản trị…</p>}
+          {session && isAdmin && <AdminControlsPanel accessToken={session.access_token} />}
+          {session && !isAdminLoading && adminError && (
+            <p className="account-error" role="alert">Không thể xác minh quyền quản trị: {adminError}</p>
+          )}
 
           {session && (
             <section className="settings-card settings-account-card">

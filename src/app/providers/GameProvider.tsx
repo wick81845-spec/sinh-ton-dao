@@ -29,8 +29,9 @@ import {
 import { buyMarketItem as buyMarket, sellMarketItem as sellMarket } from '../../modules/economy/services/marketService'
 import { addFriend as addSocialFriend, proposeTrade as createTradeOffer, resolveTrade as resolveSocialTrade, returnToHomeIsland, visitPlayerIsland as visitIsland } from '../../modules/social/services/socialService'
 import { completeShipConstruction, startShipConstruction } from '../../modules/ship/services/shipService'
-import { advanceSurvival, isSurvivorBusy, isSurvivorResting } from '../../modules/survival/utils/survivalCalculator'
+import { advanceSurvival, getSurvivalConditions, isSurvivorBusy, isSurvivorResting } from '../../modules/survival/utils/survivalCalculator'
 import { advanceAilments } from '../../modules/survival/services/ailmentService'
+import { advanceBodyExposure } from '../../modules/survival/services/bodyExposureService'
 import { survivalConfig } from '../../modules/survival/data/survivalConfig'
 import { researchTechnology as researchTech } from '../../modules/progression/services/technologyService'
 import { advanceWeather, createWeatherState } from '../../modules/world/services/weatherService'
@@ -50,6 +51,11 @@ import { gameClock } from '../../services/clock/gameClock'
 import { gameEventBus } from '../../services/events/gameEvents'
 import { createGameSaveService } from '../../services/persistence/gameSaveService'
 import { isRemoteGameSaveConfigured, loadRemoteGameState, saveRemoteGameState } from '../../services/persistence/remoteGameSaveClient'
+import {
+  acknowledgeAdminCommand,
+  loadPendingAdminCommands,
+  loadRemoteWorldSettings,
+} from '../../services/persistence/remoteAdminControlClient'
 import { localStorageAdapter } from '../../services/storage/localStorageAdapter'
 import { GameContext, type FishingActionResult, type GameActionResult } from './gameContext'
 import { useAuth } from './useAuth'
@@ -111,11 +117,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const cloudRevisionRef = useRef<number | null>(null)
   const saveInProgressRef = useRef(false)
   const saveRequestedRef = useRef(false)
+  const forcedWeatherIdRef = useRef<string | null>(null)
+  const persistedAdminCommandIdsRef = useRef(new Set<string>())
 
   const persistCurrentState = useCallback(async () => {
     if (saveInProgressRef.current) {
       saveRequestedRef.current = true
-      return
+      return false
     }
 
     saveInProgressRef.current = true
@@ -134,13 +142,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
           } else {
             await gameSaveService.save(currentState, gameClock.now())
           }
+          persistedAdminCommandIdsRef.current = new Set(currentState.appliedAdminCommandIds ?? [])
         }
       } while (saveRequestedRef.current)
       setError(null)
+      return true
     } catch (saveError: unknown) {
       const message = `Không thể lưu tiến trình: ${describeError(saveError)}`
       console.error(message, saveError)
       setError(message)
+      return false
     } finally {
       saveInProgressRef.current = false
     }
@@ -755,6 +766,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     stateRef.current = null
     cloudRevisionRef.current = null
+    forcedWeatherIdRef.current = null
+    persistedAdminCommandIdsRef.current.clear()
     void (async () => {
       const accessToken = accessTokenRef.current
       if (playerId && accessToken && isRemoteGameSaveConfigured) {
@@ -768,6 +781,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
           }
         }
         if (!active) return null
+        const worldSettings = await loadRemoteWorldSettings(accessToken)
+        if (!active) return null
+        forcedWeatherIdRef.current = worldSettings.weatherId
         cloudRevisionRef.current = remoteSave.revision
         await gameSaveService.save(remoteSave.state, gameClock.now())
         return {
@@ -784,12 +800,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
         ? save.data
         : newPlayerGameState
       const restoredWeatherState = restoredBase.weather
+        && !forcedWeatherIdRef.current
         && restoredBase.weather.locationId === restoredBase.character.currentLocationId
         && now < restoredBase.weather.changesAt
         ? restoredBase.weather
-        : createWeatherState(restoredBase.character.currentLocationId, now)
+        : createWeatherState(restoredBase.character.currentLocationId, now, forcedWeatherIdRef.current)
       const restoredState: GameSnapshot = {
         ...restoredBase,
+        survival: {
+          ...restoredBase.survival,
+          bodyTemperature: restoredBase.survival.bodyTemperature ?? 37,
+          wetness: restoredBase.survival.wetness ?? 0,
+        },
         randomWorldEvents: restoredBase.randomWorldEvents ?? [],
         nextRandomWorldEventAt: restoredBase.randomWorldEventScheduleVersion === 2
           ? restoredBase.nextRandomWorldEventAt ?? now + RANDOM_WORLD_EVENT_INTERVAL_MS
@@ -814,6 +836,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
 
       stateRef.current = restoredState
+      persistedAdminCommandIdsRef.current = new Set(restoredState.appliedAdminCommandIds ?? [])
       lastTickRef.current = now
       setGameState(restoredState)
       if (restoredBase.survival.health === 0 && restoredBase.character.status === 'alive') {
@@ -832,6 +855,110 @@ export function GameProvider({ children }: { children: ReactNode }) {
       active = false
     }
   }, [characterAppearance, characterName, gameSaveService, homeIslandName, isAuthLoading, playerId])
+
+  useEffect(() => {
+    if (isLoading || !playerId || !isRemoteGameSaveConfigured || !accessTokenRef.current) return
+    let active = true
+    let polling = false
+
+    const pollCommands = async () => {
+      if (polling) return
+      const accessToken = accessTokenRef.current
+      if (!accessToken) return
+      polling = true
+      try {
+        const commands = await loadPendingAdminCommands(accessToken)
+        if (!active) return
+        for (const { id, command } of commands) {
+          const currentState = stateRef.current
+          if (!currentState) return
+          if (currentState.appliedAdminCommandIds?.includes(id)) {
+            if (!persistedAdminCommandIdsRef.current.has(id)) {
+              if (!await persistCurrentState()) continue
+            }
+            await acknowledgeAdminCommand(accessToken, id)
+            continue
+          }
+
+          const survival = {
+            ...currentState.survival,
+            ...(command.health !== undefined ? { health: command.health } : {}),
+            ...(command.hunger !== undefined ? { hunger: command.hunger } : {}),
+            ...(command.thirst !== undefined ? { thirst: command.thirst } : {}),
+            ...(command.stamina !== undefined ? { stamina: command.stamina } : {}),
+            ...(command.bodyTemperature !== undefined ? { bodyTemperature: command.bodyTemperature } : {}),
+            ...(command.wetness !== undefined ? { wetness: command.wetness } : {}),
+          }
+          survival.conditions = getSurvivalConditions(survival)
+          const appliedAdminCommandIds = [...(currentState.appliedAdminCommandIds ?? []), id].slice(-100)
+          const nextState: GameSnapshot = {
+            ...currentState,
+            survival,
+            ailments: command.ailments ?? currentState.ailments ?? [],
+            appliedAdminCommandIds,
+            character: command.health === undefined
+              ? currentState.character
+              : { ...currentState.character, status: command.health === 0 ? 'dead' : 'alive' },
+          }
+          stateRef.current = nextState
+          setGameState(nextState)
+          emitSurvivalChanges(currentState, nextState)
+          if (!await persistCurrentState()) continue
+          await acknowledgeAdminCommand(accessToken, id)
+          setNotice('Quản trị viên đã cập nhật trạng thái sinh tồn của bạn.')
+        }
+      } catch (commandError: unknown) {
+        const message = `Không thể đồng bộ lệnh quản trị: ${describeError(commandError)}`
+        console.error(message, commandError)
+        if (active) setError(message)
+      } finally {
+        polling = false
+      }
+    }
+
+    void pollCommands()
+    const timer = window.setInterval(() => void pollCommands(), 15_000)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
+  }, [isLoading, persistCurrentState, playerId])
+
+  useEffect(() => {
+    if (isLoading || !playerId || !isRemoteGameSaveConfigured || !accessTokenRef.current) return
+    let active = true
+    let polling = false
+
+    const pollWorldSettings = async () => {
+      if (polling) return
+      const accessToken = accessTokenRef.current
+      if (!accessToken) return
+      polling = true
+      try {
+        const settings = await loadRemoteWorldSettings(accessToken)
+        if (!active || settings.weatherId === forcedWeatherIdRef.current) return
+        forcedWeatherIdRef.current = settings.weatherId
+        if (settings.weatherId) {
+          const weather = getWeatherDefinition(settings.weatherId)
+          setNotice(`Thời tiết toàn cục đã đổi: ${weather?.name ?? settings.weatherId}.`)
+        } else {
+          setNotice('Đã trả thời tiết về chu kỳ tự nhiên.')
+        }
+      } catch (settingsError: unknown) {
+        const message = `Không thể đồng bộ thời tiết toàn cục: ${describeError(settingsError)}`
+        console.error(message, settingsError)
+        if (active) setError(message)
+      } finally {
+        polling = false
+      }
+    }
+
+    const timer = window.setInterval(() => void pollWorldSettings(), 30_000)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
+  }, [isLoading, playerId])
 
   useEffect(() => {
     if (isLoading || !stateRef.current) return
@@ -875,8 +1002,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
           hasShelter,
         )
         : stateAfterFood.survival
-      const ailmentAdvance = advanceAilments(
+      const bodyExposure = advanceBodyExposure(
         { ...stateAfterFood, survival: baseSurvival },
+        now - previousTick,
+        survivalWeather,
+        hasShelter,
+      )
+      const ailmentAdvance = advanceAilments(
+        bodyExposure.state,
         now - previousTick,
         survivalWeather,
         hasShelter,
@@ -901,7 +1034,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (spoilage.changed) {
         setNotice(`${spoilage.spoiledQuantity} phần thức ăn đã ôi thiu.`)
       }
-      const weatherResult = advanceWeather(nextState, now)
+      const weatherResult = advanceWeather(nextState, now, forcedWeatherIdRef.current)
       if (weatherResult.changed) {
         nextState = weatherResult.state
         const definition = weatherResult.state.weather

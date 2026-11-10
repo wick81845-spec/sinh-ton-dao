@@ -87,6 +87,17 @@ describe('bodyStatusService', () => {
     expect(ill.find((effect) => effect.id === 'hypothermia')?.name).toBe('Hạ thân nhiệt')
   })
 
+  it('shows accumulated wetness and body-temperature effects', () => {
+    const effects = getBodyStatusEffects({
+      ...initialGameState.survival,
+      bodyTemperature: 34.5,
+      wetness: 75,
+    })
+
+    expect(effects.map((effect) => effect.id)).toContain('body-temperature')
+    expect(effects.find((effect) => effect.id === 'wet-clothes')?.name).toBe('Quần áo ướt đẫm')
+  })
+
   it('shows recovery only when resting with stable food and water needs', () => {
     const stats = {
       ...initialGameState.survival,

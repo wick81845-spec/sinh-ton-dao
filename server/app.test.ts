@@ -3,6 +3,7 @@ import { buildApiApp } from './app.js'
 import type { AuthenticationServices } from './auth/authentication.js'
 import { GameStateConflictError, type GameStateService } from './game/gameStateService.js'
 import { WorldPresenceError, type WorldPresenceService, type WorldPlayer } from './world/worldPresenceService.js'
+import type { AdminControlService } from './admin/adminControlService.js'
 import { initialGameState } from '../src/data/mockGameState.js'
 
 const profile = {
@@ -209,5 +210,89 @@ describe('backend API foundation', () => {
       message: 'Thế giới đã đủ 20 người chơi online.',
     })
     expect(worldPresence.getOnlinePlayers).not.toHaveBeenCalled()
+  })
+
+  it('requires a server-verified admin profile for global weather and player adjustments', async () => {
+    const adminControls: AdminControlService = {
+      listPlayers: vi.fn().mockResolvedValue([]),
+      playerExists: vi.fn().mockResolvedValue(true),
+      getGlobalSettings: vi.fn().mockResolvedValue({ weatherId: null, updatedAt: null }),
+      setGlobalWeather: vi.fn(),
+      createSurvivalCommand: vi.fn(),
+      getPendingCommands: vi.fn(),
+      acknowledgeCommand: vi.fn(),
+    }
+    const app = await buildApiApp({
+      verifyAccessToken: vi.fn().mockResolvedValue({ id: profile.id, email: null }),
+      getPlayerProfile: vi.fn().mockResolvedValue(profile),
+    }, 'http://localhost:5173', null, null, adminControls)
+    apps.push(app)
+
+    const weather = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/game/admin/world-weather',
+      headers: { authorization: 'Bearer valid-admin-token-1234567890' },
+      payload: { weatherId: 'thunderstorm' },
+    })
+    const survival = await app.inject({
+      method: 'POST',
+      url: '/api/v1/game/admin/players/9fb61632-9e1f-4380-9a64-05553612b353/survival',
+      headers: { authorization: 'Bearer valid-admin-token-1234567890' },
+      payload: { health: 65, wetness: 80, ailments: [{ id: 'hypothermia', elapsedMs: 0, severity: 'moderate' }] },
+    })
+
+    expect(weather.statusCode).toBe(403)
+    expect(survival.statusCode).toBe(403)
+    expect(adminControls.setGlobalWeather).not.toHaveBeenCalled()
+    expect(adminControls.createSurvivalCommand).not.toHaveBeenCalled()
+  })
+
+  it('allows admins to set shared weather and queue validated survival changes', async () => {
+    const adminProfile = { ...profile, is_admin: true }
+    const adminControls: AdminControlService = {
+      listPlayers: vi.fn().mockResolvedValue([]),
+      playerExists: vi.fn().mockResolvedValue(true),
+      getGlobalSettings: vi.fn().mockResolvedValue({ weatherId: null, updatedAt: null }),
+      setGlobalWeather: vi.fn().mockResolvedValue({ weatherId: 'thunderstorm', updatedAt: '2026-11-11T12:00:00.000Z' }),
+      createSurvivalCommand: vi.fn().mockResolvedValue('command-1'),
+      getPendingCommands: vi.fn(),
+      acknowledgeCommand: vi.fn(),
+    }
+    const app = await buildApiApp({
+      verifyAccessToken: vi.fn().mockResolvedValue({ id: profile.id, email: null }),
+      getPlayerProfile: vi.fn().mockResolvedValue(adminProfile),
+    }, 'http://localhost:5173', null, null, adminControls)
+    apps.push(app)
+
+    const weather = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/game/admin/world-weather',
+      headers: { authorization: 'Bearer valid-admin-token-1234567890' },
+      payload: { weatherId: 'thunderstorm' },
+    })
+    const survival = await app.inject({
+      method: 'POST',
+      url: '/api/v1/game/admin/players/9fb61632-9e1f-4380-9a64-05553612b353/survival',
+      headers: { authorization: 'Bearer valid-admin-token-1234567890' },
+      payload: { health: 65, wetness: 80, ailments: [{ id: 'hypothermia', elapsedMs: 0, severity: 'moderate' }] },
+    })
+    const invalid = await app.inject({
+      method: 'POST',
+      url: '/api/v1/game/admin/players/9fb61632-9e1f-4380-9a64-05553612b353/survival',
+      headers: { authorization: 'Bearer valid-admin-token-1234567890' },
+      payload: { health: 101 },
+    })
+
+    expect(weather.statusCode).toBe(200)
+    expect(weather.json()).toMatchObject({ weatherId: 'thunderstorm' })
+    expect(adminControls.setGlobalWeather).toHaveBeenCalledWith('thunderstorm', profile.id)
+    expect(survival.statusCode).toBe(202)
+    expect(adminControls.createSurvivalCommand).toHaveBeenCalledWith(
+      '9fb61632-9e1f-4380-9a64-05553612b353',
+      profile.id,
+      { health: 65, wetness: 80, ailments: [{ id: 'hypothermia', elapsedMs: 0, severity: 'moderate' }] },
+    )
+    expect(invalid.statusCode).toBe(400)
+    expect(adminControls.createSurvivalCommand).toHaveBeenCalledOnce()
   })
 })

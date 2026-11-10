@@ -3,6 +3,7 @@ import { islandDefinitions } from '../data/worldDefinitions'
 import { addItems, removeItems } from '../../inventory/services/inventoryService'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import type { GameSnapshot, RandomWorldEventRecord } from '../../../shared/types/game'
+import { inflictSurvivalAilment } from '../../survival/services/ailmentService'
 
 export const RANDOM_WORLD_EVENT_INTERVAL_MS = 30 * 60 * 1000
 const EVENT_DURATION_MS = 180_000
@@ -206,6 +207,9 @@ export function resolveRandomWorldEvent(
   }
 
   const followUpEventId = choice.followUpEventId ?? null
+  const stateWithAilment = choice.ailment
+    ? inflictSurvivalAilment(state, choice.ailment, choice.ailmentSeverity)
+    : state
   const outcomeDetails = [
     ...(choice.costs ?? []).map((cost) => `Đã dùng ${itemDefinitions[cost.itemId].name} × ${cost.quantity}`),
     ...(choice.rewards ?? []).map((reward) => `Nhận ${itemDefinitions[reward.itemId].name} × ${reward.quantity}`),
@@ -246,12 +250,12 @@ export function resolveRandomWorldEvent(
   return {
     ok: true,
     state: {
-      ...state,
+      ...stateWithAilment,
       inventory,
       discoveredIslandIds,
       character: { ...state.character, coins, reputation, ...(health === 0 ? { status: 'dead' as const } : {}) },
       survival: {
-        ...state.survival,
+        ...stateWithAilment.survival,
         stamina,
         health,
         hunger,

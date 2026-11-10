@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useGame } from '../../../app/providers/useGame'
 import { survivalConfig } from '../data/survivalConfig'
 import { SurvivalMeter, type SurvivalStatName } from '../components/SurvivalMeter'
+import { BodyExposureMeters } from '../components/BodyExposureMeters'
 import { BodyStatusPanel } from '../components/BodyStatusPanel'
 import { getCurrentWeather } from '../../world/services/weatherService'
 import { isSurvivorResting } from '../utils/survivalCalculator'
@@ -74,6 +75,7 @@ export function SurvivalPage() {
           />
         ))}
       </section>
+      <BodyExposureMeters stats={gameState.survival} />
 
       <section className={`survival-rest-control${isResting ? ' is-resting' : ''}`} aria-live="polite">
         <div>
@@ -119,6 +121,7 @@ export function SurvivalPage() {
           : ''}.
         Sức lực chỉ hồi khi nghỉ ngơi (không có hoạt động, chế tạo, xây dựng hoặc di chuyển), tối đa {survivalConfig.stamina.recoveryPerMinute} điểm/phút; đói, khát hoặc sức khỏe thấp làm chậm hồi phục.
         Lều lá cấp 1 tăng hồi phục 25%, nâng cấp cấp 2 tăng 40% và che chắn tác động khát do nắng nóng.
+        Mưa làm tích lũy độ ướt, còn mưa lạnh kéo thân nhiệt xuống; hãy trú trong lều hoặc hong khô trước khi quá lạnh.
         Khi đói hoặc khát dưới {survivalConfig.needWarningThreshold}%, hồi thể lực chậm hơn; khi dưới {survivalConfig.criticalNeedThreshold}, sức khỏe giảm lần lượt {survivalConfig.health.malnutritionDamagePerHour} và {survivalConfig.health.severeDehydrationDamagePerHour} điểm/giờ;
         khi cạn, mất lần lượt {survivalConfig.health.starvationDamagePerHour} và {survivalConfig.health.dehydrationDamagePerHour} điểm/giờ.
       </p>

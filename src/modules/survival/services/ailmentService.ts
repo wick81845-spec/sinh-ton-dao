@@ -11,17 +11,61 @@ const bleedingDamagePerHour = 18
 const infectionDamagePerHour = 6
 const exposureDamagePerHour = 6
 const poisoningDamagePerHour = 12
+const generalAilmentDamagePerHour: Partial<Record<SurvivalAilment['id'], number>> = {
+  sunburn: 1.5,
+  sprain: 0.5,
+  fracture: 2,
+  blisters: 0.25,
+  insectBites: 0.5,
+  tropicalFever: 4,
+  diarrhea: 3,
+  allergy: 1,
+  smoke: 2,
+  marineSting: 3,
+  dehydration: 4,
+  burns: 3,
+  frostbite: 3,
+  animalBite: 4,
+  exhaustion: 0.5,
+}
+const generalAilmentStaminaPerHour: Partial<Record<SurvivalAilment['id'], number>> = {
+  sunburn: 1.5,
+  sprain: 4,
+  fracture: 6,
+  blisters: 2,
+  insectBites: 1,
+  tropicalFever: 3,
+  diarrhea: 4,
+  allergy: 2,
+  smoke: 4,
+  marineSting: 3,
+  dehydration: 5,
+  burns: 2,
+  frostbite: 3,
+  animalBite: 3,
+  exhaustion: 5,
+}
 
 export function inflictCombatWound(state: GameSnapshot): GameSnapshot {
-  const ailments = state.ailments ?? []
-  if (ailments.some((ailment) => ailment.id === 'bleeding')) return state
-  return { ...state, ailments: [...ailments, { id: 'bleeding', elapsedMs: 0 }] }
+  return inflictSurvivalAilment(state, 'bleeding')
 }
 
 export function inflictPoisoning(state: GameSnapshot): GameSnapshot {
+  return inflictSurvivalAilment(state, 'poisoning')
+}
+
+export function inflictSurvivalAilment(
+  state: GameSnapshot,
+  id: SurvivalAilment['id'],
+  severity?: SurvivalAilment['severity'],
+): GameSnapshot {
   const ailments = state.ailments ?? []
-  if (ailments.some((ailment) => ailment.id === 'poisoning')) return state
-  return { ...state, ailments: [...ailments, { id: 'poisoning', elapsedMs: 0 }] }
+  if (ailments.some((ailment) => ailment.id === id)) return state
+  if (ailments.length >= 20) return state
+  return {
+    ...state,
+    ailments: [...ailments, { id, elapsedMs: 0, ...(severity ? { severity } : {}) }],
+  }
 }
 
 export function advanceAilments(
@@ -32,16 +76,32 @@ export function advanceAilments(
 ): { state: GameSnapshot; changed: boolean } {
   const elapsed = Math.max(0, elapsedMilliseconds)
   const currentAilments = state.ailments ?? []
-  const heatExposure = !isSheltered && (weather?.temperatureDelta ?? 0) >= 9
-  const coldExposure = !isSheltered && (weather?.temperatureDelta ?? 0) <= -12
+  const wetness = state.survival.wetness ?? 0
+  const bodyTemperature = state.survival.bodyTemperature ?? 37
+  const heatExposure = !isSheltered
+    && ((weather?.temperatureDelta ?? 0) >= 9 || bodyTemperature >= 39)
+  const coldExposure = !isSheltered
+    && ((weather?.temperatureDelta ?? 0) <= -12
+      || ((weather?.temperatureDelta ?? 0) <= -7 && wetness >= 35)
+      || bodyTemperature <= 35)
   const heatstroke = currentAilments.find((ailment) => ailment.id === 'heatstroke')
   const hypothermia = currentAilments.find((ailment) => ailment.id === 'hypothermia')
-  const needsExposureTracking = heatExposure && !heatstroke || coldExposure && !hypothermia
+  const generalExposureRules = [
+    { id: 'sunburn', exposed: !isSheltered && (weather?.temperatureDelta ?? 0) >= 9 },
+    { id: 'frostbite', exposed: !isSheltered && wetness >= 70 && (weather?.temperatureDelta ?? 0) <= -7 },
+    { id: 'dehydration', exposed: state.survival.thirst <= 10 },
+    { id: 'exhaustion', exposed: state.survival.stamina <= 10 },
+  ] as const
+  const needsExposureTracking = (heatExposure && !heatstroke)
+    || (coldExposure && !hypothermia)
+    || generalExposureRules.some((rule) => rule.exposed
+      && !currentAilments.some((ailment) => ailment.id === rule.id))
   if (elapsed === 0 || (currentAilments.length === 0 && !needsExposureTracking)) {
     return { state, changed: false }
   }
 
   let health = state.survival.health
+  let stamina = state.survival.stamina
   let changed = false
   let bleeding: SurvivalAilment | undefined
   const ailments: SurvivalAilment[] = []
@@ -83,6 +143,47 @@ export function advanceAilments(
       continue
     }
 
+    if (ailment.id !== 'heatstroke' && ailment.id !== 'hypothermia') {
+      if (ailment.id === 'dehydration' && state.survival.thirst >= 50) {
+        changed = true
+        continue
+      }
+      if (ailment.id === 'exhaustion' && state.survival.stamina >= 40) {
+        changed = true
+        continue
+      }
+      const noLongerExposed = ailment.id === 'sunburn'
+        ? isSheltered || (weather?.temperatureDelta ?? 0) < 9
+        : ailment.id === 'frostbite'
+          ? isSheltered || bodyTemperature >= 36
+          : false
+      if (noLongerExposed) {
+        const elapsedMs = Math.max(0, ailment.elapsedMs - elapsed * 2)
+        if (elapsedMs === 0) {
+          changed = true
+        } else {
+          ailments.push({ ...ailment, elapsedMs })
+        }
+        continue
+      }
+      const severityMultiplier = ailment.severity === 'severe' ? 2 : ailment.severity === 'moderate' ? 1.5 : 1
+      health -= elapsed / millisecondsPerHour
+        * (generalAilmentDamagePerHour[ailment.id] ?? 0)
+        * severityMultiplier
+      stamina -= elapsed / millisecondsPerHour
+        * (generalAilmentStaminaPerHour[ailment.id] ?? 0)
+        * severityMultiplier
+      const elapsedMs = ailment.elapsedMs + elapsed
+      const severity = elapsedMs >= 30 * 60 * 1000
+        ? 'severe'
+        : elapsedMs >= 10 * 60 * 1000
+          ? 'moderate'
+          : 'mild'
+      if (severity !== ailment.severity) changed = true
+      ailments.push({ ...ailment, elapsedMs, severity })
+      continue
+    }
+
     const isHeatstroke = ailment.id === 'heatstroke'
     const isExposed = isHeatstroke ? heatExposure : coldExposure
     trackedExposureIds.add(ailment.id)
@@ -116,15 +217,26 @@ export function advanceAilments(
     ailments.push({ id, elapsedMs })
   }
 
+  for (const rule of generalExposureRules) {
+    if (!rule.exposed
+      || currentAilments.some((ailment) => ailment.id === rule.id)
+      || ailments.some((ailment) => ailment.id === rule.id)
+      || ailments.length >= 20) continue
+    ailments.push({ id: rule.id, elapsedMs: 0, severity: 'mild' })
+    changed = true
+  }
+
   if (bleeding) ailments.unshift(bleeding)
   const roundedHealth = Math.max(0, Math.round(health * 100) / 100)
+  const roundedStamina = Math.max(0, Math.round(stamina * 100) / 100)
   const updatedState: GameSnapshot = {
     ...state,
     ailments,
     survival: {
       ...state.survival,
       health: roundedHealth,
-      conditions: getSurvivalConditions({ ...state.survival, health: roundedHealth }),
+      stamina: roundedStamina,
+      conditions: getSurvivalConditions({ ...state.survival, health: roundedHealth, stamina: roundedStamina }),
     },
   }
   return {

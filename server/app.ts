@@ -4,12 +4,16 @@ import type { AuthenticationServices } from './auth/authentication.js'
 import { GameStateConflictError, type GameStateService } from './game/gameStateService.js'
 import { isValidGameSnapshot } from '../src/services/persistence/gameSaveService.js'
 import { WorldPresenceError, type WorldPresenceService } from './world/worldPresenceService.js'
+import type { AdminControlService } from './admin/adminControlService.js'
+import { parseAdminSurvivalCommand } from './admin/adminSurvivalCommand.js'
+import { weatherDefinitions } from '../src/modules/world/data/weatherDefinitions.js'
 
 export async function buildApiApp(
   authentication: AuthenticationServices,
   webOrigin: string,
   gameStates: GameStateService | null = null,
   worldPresence: WorldPresenceService | null = null,
+  adminControls: AdminControlService | null = null,
 ): Promise<FastifyInstance> {
   const app = Fastify({ logger: true })
   app.decorateRequest('authenticatedUser', null)
@@ -45,6 +49,104 @@ export async function buildApiApp(
     request.authenticatedUser = user
     request.accessToken = token
   }
+
+  const requireAdmin = async (request: FastifyRequest, reply: FastifyReply): Promise<boolean> => {
+    const user = request.authenticatedUser
+    const accessToken = request.accessToken
+    if (!user || !accessToken) {
+      reply.code(401).send({ error: 'unauthorized', message: 'Cần đăng nhập để tiếp tục.' })
+      return false
+    }
+    const profile = await authentication.getPlayerProfile(user.id, accessToken)
+    if (!profile) {
+      reply.code(404).send({ error: 'profile_not_found', message: 'Chưa tìm thấy hồ sơ người chơi.' })
+      return false
+    }
+    if (!profile.is_admin) {
+      reply.code(403).send({ error: 'admin_required', message: 'Chỉ quản trị viên mới có thể thực hiện thao tác này.' })
+      return false
+    }
+    return true
+  }
+
+  app.get('/api/v1/game/world-settings', { preHandler: requireAuthentication }, async (_request, reply) => {
+    if (!adminControls) {
+      return reply.code(503).send({ error: 'admin_controls_not_configured', message: 'Cài đặt thế giới cần SUPABASE_SECRET_KEY và migration mới nhất.' })
+    }
+    return adminControls.getGlobalSettings()
+  })
+
+  app.get('/api/v1/game/admin/players', { preHandler: requireAuthentication }, async (request, reply) => {
+    if (!await requireAdmin(request, reply)) return
+    if (!adminControls) {
+      return reply.code(503).send({ error: 'admin_controls_not_configured', message: 'Công cụ quản trị cần SUPABASE_SECRET_KEY và migration mới nhất.' })
+    }
+    return { players: await adminControls.listPlayers() }
+  })
+
+  app.put('/api/v1/game/admin/world-weather', { preHandler: requireAuthentication }, async (request, reply) => {
+    if (!await requireAdmin(request, reply)) return
+    if (!adminControls) {
+      return reply.code(503).send({ error: 'admin_controls_not_configured', message: 'Công cụ quản trị cần SUPABASE_SECRET_KEY và migration mới nhất.' })
+    }
+    const body = request.body
+    if (!isRecord(body)
+      || !(body.weatherId === null
+        || (typeof body.weatherId === 'string'
+          && weatherDefinitions.some((weather) => weather.id === body.weatherId)))) {
+      return reply.code(400).send({ error: 'invalid_weather', message: 'Mã thời tiết không hợp lệ.' })
+    }
+    const user = request.authenticatedUser
+    if (!user) return reply.code(401).send({ error: 'unauthorized', message: 'Cần đăng nhập để tiếp tục.' })
+    return adminControls.setGlobalWeather(body.weatherId, user.id)
+  })
+
+  app.post('/api/v1/game/admin/players/:playerId/survival', { preHandler: requireAuthentication }, async (request, reply) => {
+    if (!await requireAdmin(request, reply)) return
+    if (!adminControls) {
+      return reply.code(503).send({ error: 'admin_controls_not_configured', message: 'Công cụ quản trị cần SUPABASE_SECRET_KEY và migration mới nhất.' })
+    }
+    const params = request.params
+    const playerId = isRecord(params) && typeof params.playerId === 'string' ? params.playerId : ''
+    if (!isUuid(playerId)) {
+      return reply.code(400).send({ error: 'invalid_player', message: 'Người chơi không hợp lệ.' })
+    }
+    if (!await adminControls.playerExists(playerId)) {
+      return reply.code(404).send({ error: 'player_not_found', message: 'Không tìm thấy người chơi.' })
+    }
+    const command = parseAdminSurvivalCommand(request.body)
+    if (!command) {
+      return reply.code(400).send({ error: 'invalid_survival_command', message: 'Các chỉ số hoặc hiệu ứng sinh tồn không hợp lệ.' })
+    }
+    const user = request.authenticatedUser
+    if (!user) return reply.code(401).send({ error: 'unauthorized', message: 'Cần đăng nhập để tiếp tục.' })
+    const id = await adminControls.createSurvivalCommand(playerId, user.id, command)
+    return reply.code(202).send({ id, queued: true })
+  })
+
+  app.get('/api/v1/game/admin/commands/pending', { preHandler: requireAuthentication }, async (request, reply) => {
+    if (!adminControls) {
+      return reply.code(503).send({ error: 'admin_controls_not_configured', message: 'Công cụ quản trị cần SUPABASE_SECRET_KEY và migration mới nhất.' })
+    }
+    const user = request.authenticatedUser
+    if (!user) return reply.code(401).send({ error: 'unauthorized', message: 'Cần đăng nhập để tiếp tục.' })
+    return { commands: await adminControls.getPendingCommands(user.id) }
+  })
+
+  app.post('/api/v1/game/admin/commands/:commandId/ack', { preHandler: requireAuthentication }, async (request, reply) => {
+    if (!adminControls) {
+      return reply.code(503).send({ error: 'admin_controls_not_configured', message: 'Công cụ quản trị cần SUPABASE_SECRET_KEY và migration mới nhất.' })
+    }
+    const params = request.params
+    const commandId = isRecord(params) && typeof params.commandId === 'string' ? params.commandId : ''
+    const user = request.authenticatedUser
+    if (!user) return reply.code(401).send({ error: 'unauthorized', message: 'Cần đăng nhập để tiếp tục.' })
+    if (!isUuid(commandId)) {
+      return reply.code(400).send({ error: 'invalid_command', message: 'Lệnh quản trị không hợp lệ.' })
+    }
+    await adminControls.acknowledgeCommand(user.id, commandId)
+    return { ok: true }
+  })
 
   app.get('/api/v1/auth/me', { preHandler: requireAuthentication }, async (request, reply) => {
     const user = request.authenticatedUser
@@ -169,6 +271,10 @@ export async function buildApiApp(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
 }
 
 function readBearerToken(authorization: string | undefined): string | null {

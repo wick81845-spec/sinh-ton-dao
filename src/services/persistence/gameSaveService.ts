@@ -194,6 +194,8 @@ function isSurvivalStats(value: unknown): value is SurvivalStats {
     && isWithinRange(value.thirst, 0, survivalConfig.thirst.max)
     && isWithinRange(value.stamina, 0, survivalConfig.stamina.max)
     && isFiniteNumber(value.temperature)
+    && (value.bodyTemperature === undefined || isWithinRange(value.bodyTemperature, 32, 42))
+    && (value.wetness === undefined || isWithinRange(value.wetness, 0, 100))
     && Array.isArray(value.conditions)
     && value.conditions.every((condition) => typeof condition === 'string')
 }
@@ -567,19 +569,26 @@ function isCombatLogEntry(value: unknown): value is CombatLogEntry {
     && value.droppedItems.every(isItemQuantity)
 }
 
+const survivalAilmentIds: readonly string[] = [
+    'bleeding', 'infection', 'heatstroke', 'hypothermia', 'poisoning',
+    'sunburn', 'sprain', 'fracture', 'blisters', 'insectBites', 'tropicalFever',
+    'diarrhea', 'allergy', 'smoke', 'marineSting', 'dehydration', 'burns',
+    'frostbite', 'animalBite', 'exhaustion',
+]
+
 function isSurvivalAilmentId(value: unknown): value is SurvivalAilmentId {
-  return value === 'bleeding'
-    || value === 'infection'
-    || value === 'heatstroke'
-    || value === 'hypothermia'
-    || value === 'poisoning'
+  return typeof value === 'string' && survivalAilmentIds.includes(value)
 }
 
 function isSurvivalAilment(value: unknown): value is SurvivalAilment {
   if (!isRecord(value)
     || !isSurvivalAilmentId(value.id)
     || !isFiniteNumber(value.elapsedMs)
-    || value.elapsedMs < 0) return false
+    || value.elapsedMs < 0
+    || (value.severity !== undefined
+      && value.severity !== 'mild'
+      && value.severity !== 'moderate'
+      && value.severity !== 'severe')) return false
   return value.id !== 'bleeding' || value.elapsedMs < 5 * 60 * 1000
 }
 
@@ -713,10 +722,16 @@ function isGameSnapshot(value: unknown): value is GameSnapshot {
         && value.tutorialCompletedStepIds.every((id) => typeof id === 'string' && id.length <= 60)
         && new Set(value.tutorialCompletedStepIds).size === value.tutorialCompletedStepIds.length))
     && (value.tutorialIntroCompleted === undefined || typeof value.tutorialIntroCompleted === 'boolean')
+    && (value.appliedAdminCommandIds === undefined || (
+      Array.isArray(value.appliedAdminCommandIds)
+      && value.appliedAdminCommandIds.length <= 100
+      && value.appliedAdminCommandIds.every((id) => typeof id === 'string' && id.length <= 80)
+      && new Set(value.appliedAdminCommandIds).size === value.appliedAdminCommandIds.length
+    ))
     && (value.isResting === undefined || typeof value.isResting === 'boolean')
     && (value.ailments === undefined || (
       Array.isArray(value.ailments)
-      && value.ailments.length <= 5
+      && value.ailments.length <= 20
       && value.ailments.every(isSurvivalAilment)
       && new Set(value.ailments.map((ailment) => isRecord(ailment) ? ailment.id : undefined)).size === value.ailments.length
     ))

@@ -453,6 +453,14 @@ export function consumeItem(state: GameSnapshot, itemId: ItemId, now = Date.now(
     hunger,
     thirst,
     health,
+    ...(definition.bodyTemperatureDelta !== undefined
+      ? {
+        bodyTemperature: Math.max(
+          32,
+          Math.min(42, (state.survival.bodyTemperature ?? 37) + definition.bodyTemperatureDelta),
+        ),
+      }
+      : {}),
     conditions: getSurvivalConditions({ ...state.survival, hunger, thirst, health }),
   }
   const restoredHunger = hunger - state.survival.hunger
@@ -464,6 +472,21 @@ export function consumeItem(state: GameSnapshot, itemId: ItemId, now = Date.now(
     heatstroke: 'say nắng',
     hypothermia: 'hạ thân nhiệt',
     poisoning: 'ngộ độc',
+    sunburn: 'cháy nắng',
+    sprain: 'bong gân',
+    fracture: 'gãy xương',
+    blisters: 'phồng rộp',
+    insectBites: 'côn trùng cắn',
+    tropicalFever: 'sốt nhiệt đới',
+    diarrhea: 'tiêu chảy',
+    allergy: 'dị ứng',
+    smoke: 'hít phải khói',
+    marineSting: 'sinh vật biển đốt',
+    dehydration: 'mất nước',
+    burns: 'bỏng',
+    frostbite: 'tê cóng',
+    animalBite: 'động vật cắn',
+    exhaustion: 'kiệt sức',
   }
   const curedAilmentMessage = curedAilments.length > 0
     ? ` Đã chữa: ${curedAilments.map((ailment) => curedAilmentNames[ailment.id]).join(', ')}.`

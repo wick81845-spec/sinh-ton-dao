@@ -44,4 +44,20 @@ describe('weatherService', () => {
       weatherId: 'unknown-weather',
     })).toBe(false)
   })
+
+  it('holds a server-selected global weather until the override is cleared', () => {
+    const now = 15 * weatherChangeIntervalMs
+    const globalWeather = createWeatherState('island_001', now, 'thunderstorm')
+    const state = { ...initialGameState, weather: globalWeather }
+
+    expect(globalWeather.globalOverride).toBe(true)
+    expect(advanceWeather(state, globalWeather.changesAt - 1, 'thunderstorm')).toEqual({
+      state,
+      changed: false,
+    })
+
+    const released = advanceWeather(state, now + 1, null)
+    expect(released.state.weather?.globalOverride).toBeUndefined()
+    expect(released.changed).toBe(true)
+  })
 })

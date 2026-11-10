@@ -14,6 +14,24 @@ export interface BodyStatusEffect {
   icon: string
 }
 
+const ailmentDetails: Readonly<Record<string, Omit<BodyStatusEffect, 'severity'>>> = {
+  sunburn: { id: 'sunburn', name: 'Cháy nắng', appearance: 'Da đỏ rát sau thời gian dài dưới nắng', cause: 'Phơi nắng lâu ngoài trời', impact: 'Gây khó chịu và làm cơ thể suy yếu.', icon: '☀' },
+  sprain: { id: 'sprain', name: 'Bong gân', appearance: 'Cử động khó khăn, khớp đau nhức', cause: 'Di chuyển quá sức hoặc địa hình hiểm trở', impact: 'Làm giảm sức lực khi hoạt động.', icon: '⌁' },
+  fracture: { id: 'fracture', name: 'Gãy xương', appearance: 'Đau nhức, hạn chế vận động', cause: 'Chấn thương nặng', impact: 'Gây mất sức khỏe và giảm sức lực khi vận động.', icon: '✚' },
+  blisters: { id: 'blisters', name: 'Phồng rộp', appearance: 'Da phồng rộp do cọ xát', cause: 'Di chuyển kéo dài', impact: 'Làm giảm sức lực khi tiếp tục hoạt động.', icon: '◌' },
+  insectBites: { id: 'insectBites', name: 'Côn trùng cắn', appearance: 'Các vết cắn gây ngứa và sưng', cause: 'Côn trùng ngoài tự nhiên', impact: 'Có thể dẫn đến sốt nhiệt đới nếu không được chăm sóc.', icon: '✣' },
+  tropicalFever: { id: 'tropicalFever', name: 'Sốt nhiệt đới', appearance: 'Mệt mỏi và sốt cao', cause: 'Vết côn trùng cắn bị nhiễm bệnh', impact: 'Làm suy giảm sức khỏe và sức lực.', icon: '☼' },
+  diarrhea: { id: 'diarrhea', name: 'Tiêu chảy', appearance: 'Cơ thể suy yếu và mất nước', cause: 'Thức ăn hoặc nước không an toàn', impact: 'Làm giảm sức khỏe và sức lực.', icon: '⌁' },
+  allergy: { id: 'allergy', name: 'Dị ứng', appearance: 'Da kích ứng, ngứa ngáy', cause: 'Tiếp xúc với tác nhân gây dị ứng', impact: 'Làm giảm sức khỏe và sức lực.', icon: '✣' },
+  smoke: { id: 'smoke', name: 'Hít phải khói', appearance: 'Ho và khó thở', cause: 'Tiếp xúc với khói đậm đặc', impact: 'Làm giảm sức khỏe và sức lực.', icon: '〰' },
+  marineSting: { id: 'marineSting', name: 'Sinh vật biển đốt', appearance: 'Vết đốt sưng đau', cause: 'Chạm phải sinh vật biển có độc', impact: 'Gây đau và suy giảm sức khỏe.', icon: '≈' },
+  dehydration: { id: 'dehydration', name: 'Mất nước', appearance: 'Khô môi, chóng mặt và mệt mỏi', cause: 'Thiếu nước hoặc mất nước kéo dài', impact: 'Làm giảm sức khỏe và sức lực.', icon: '⌁' },
+  burns: { id: 'burns', name: 'Bỏng', appearance: 'Da tổn thương do nhiệt', cause: 'Tiếp xúc với lửa hoặc bề mặt nóng', impact: 'Gây đau và mất sức khỏe.', icon: '♨' },
+  frostbite: { id: 'frostbite', name: 'Tê cóng', appearance: 'Da tái lạnh, tê buốt', cause: 'Phơi lạnh kéo dài khi cơ thể ướt', impact: 'Làm giảm sức khỏe và sức lực.', icon: '❄' },
+  animalBite: { id: 'animalBite', name: 'Động vật cắn', appearance: 'Vết cắn đau và sưng', cause: 'Bị động vật hoang dã tấn công', impact: 'Gây mất sức khỏe; cần được chăm sóc.', icon: '✚' },
+  exhaustion: { id: 'exhaustion', name: 'Kiệt sức', appearance: 'Thở dốc, cơ thể rã rời', cause: 'Sức lực xuống thấp sau hoạt động kéo dài', impact: 'Làm giảm thêm sức lực khi hoạt động.', icon: 'ϟ' },
+}
+
 export function getBodyStatusEffects(
   stats: SurvivalStats,
   weather?: WeatherDefinition,
@@ -24,6 +42,8 @@ export function getBodyStatusEffects(
   const effects: BodyStatusEffect[] = []
 
   for (const ailment of ailments) {
+    const ailmentSeverity = ailment.severity
+      ?? (ailment.elapsedMs >= 10 * 60 * 1000 ? 'severe' : 'moderate')
     if (ailment.id === 'bleeding') {
       effects.push({
         id: 'bleeding',
@@ -67,7 +87,7 @@ export function getBodyStatusEffects(
           : 'Tiếp xúc kéo dài có thể gây say nắng; hãy tìm nơi trú.',
         icon: '☀',
       })
-    } else {
+    } else if (ailment.id === 'hypothermia') {
       const hypothermiaActive = ailment.elapsedMs >= 10 * 60 * 1000
       effects.push({
         id: 'hypothermia',
@@ -80,7 +100,38 @@ export function getBodyStatusEffects(
           : 'Tiếp xúc kéo dài có thể gây hạ thân nhiệt; hãy tìm nơi trú.',
         icon: '❄',
       })
+    } else {
+      const details = ailmentDetails[ailment.id]
+      if (details) effects.push({ ...details, severity: ailmentSeverity })
     }
+  }
+
+  const bodyTemperature = stats.bodyTemperature ?? 37
+  if (bodyTemperature >= 39 || bodyTemperature < 35) {
+    const hot = bodyTemperature >= 39
+    effects.push({
+      id: 'body-temperature',
+      name: hot ? 'Thân nhiệt tăng cao' : 'Thân nhiệt hạ thấp',
+      severity: hot ? 'severe' : 'moderate',
+      appearance: hot ? 'Cơ thể nóng ran, mặt đỏ' : 'Run rẩy, tay chân lạnh buốt',
+      cause: hot ? 'Cơ thể quá nóng hoặc phơi nắng kéo dài' : 'Mưa lạnh và quần áo ướt',
+      impact: hot ? 'Tiếp xúc kéo dài có thể gây say nắng.' : 'Tiếp xúc kéo dài có thể gây hạ thân nhiệt.',
+      icon: hot ? '☀' : '❄',
+    })
+  }
+  const wetness = stats.wetness ?? 0
+  if (wetness > 0) {
+    effects.push({
+      id: 'wet-clothes',
+      name: wetness >= 50 ? 'Quần áo ướt đẫm' : 'Quần áo còn ẩm',
+      severity: wetness >= 70 ? 'moderate' : 'mild',
+      appearance: wetness >= 50 ? 'Quần áo thấm nhiều nước mưa' : 'Quần áo đang khô dần',
+      cause: 'Mưa ngoài trời',
+      impact: wetness >= 50
+        ? 'Làm cơ thể mất nhiệt nhanh hơn khi gặp trời lạnh.'
+        : 'Ở nơi khô ráo hoặc có nắng để quần áo khô nhanh hơn.',
+      icon: '☂',
+    })
   }
 
   if (stats.hunger < survivalConfig.needWarningThreshold) {

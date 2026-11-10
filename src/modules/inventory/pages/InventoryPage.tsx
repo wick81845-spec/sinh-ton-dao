@@ -1,7 +1,32 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useGame } from '../../../app/providers/useGame'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import type { ItemContainer, ItemId } from '../../../shared/types/game'
+import { survivalConfig } from '../../survival/data/survivalConfig'
+import { SurvivalMeter, type SurvivalStatName } from '../../survival/components/SurvivalMeter'
+import { BodyExposureMeters } from '../../survival/components/BodyExposureMeters'
+
+const survivalStats: SurvivalStatName[] = ['hunger', 'thirst', 'stamina', 'health']
+
+function getStatStatus(stat: SurvivalStatName, value: number): string {
+  if (stat === 'hunger') {
+    if (value === 0) return 'Đói lả'
+    if (value <= survivalConfig.criticalNeedThreshold) return 'Suy dinh dưỡng'
+    if (value < survivalConfig.needWarningThreshold) return 'Đói'
+  }
+  if (stat === 'thirst') {
+    if (value === 0) return 'Mất nước'
+    if (value <= survivalConfig.criticalNeedThreshold) return 'Mất nước'
+    if (value < survivalConfig.needWarningThreshold) return 'Khát'
+  }
+  if (stat === 'stamina') {
+    if (value <= 10) return 'Kiệt sức'
+    if (value <= 40) return 'Mệt mỏi'
+  }
+  if (stat === 'health' && value <= 25) return 'Nguy cấp'
+  return 'Ổn định'
+}
 
 function ContainerPanel({
   container,
@@ -28,13 +53,15 @@ function ContainerPanel({
 }) {
   const [transferAmounts, setTransferAmounts] = useState<Record<string, number>>({})
   const occupiedSlots = container.slots.length
+  const capacity = Math.max(1, container.maxSlots)
   const totalWeight = container.slots.reduce(
     (total, slot) => total + itemDefinitions[slot.itemId].weight * slot.quantity,
     0,
   )
+  const slots = Array.from({ length: container.maxSlots }, (_, index) => container.slots[index])
 
   return (
-    <section className="container-panel">
+    <section className={`container-panel inventory-container-panel${kind === 'storage' ? ' storage-container-panel' : ' backpack-container-panel'}`}>
       <div className="container-heading">
         <div>
           <span className="section-kicker">{kind === 'bag' ? 'VẬT PHẨM ĐANG MANG' : 'RƯƠNG TRÊN ĐẢO'}</span>
@@ -42,78 +69,108 @@ function ContainerPanel({
         </div>
         <span className="container-slots">{occupiedSlots} / {container.maxSlots} ô</span>
       </div>
-      <div className="container-capacity">
-        <span><i style={{ width: `${occupiedSlots / container.maxSlots * 100}%` }} /></span>
+      <div className="container-capacity-copy">
+        <span>{kind === 'bag' ? 'Sức chứa hành trang' : 'Dung lượng rương'}</span>
+        <strong>{occupiedSlots} / {container.maxSlots}</strong>
       </div>
-      <div className="container-list">
-        {container.slots.length === 0
-          ? <p className="empty-container">Chưa có vật phẩm nào trong đây.</p>
-          : container.slots.map((slot, index) => {
-            const item = itemDefinitions[slot.itemId]
+      <div className="container-capacity inventory-capacity-bar">
+        <span><i style={{ width: `${Math.min(100, occupiedSlots / capacity * 100)}%` }} /></span>
+      </div>
+      <div className={`inventory-slot-grid${kind === 'storage' ? ' inventory-storage-grid' : ''}`} aria-label={title}>
+        {slots.map((slot, index) => {
+          if (!slot) {
             return (
-              <article className="item-row" key={`${slot.itemId}-${slot.expiresAt ?? 'stable'}-${index}`}>
-                <img className={`resource-icon ${item.tone}`} src={item.image} alt="" aria-hidden="true" />
-                <div className="item-row-details">
-                  <strong>{item.name}</strong>
-                  <small>{item.description}</small>
-                  {item.maxDurability && (
-                    <small>Độ bền {itemDurability?.[slot.itemId] ?? item.maxDurability}/{item.maxDurability}</small>
-                  )}
-                  {slot.expiresAt !== undefined && (
-                    <small>Hạn dùng {new Date(slot.expiresAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</small>
-                  )}
-                </div>
-                <span className="item-quantity">× {slot.quantity}</span>
-                <div className="item-actions">
-                  {kind === 'bag' && item.usable && onUse && (
-                    <button className="small-action" type="button" onClick={() => onUse(slot.itemId)}>Dùng 1</button>
-                  )}
-                  {kind === 'bag' && slot.itemId === 'item_backpack' && onEquipBackpack && (
-                    <button className="small-action" type="button" onClick={onEquipBackpack}>Trang bị</button>
-                  )}
-                  {kind === 'bag' && item.equipmentSlot === 'weapon' && onEquipWeapon && (
-                    <button className="small-action" type="button" onClick={() => onEquipWeapon(slot.itemId)}>Trang bị vũ khí</button>
-                  )}
-                  {kind === 'bag' && item.maxDurability && onRepair
-                    && (itemDurability?.[slot.itemId] ?? item.maxDurability) < item.maxDurability && (
-                      <button className="small-action" type="button" onClick={() => onRepair(slot.itemId)}>Sửa tại bàn</button>
-                    )}
-                  {kind === 'bag' && onDiscard && (
-                    <button className="small-action" type="button" onClick={() => onDiscard(slot.itemId, slot.quantity)}>Vứt tất cả</button>
-                  )}
-                  <button
-                    className="small-action"
-                    type="button"
-                    onClick={() => onTransfer(slot.itemId, Math.min(slot.quantity, transferAmounts[slot.itemId] ?? 1))}
-                  >
-                    {kind === 'bag' ? 'Cất số lượng' : 'Lấy số lượng'}
-                  </button>
-                  <label className="transfer-quantity">
-                    <span>{kind === 'bag' ? 'Số lượng cất' : 'Số lượng lấy'}</span>
-                    <input
-                      aria-label={`${kind === 'bag' ? 'Số lượng cất' : 'Số lượng lấy'} ${item.name}`}
-                      type="number"
-                      min={1}
-                      max={slot.quantity}
-                      value={Math.min(slot.quantity, transferAmounts[slot.itemId] ?? 1)}
-                      onChange={(event) => {
-                        const amount = Number(event.target.value)
-                        setTransferAmounts((current) => ({
-                          ...current,
-                          [slot.itemId]: Number.isFinite(amount) ? Math.max(1, Math.min(slot.quantity, amount)) : 1,
-                        }))
-                      }}
-                    />
-                  </label>
-                  {slot.quantity > 1 && (
-                    <button className="small-action" type="button" onClick={() => onTransfer(slot.itemId, slot.quantity)}>
-                      {kind === 'bag' ? 'Cất tất cả' : 'Lấy tất cả'}
-                    </button>
-                  )}
-                </div>
-              </article>
+              <div className="inventory-slot inventory-slot-empty" key={`empty-${index}`} aria-label={`Ô trống ${index + 1}`}>
+                <span className="inventory-slot-index">{String(index + 1).padStart(2, '0')}</span>
+                <span className="inventory-empty-mark" aria-hidden="true">＋</span>
+                <span className="inventory-empty-label">Ô trống</span>
+              </div>
             )
-          })}
+          }
+
+          const item = itemDefinitions[slot.itemId]
+          const transferAmount = Math.min(slot.quantity, transferAmounts[slot.itemId] ?? 1)
+          return (
+            <article
+              className={`inventory-slot${kind === 'storage' ? ' inventory-storage-slot' : ''}`}
+              key={`${slot.itemId}-${slot.expiresAt ?? 'stable'}-${index}`}
+            >
+              <span className="inventory-slot-index">{String(index + 1).padStart(2, '0')}</span>
+              <span className="inventory-slot-count">×{slot.quantity}</span>
+              <div className="inventory-slot-art">
+                <img className={`resource-icon ${item.tone}`} src={item.image} alt="" aria-hidden="true" />
+              </div>
+              <strong className="inventory-slot-name">{item.name}</strong>
+              <small className="inventory-slot-meta">{(item.weight * slot.quantity).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} kg</small>
+              {item.maxDurability && (
+                <small className="inventory-slot-meta">Độ bền {itemDurability?.[slot.itemId] ?? item.maxDurability}/{item.maxDurability}</small>
+              )}
+              {slot.expiresAt !== undefined && (
+                <small className="inventory-slot-meta">
+                  Hạn dùng {new Date(slot.expiresAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </small>
+              )}
+              <div className="inventory-slot-actions">
+                {kind === 'bag' && item.usable && onUse && (
+                  <button className="inventory-slot-primary" type="button" onClick={() => onUse(slot.itemId)}>Dùng 1</button>
+                )}
+                <button
+                  className={kind === 'bag' && item.usable && onUse ? 'inventory-slot-secondary' : 'inventory-slot-primary'}
+                  type="button"
+                  onClick={() => onTransfer(slot.itemId, slot.quantity)}
+                >
+                  {kind === 'bag' ? 'Cất tất cả' : 'Lấy tất cả'}
+                </button>
+                <details className="inventory-slot-more">
+                  <summary>Thao tác khác</summary>
+                  <div className="inventory-slot-more-panel">
+                    {kind === 'bag' && slot.itemId === 'item_backpack' && onEquipBackpack && (
+                      <button className="small-action" type="button" onClick={onEquipBackpack}>Trang bị ba lô</button>
+                    )}
+                    {kind === 'bag' && item.equipmentSlot === 'weapon' && onEquipWeapon && (
+                      <button className="small-action" type="button" onClick={() => onEquipWeapon(slot.itemId)}>Trang bị vũ khí</button>
+                    )}
+                    {kind === 'bag' && item.maxDurability && onRepair
+                      && (itemDurability?.[slot.itemId] ?? item.maxDurability) < item.maxDurability && (
+                        <button className="small-action" type="button" onClick={() => onRepair(slot.itemId)}>Sửa tại bàn</button>
+                      )}
+                    {kind === 'bag' && onDiscard && (
+                      <button className="small-action" type="button" onClick={() => onDiscard(slot.itemId, slot.quantity)}>Vứt tất cả</button>
+                    )}
+                    {slot.quantity > 1 && (
+                      <div className="inventory-slot-transfer">
+                        <label>
+                          <span>{kind === 'bag' ? 'Số lượng cất' : 'Số lượng lấy'}</span>
+                          <input
+                            aria-label={`${kind === 'bag' ? 'Số lượng cất' : 'Số lượng lấy'} ${item.name}`}
+                            type="number"
+                            min={1}
+                            max={slot.quantity}
+                            value={transferAmount}
+                            onChange={(event) => {
+                              const amount = Number(event.target.value)
+                              setTransferAmounts((current) => ({
+                                ...current,
+                                [slot.itemId]: Number.isFinite(amount) ? Math.max(1, Math.min(slot.quantity, amount)) : 1,
+                              }))
+                            }}
+                          />
+                        </label>
+                        <button
+                          className="small-action"
+                          type="button"
+                          onClick={() => onTransfer(slot.itemId, transferAmount)}
+                        >
+                          {kind === 'bag' ? 'Cất số này' : 'Lấy số này'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              </div>
+            </article>
+          )
+        })}
       </div>
       <div className="container-footer">
         <span>{occupiedSlots} ô đang sử dụng</span>
@@ -142,6 +199,8 @@ export function InventoryPage() {
   if (isLoading) return <p className="page-state">Đang tải túi đồ…</p>
   if (!gameState) return <p className="page-state error-state" role="alert">{error ?? 'Chưa có dữ liệu túi đồ.'}</p>
 
+  const { inventory, storage, survival } = gameState
+
   return (
     <div className="inventory-page">
       <div className="page-title-row">
@@ -150,11 +209,35 @@ export function InventoryPage() {
           <h1>Túi đồ &amp; kho chứa</h1>
           <p>Hành trang cơ bản có 12 ô. Trang bị ba lô để mở rộng lên 24 ô.</p>
         </div>
-        <div className="stamina-chip">
-          <strong>{gameState.backpackEquipped ? 'Đã trang bị ba lô' : 'Chưa có ba lô'}</strong>
+        <div className={`inventory-pack-status${gameState.backpackEquipped ? ' is-equipped' : ''}`}>
+          <span className="inventory-pack-illustration" aria-hidden="true">🎒</span>
+          <span>
+            <strong>{gameState.backpackEquipped ? 'Ba lô đã trang bị' : 'Hành trang cơ bản'}</strong>
+            <small>{inventory.maxSlots} ô chứa · {Math.max(0, inventory.maxSlots - inventory.slots.length)} ô còn trống</small>
+          </span>
           {gameState.backpackEquipped && <button className="small-action" type="button" onClick={unequipBackpack}>Tháo ba lô</button>}
         </div>
       </div>
+      <section className="inventory-survival-panel" aria-label="Thanh trạng thái sinh tồn">
+        <div className="inventory-survival-heading">
+          <div>
+            <span className="section-kicker">TÌNH TRẠNG HIỆN TẠI</span>
+            <h2>Chỉ số sinh tồn</h2>
+          </div>
+          <Link className="text-link" to="/survival">Xem chi tiết <span aria-hidden="true">↗</span></Link>
+        </div>
+        <div className="inventory-survival-grid">
+          {survivalStats.map((stat) => (
+            <SurvivalMeter
+              key={stat}
+              stat={stat}
+              value={survival[stat]}
+              status={getStatStatus(stat, survival[stat])}
+            />
+          ))}
+        </div>
+        <BodyExposureMeters stats={survival} />
+      </section>
       <section className="container-panel equipped-weapon-panel" aria-label="Vũ khí đang trang bị">
         <div className="container-heading">
           <div>
@@ -185,7 +268,7 @@ export function InventoryPage() {
       </section>
       <div className="inventory-containers">
         <ContainerPanel
-          container={gameState.inventory}
+          container={inventory}
           title="Hành trang"
           kind="bag"
           itemDurability={gameState.itemDurability}
@@ -197,7 +280,7 @@ export function InventoryPage() {
           onRepair={repairItem}
         />
         <ContainerPanel
-          container={gameState.storage}
+          container={storage}
           title="Rương gỗ · lấy vật phẩm ra"
           kind="storage"
           itemDurability={gameState.itemDurability}

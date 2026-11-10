@@ -64,13 +64,19 @@ describe('ailmentService', () => {
   it('tracks extreme heat exposure, causes heatstroke after ten minutes, and cools down under shelter', () => {
     const heat = getWeatherDefinition('extreme_heat')
     const first = advanceAilments(initialGameState, 9 * 60 * 1000, heat)
-    expect(first.state.ailments).toEqual([{ id: 'heatstroke', elapsedMs: 9 * 60 * 1000 }])
+    expect(first.state.ailments).toEqual([
+      { id: 'heatstroke', elapsedMs: 9 * 60 * 1000 },
+      { id: 'sunburn', elapsedMs: 0, severity: 'mild' },
+    ])
     expect(first.state.survival.health).toBe(100)
 
     const onset = advanceAilments(first.state, 2 * 60 * 1000, heat)
     expect(onset.changed).toBe(true)
-    expect(onset.state.ailments).toEqual([{ id: 'heatstroke', elapsedMs: 11 * 60 * 1000 }])
-    expect(onset.state.survival.health).toBe(99.9)
+    expect(onset.state.ailments).toEqual([
+      { id: 'heatstroke', elapsedMs: 11 * 60 * 1000 },
+      { id: 'sunburn', elapsedMs: 2 * 60 * 1000, severity: 'mild' },
+    ])
+    expect(onset.state.survival.health).toBe(99.85)
 
     const cooling = advanceAilments(onset.state, 6 * 60 * 1000, heat, true)
     expect(cooling.state.ailments).toEqual([])
@@ -95,5 +101,15 @@ describe('ailmentService', () => {
     const resolved = advanceAilments(poisoned, 20 * 60 * 1000)
     expect(resolved.state.ailments).toEqual([])
     expect(resolved.changed).toBe(true)
+  })
+
+  it('adds dehydration and exhaustion when survival needs reach a critical level', () => {
+    const result = advanceAilments({
+      ...initialGameState,
+      survival: { ...initialGameState.survival, thirst: 10, stamina: 10 },
+    }, 1)
+
+    expect(result.state.ailments?.map((ailment) => ailment.id)).toEqual(['dehydration', 'exhaustion'])
+    expect(result.changed).toBe(true)
   })
 })

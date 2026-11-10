@@ -6,27 +6,48 @@ import {
 } from '../data/weatherDefinitions'
 import { getIslandDefinition } from '../data/worldDefinitions'
 
-export function createWeatherState(locationId: string, now: number): WeatherState {
+export function createWeatherState(locationId: string, now: number, forcedWeatherId?: string | null): WeatherState {
   const island = getIslandDefinition(locationId)
-  const weather = getWeatherForTime(locationId, now, island?.biomeId)
+  const weather = forcedWeatherId
+    ? getWeatherDefinition(forcedWeatherId)
+    : getWeatherForTime(locationId, now, island?.biomeId)
+  if (!weather) throw new Error(`Không tìm thấy thời tiết ${forcedWeatherId}.`)
   const changedAt = Math.floor(now / weatherChangeIntervalMs) * weatherChangeIntervalMs
   return {
     weatherId: weather.id,
     locationId,
     changedAt,
     changesAt: changedAt + weatherChangeIntervalMs,
+    ...(forcedWeatherId ? { globalOverride: true } : {}),
   }
 }
 
-export function advanceWeather(state: GameSnapshot, now: number): { state: GameSnapshot; changed: boolean } {
+export function advanceWeather(
+  state: GameSnapshot,
+  now: number,
+  forcedWeatherId?: string | null,
+): { state: GameSnapshot; changed: boolean } {
   const locationId = state.character.currentLocationId
   const currentWeather = state.weather
-  if (currentWeather?.locationId === locationId && now < currentWeather.changesAt) {
+  if (forcedWeatherId) {
+    if (currentWeather?.locationId === locationId
+      && currentWeather.weatherId === forcedWeatherId
+      && currentWeather.globalOverride
+      && now < currentWeather.changesAt) {
+      return { state, changed: false }
+    }
+    const weather = createWeatherState(locationId, now, forcedWeatherId)
+    const changed = currentWeather?.weatherId !== weather.weatherId || !currentWeather.globalOverride
+    return { state: { ...state, weather }, changed }
+  }
+  if (currentWeather?.locationId === locationId && now < currentWeather.changesAt && !currentWeather.globalOverride) {
     return { state, changed: false }
   }
 
   const weather = createWeatherState(locationId, now)
-  if (currentWeather?.weatherId === weather.weatherId && currentWeather.locationId === locationId) {
+  if (currentWeather?.weatherId === weather.weatherId
+    && currentWeather.locationId === locationId
+    && !currentWeather.globalOverride) {
     return { state: { ...state, weather }, changed: false }
   }
   return { state: { ...state, weather }, changed: true }
@@ -48,4 +69,5 @@ export function isValidWeatherState(value: unknown): value is WeatherState {
     && typeof weather.changesAt === 'number'
     && Number.isFinite(weather.changesAt)
     && weather.changesAt > weather.changedAt
+    && (weather.globalOverride === undefined || typeof weather.globalOverride === 'boolean')
 }

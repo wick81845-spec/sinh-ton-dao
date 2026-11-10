@@ -1,6 +1,6 @@
 # Hải Giới Sinh Tồn
 
-Game sinh tồn đang được phát triển bằng React, TypeScript và Vite. Đăng nhập và khởi tạo hồ sơ có tích hợp Supabase; phần lớn hành động game vẫn dùng dữ liệu cục bộ mô phỏng, chưa có gameplay authoritative hoặc multiplayer thật.
+Game sinh tồn đang được phát triển bằng React, TypeScript và Vite. Đăng nhập, hồ sơ và save theo tài khoản được tích hợp Supabase; phần lớn luật gameplay vẫn chạy ở client, chưa phải gameplay authoritative hoặc multiplayer đồng bộ hoàn chỉnh.
 
 ## Chạy dự án
 
@@ -13,6 +13,8 @@ npm run dev
 
 Tạo project Supabase, áp dụng các migration trong `supabase/migrations/`, sao chép `.env.example` thành `.env` rồi điền Project URL gốc (không có `/rest/v1`) và publishable key vào cả cấu hình frontend `VITE_*` lẫn API. Để khởi tạo game save server, điền thêm secret key chỉ vào `SUPABASE_SECRET_KEY` (server-only). Tuyệt đối không đưa key này vào biến `VITE_*`, frontend hoặc chat.
 Đặt `WEB_ORIGIN` đúng với địa chỉ trình duyệt đang dùng và `VITE_API_URL` tới API Fastify; hai địa chỉ localhost và 127.0.0.1 là origin khác nhau. Migration `20261109200000_player_game_state_save.sql` bật lưu save server với revision để phát hiện ghi đè từ thiết bị khác. Khi một tài khoản chưa có save trên server, save cục bộ trên thiết bị đăng nhập đầu tiên sẽ được chuyển lên một lần; save server hiện có luôn được ưu tiên.
+
+Migration `20261111120000_global_weather_and_admin_commands.sql` bật cài đặt thời tiết chung và hàng đợi cập nhật sinh tồn theo người chơi. Tài khoản admin có thể chọn thời tiết áp dụng cho mọi save hoặc gửi chỉ số/bệnh/chấn thương để áp dụng khi người chơi kết nối. API xác minh `is_admin` trực tiếp từ hồ sơ Supabase; quyền giao diện phía trình duyệt không được dùng làm ranh giới bảo mật. Cài đặt thời tiết được đồng bộ định kỳ; lệnh người chơi được nhận trong khoảng 15 giây khi đang online hoặc khi đăng nhập lần sau. Hãy áp dụng migration trước khi cập nhật API và frontend production.
 
 Chạy frontend và API trong hai terminal riêng:
 
@@ -27,20 +29,20 @@ Migration `20261109183000_global_world_presence.sql` bật hiện diện cho m�
 
 Migration `20261109210000_global_world_chat.sql` bật chat thế giới realtime qua nút nổi ở góc màn hình. Người chơi đã đăng nhập có thể đọc và gửi tin nhắn tối đa 300 ký tự; tên gửi lấy từ hồ sơ, quyền gửi được kiểm tra bằng Supabase Auth và có giới hạn tốc độ cơ bản. Khi tài khoản Auth bị xóa, khóa ngoại cascade qua `player_profiles` sẽ tự xóa tin nhắn chat và trạng thái online của tài khoản đó.
 
-Migration `20261110100000_grant_game_admin_role.sql` thêm quyền quản trị game chỉ đọc từ hồ sơ Supabase, mặc định tắt và không thể tự sửa bằng cập nhật hồ sơ người chơi. Migration này cấp quyền cho tài khoản John đã xác nhận; sau khi áp dụng, tài khoản có thể mở khóa và dịch chuyển nhanh đến các đảo để kiểm thử. Quyền này không phải Supabase service-role và không làm cho gameplay hiện tại trở thành server-authoritative.
+Migration `20261110100000_grant_game_admin_role.sql` thêm quyền quản trị game chỉ đọc từ hồ sơ Supabase, mặc định tắt và không thể tự sửa bằng cập nhật hồ sơ người chơi. Migration này cấp quyền cho tài khoản John đã xác nhận; sau khi áp dụng, tài khoản có thể mở khóa và dịch chuyển nhanh đến các đảo để kiểm thử. Quyền này không phải Supabase service-role; các công cụ điều khiển mới dùng quyền server riêng và kiểm tra lại vai trò trước mỗi thao tác.
 
 Người chơi mới mở đầu sau một vụ rơi máy bay, với quả dại, nước suối và vật liệu trong hành trang. Hướng dẫn nhập môn lưu tiến độ cùng save; bảng nhiệm vụ tân thủ chỉ mở khi bấm và tự thu lại sau khi hoàn thành mục tiêu. Các nhiệm vụ đầu đưa người chơi qua thu thập, chế tạo rìu bằng tay, dựng lửa trại/lều lá rồi tiếp tục nghiên cứu và khám phá. Save cũ hoặc nhân vật đã có tiến triển sẽ bỏ qua cảnh mở đầu. Thể lực chỉ hồi khi người chơi chủ động bấm Nghỉ ngơi; hoạt động, chế tạo, xây dựng hoặc di chuyển sẽ ngắt nghỉ. Lửa trại chỉ tăng hồi phục khi được tiếp nhiên liệu và còn cháy; cành cây, gỗ trôi dạt và than củi lần lượt cho 5, 15 và 30 phút cháy.
 
 Migration `20261109173000_coop_party_lobbies.sql` là schema lịch sử từ hướng nhóm cũ; API và giao diện nhóm đã được gỡ. Không sử dụng các bảng nhóm đó trong gameplay mới; migration được giữ lại để không làm đứt lịch sử những project đã áp dụng.
 
-Đây là bản beta để người chơi đăng nhập, giữ save theo tài khoản, xem roster online và chat thế giới realtime (sau khi áp dụng migration chat); phần lớn hành động game vẫn xử lý trên client, còn thăm đảo, cùng thám hiểm/chiến đấu và giao dịch người chơi server-authoritative chưa có.
+Đây là bản beta để người chơi đăng nhập, giữ save theo tài khoản, xem roster online, chat thế giới realtime, theo dõi các hiệu ứng sinh tồn tích lũy và nhận cập nhật từ admin (sau khi áp dụng các migration liên quan). Phần lớn hành động game vẫn xử lý trên client; thám hiểm, chiến đấu và giao dịch người chơi server-authoritative chưa có.
 
 ## Quy trình đưa game lên mạng
 
 Triển khai theo thứ tự dưới đây để frontend, API và Supabase cùng trỏ đúng địa chỉ:
 
 1. **Chuẩn bị tài khoản và mã nguồn.** Cần project Supabase, repository GitHub chứa mã nguồn, tài khoản hosting frontend (Cloudflare Pages hoặc Vercel) và Node.js hosting cho Fastify API (ví dụ Render hoặc Railway). Thêm domain riêng sau cũng được. Workspace hiện tại cần nằm trong Git repository và được đẩy lên GitHub trước khi bật tự động triển khai.
-2. **Tạo Supabase production riêng.** Không dùng project local/dev cho người chơi thật. Chạy các file trong `supabase/migrations/` theo thứ tự tên tăng dần trong SQL Editor hoặc Supabase CLI. Xác nhận các bảng `player_profiles`, `player_game_states`, `world_online_players`, `global_world_capacity`, `global_world_chat_messages` và các hàm RPC đã được tạo. Migration `20261109173000_coop_party_lobbies.sql` là schema lịch sử, không được gameplay hiện tại dùng.
+2. **Tạo Supabase production riêng.** Không dùng project local/dev cho người chơi thật. Chạy các file trong `supabase/migrations/` theo thứ tự tên tăng dần trong SQL Editor hoặc Supabase CLI. Xác nhận các bảng `player_profiles`, `player_game_states`, `world_online_players`, `global_world_capacity`, `global_world_chat_messages`, `global_game_settings` và `game_admin_commands` cùng các hàm RPC đã được tạo. Migration `20261109173000_coop_party_lobbies.sql` là schema lịch sử, không được gameplay hiện tại dùng.
 3. **Cấu hình Supabase Auth.** Trong Authentication → URL Configuration, đặt Site URL và Redirect URLs theo domain frontend production (và localhost nếu cần cho dev). Lưu ý đăng ký hiện tạo email định danh `.invalid`, không nhận được thư: xác nhận email phải tắt thì đăng ký mới tạo phiên ngay; khôi phục mật khẩu qua email không hoạt động. Chỉ mở beta cho nhóm thử nghiệm cho đến khi có cách khôi phục tài khoản đáng tin cậy.
 4. **Deploy API Fastify.** Chọn Blueprint deploy từ file `render.yaml` trong Render để tạo Web Service Node.js; cấu hình khai báo gói Free, health check và địa chỉ bind công khai. Build command: `npm ci && npm run build`; Start command: `npm run start:api`. Khai báo các biến môi trường được đánh dấu `sync: false` trên trang Render, không commit `.env`:
    - `SUPABASE_URL`: URL gốc HTTPS của project.

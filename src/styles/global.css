@@ -1547,6 +1547,421 @@ p {
   background: #fff;
 }
 
+.inventory-page {
+  display: grid;
+  gap: 16px;
+}
+
+.inventory-page .page-title-row {
+  align-items: center;
+}
+
+.inventory-pack-status {
+  display: flex;
+  min-width: min(100%, 275px);
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--paper) 86%, var(--sea-soft));
+}
+
+.inventory-pack-status.is-equipped {
+  border-color: color-mix(in srgb, var(--sand) 65%, var(--line));
+  background: color-mix(in srgb, var(--paper) 72%, var(--sand));
+}
+
+.inventory-pack-illustration {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--sand) 45%, var(--line));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--sand) 35%, var(--paper));
+  font-size: 25px;
+}
+
+.inventory-pack-status strong,
+.inventory-pack-status small {
+  display: block;
+}
+
+.inventory-pack-status strong {
+  font-size: 13px;
+}
+
+.inventory-pack-status small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.inventory-survival-panel {
+  padding: 17px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background:
+    radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--sea-soft) 65%, transparent), transparent 40%),
+    var(--paper);
+  box-shadow: 0 6px 18px rgb(34 49 37 / 5%);
+}
+
+.inventory-survival-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.inventory-survival-heading h2 {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.inventory-survival-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.inventory-survival-grid .stat-card {
+  min-height: 86px;
+  padding: 11px;
+  border-radius: 11px;
+  box-shadow: none;
+}
+
+.inventory-survival-grid .stat-meter {
+  height: 7px;
+}
+
+.inventory-survival-grid .stat-condition {
+  font-size: 9px;
+}
+
+.equipped-weapon-panel {
+  margin-bottom: 0;
+}
+
+.inventory-containers {
+  grid-template-columns: minmax(0, 1.65fr) minmax(290px, .85fr);
+  gap: 16px;
+}
+
+.inventory-container-panel {
+  padding: 18px;
+  border-radius: 15px;
+}
+
+.inventory-container-panel .container-heading {
+  align-items: center;
+}
+
+.inventory-container-panel .container-heading h2 {
+  color: var(--ink);
+  font-size: 21px;
+  font-weight: 600;
+}
+
+.container-capacity-copy {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 15px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.container-capacity-copy strong {
+  color: var(--ink);
+}
+
+.inventory-capacity-bar {
+  height: 8px;
+  margin-top: 7px;
+}
+
+.inventory-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 13px;
+}
+
+.inventory-slot {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 142px;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 8px 9px;
+  border: 1px solid color-mix(in srgb, var(--sea) 16%, var(--line));
+  border-radius: 12px;
+  background: linear-gradient(150deg, color-mix(in srgb, var(--paper) 88%, var(--sea-soft)), var(--paper));
+  text-align: center;
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.inventory-slot:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--sea) 40%, var(--line));
+  box-shadow: 0 7px 16px rgb(34 49 37 / 8%);
+}
+
+.inventory-slot-index,
+.inventory-slot-count {
+  position: absolute;
+  top: 7px;
+  display: inline-flex;
+  min-height: 21px;
+  align-items: center;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--paper) 88%, var(--sea-soft));
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.inventory-slot-index {
+  left: 7px;
+}
+
+.inventory-slot-count {
+  right: 7px;
+  color: var(--ink);
+}
+
+.inventory-slot-art {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+  place-items: center;
+  margin-top: 8px;
+  border: 1px solid color-mix(in srgb, var(--sand) 36%, var(--line));
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--sand) 22%, var(--paper));
+}
+
+.inventory-slot-art .resource-icon {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.inventory-slot-name {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.inventory-slot-meta {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-slot-actions {
+  display: grid;
+  width: 100%;
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 5px;
+}
+
+.inventory-slot-primary,
+.inventory-slot-secondary {
+  min-height: 30px;
+  padding: 4px 6px;
+  border: 1px solid color-mix(in srgb, var(--sea) 46%, var(--line));
+  border-radius: 8px;
+  color: #fff;
+  background: color-mix(in srgb, var(--sea) 85%, #1b443d);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.inventory-slot-primary:hover {
+  filter: brightness(1.08);
+}
+
+.inventory-slot-secondary {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--paper) 72%, var(--sea-soft));
+}
+
+.inventory-slot-more {
+  position: relative;
+  z-index: 1;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.inventory-slot-more[open] {
+  z-index: 3;
+}
+
+.inventory-slot-more summary {
+  padding: 4px 0 1px;
+  cursor: pointer;
+  font-weight: 650;
+  list-style-position: inside;
+}
+
+.inventory-slot-more-panel {
+  display: grid;
+  gap: 5px;
+  padding-top: 5px;
+}
+
+.inventory-slot-more-panel .small-action {
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+.inventory-slot-transfer {
+  display: grid;
+  gap: 5px;
+}
+
+.inventory-slot-transfer label {
+  display: grid;
+  gap: 3px;
+  color: var(--muted);
+  text-align: left;
+}
+
+.inventory-slot-transfer input {
+  width: 100%;
+  min-height: 29px;
+  padding: 3px 7px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  background: var(--paper);
+  font: inherit;
+}
+
+.inventory-slot-empty {
+  justify-content: center;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--line) 75%, transparent);
+  background: color-mix(in srgb, var(--paper) 82%, var(--sea-soft));
+}
+
+.inventory-empty-mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px dashed color-mix(in srgb, var(--sea) 22%, var(--line));
+  border-radius: 12px;
+  color: color-mix(in srgb, var(--muted) 80%, transparent);
+  font-size: 20px;
+}
+
+.inventory-empty-label {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.storage-container-panel {
+  background:
+    repeating-linear-gradient(0deg, color-mix(in srgb, #765333 7%, var(--paper)) 0, color-mix(in srgb, #765333 7%, var(--paper)) 13px, color-mix(in srgb, #765333 11%, var(--paper)) 14px, color-mix(in srgb, #765333 11%, var(--paper)) 26px);
+}
+
+.storage-container-panel .inventory-slot {
+  min-height: 136px;
+  border-color: color-mix(in srgb, #8b6943 28%, var(--line));
+  background: color-mix(in srgb, var(--paper) 88%, #c4a275);
+}
+
+.storage-container-panel .inventory-slot-art {
+  border-color: color-mix(in srgb, #8b6943 36%, var(--line));
+  background: color-mix(in srgb, var(--paper) 76%, #d7bc91);
+}
+
+.storage-container-panel .inventory-slot-empty {
+  background: color-mix(in srgb, var(--paper) 67%, #c4a275);
+}
+
+.container-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+@media (max-width: 1080px) {
+  .inventory-containers {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .inventory-survival-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .inventory-pack-status {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .inventory-slot-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .inventory-slot {
+    min-height: 134px;
+    padding-right: 5px;
+    padding-left: 5px;
+  }
+
+  .inventory-container-panel {
+    padding: 12px;
+  }
+
+  .inventory-survival-panel {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 370px) {
+  .inventory-slot-grid,
+  .inventory-survival-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .node-icon {
   display: block;
   width: 46px;
@@ -10366,4 +10781,176 @@ body {
 
 :root[data-theme="dark"] .updates-coming-soon-card {
   border-color: rgb(234 192 110 / 30%);
+}
+
+.body-exposure-meters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.body-exposure-meter {
+  display: grid;
+  gap: 8px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.body-exposure-meter.is-warning {
+  border-color: color-mix(in srgb, #cc7954 45%, var(--line));
+}
+
+.body-exposure-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.body-exposure-heading strong {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.body-exposure-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 75%, transparent);
+}
+
+.body-exposure-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 350ms ease;
+}
+
+.body-exposure-temperature-fill {
+  background: linear-gradient(90deg, #5c90ac, #70aa8d 50%, #d78a55);
+}
+
+.body-exposure-wetness-fill {
+  background: linear-gradient(90deg, #72afc4, #4786a3);
+}
+
+.body-exposure-meter small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.admin-controls-card {
+  gap: 18px;
+}
+
+.admin-weather-control,
+.admin-player-control {
+  display: grid;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--sea-soft) 26%, var(--paper));
+}
+
+.admin-weather-control > label,
+.admin-player-control > label:not(.admin-ailment-toggle),
+.admin-severity-control {
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-weather-control select,
+.admin-player-control select,
+.admin-survival-fields input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.admin-weather-control .small-action,
+.admin-survival-submit {
+  justify-self: start;
+  min-height: 38px;
+  padding: 8px 14px;
+}
+
+.admin-survival-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-survival-fields label {
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.admin-ailment-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.admin-ailment-toggle input,
+.admin-ailment-list input {
+  accent-color: var(--sea-dark);
+}
+
+.admin-ailment-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+}
+
+.admin-ailment-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 10px;
+}
+
+.admin-severity-control {
+  max-width: 260px;
+}
+
+.admin-controls-card .account-success {
+  margin: 0;
+}
+
+@media (max-width: 650px) {
+  .body-exposure-meters {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-survival-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-ailment-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

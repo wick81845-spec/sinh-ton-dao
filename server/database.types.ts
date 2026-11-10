@@ -94,6 +94,48 @@ export interface Database {
         }
         Relationships: []
       }
+      global_game_settings: {
+        Row: {
+          id: boolean
+          global_weather_id: string | null
+          updated_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          global_weather_id?: string | null
+          updated_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          global_weather_id?: string | null
+          updated_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      game_admin_commands: {
+        Row: {
+          id: string
+          player_id: string
+          created_by: string | null
+          command: Json
+          created_at: string
+          applied_at: string | null
+        }
+        Insert: {
+          id?: string
+          player_id: string
+          created_by?: string | null
+          command: Json
+          created_at?: string
+          applied_at?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {

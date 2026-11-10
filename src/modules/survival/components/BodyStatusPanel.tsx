@@ -87,7 +87,7 @@ export function BodyStatusPanel({ stats, characterName, appearance, weather, isR
             ))}
         </div>
       </div>
-      <p className="body-status-footnote">Nhiệt độ, mưa và các trạng thái cơ thể được thể hiện bằng hiệu ứng, không tạo thêm thanh chỉ số sinh tồn.</p>
+      <p className="body-status-footnote">Mưa và nhiệt độ tác động tích lũy lên thân nhiệt, độ ướt và các tình trạng cơ thể; nơi trú và vật phẩm điều trị giúp giảm nguy cơ.</p>
     </section>
   )
 }

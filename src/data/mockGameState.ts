@@ -22,6 +22,8 @@ export const initialGameState: GameSnapshot = {
     thirst: 74,
     stamina: 91,
     temperature: 28,
+    bodyTemperature: 37,
+    wetness: 0,
     conditions: [],
   },
   inventory: {
@@ -68,6 +70,8 @@ export const newPlayerGameState: GameSnapshot = {
     thirst: 100,
     stamina: 100,
     temperature: 28,
+    bodyTemperature: 37,
+    wetness: 0,
     conditions: [],
   },
   inventory: {
