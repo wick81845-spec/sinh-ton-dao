@@ -415,7 +415,9 @@ function isActiveExploration(value: unknown): value is ActiveExploration {
   const task = explorationTasks.find((entry) => entry.id === value.taskId)
   return task !== undefined
     && typeof value.locationId === 'string'
-    && task.locationId === value.locationId
+    && (task.id === 'survey-nearby-island'
+      ? islandDefinitions.some((island) => island.id === value.locationId)
+      : task.locationId === value.locationId)
     && isFiniteNumber(value.startedAt)
     && isFiniteNumber(value.completesAt)
     && value.completesAt >= value.startedAt
@@ -427,7 +429,9 @@ function isExplorationLogEntry(value: unknown): value is ExplorationLogEntry {
   return task !== undefined
     && typeof value.id === 'string'
     && typeof value.locationId === 'string'
-    && task.locationId === value.locationId
+    && (task.id === 'survey-nearby-island'
+      ? islandDefinitions.some((island) => island.id === value.locationId)
+      : task.locationId === value.locationId)
     && isFiniteNumber(value.completedAt)
     && Array.isArray(value.rewards)
     && value.rewards.every(isItemQuantity)

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useGame } from '../../../app/providers/useGame'
 import { ItemStack } from '../../../shared/components/ItemArtwork'
 import { gameClock } from '../../../services/clock/gameClock'
-import { getIslandDefinition, worldEventDefinitions, worldLocations } from '../../world/data/worldDefinitions'
+import { getIslandDefinition, islandDefinitions, worldEventDefinitions, worldLocations } from '../../world/data/worldDefinitions'
 import { randomWorldEventDefinitions } from '../../world/data/randomWorldEventDefinitions'
 import { explorationTasks, wildlifeObservationTasks } from '../data/explorationConfig'
 import { getExplorationAvailability } from '../services/explorationService'
@@ -28,6 +28,20 @@ export function ExplorationPage() {
     : 0
   const secondsRemaining = active ? Math.max(0, Math.ceil((active.completesAt - now) / 1000)) : 0
   const currentIsland = getIslandDefinition(gameState.character.currentLocationId)
+  const discoveryTask = explorationTasks.find((task) => task.id === 'survey-nearby-island')
+  const islandTask = currentIsland
+    ? explorationTasks.find((task) => task.id === `explore-island-${currentIsland.id}`)
+    : undefined
+  const discoveryIssue = discoveryTask
+    ? getExplorationAvailability(gameState, discoveryTask.id)
+    : 'Nhiệm vụ dò tìm đảo chưa được cấu hình.'
+  const islandTaskIssue = islandTask
+    ? getExplorationAvailability(gameState, islandTask.id)
+    : 'Chưa có nhiệm vụ khám phá cho hòn đảo này.'
+  const undiscoveredIslandCount = islandDefinitions.filter((island) => (
+    island.id !== gameState.character.currentLocationId
+      && !gameState.discoveredIslandIds.includes(island.id)
+  )).length
   const randomEvents = gameState.randomWorldEvents ?? []
   const completedTaskIds = new Set(gameState.explorationLog.map((entry) => entry.taskId))
   const availableObservationTasks = wildlifeObservationTasks.filter((task) => (
@@ -78,6 +92,67 @@ export function ExplorationPage() {
         </section>
       )}
 
+      {discoveryTask && (
+        <section className="exploration-task-list" aria-label="Dò tìm đảo ngoài khơi">
+          <article className="exploration-task">
+            <div className="node-icon" aria-hidden="true">⌖</div>
+            <div className="gathering-activity-copy">
+              <span className="section-kicker">DÒ TÌM NGOÀI KHƠI · CÓ THỂ THỰC HIỆN Ở MỌI ĐẢO</span>
+              <h3>{discoveryTask.name}</h3>
+              <p>Quan sát đường chân trời để tìm một hòn đảo chưa được ghi nhận. Thứ tự phát hiện được tạo riêng cho hành trình của bạn.</p>
+              <div className="activity-requirements">
+                <span>{discoveryTask.durationSeconds} giây</span>
+                <span>ϟ {discoveryTask.staminaCost}</span>
+                <span>Còn {undiscoveredIslandCount} đảo chưa phát hiện</span>
+              </div>
+              {discoveryIssue && <small className="activity-blocked">{discoveryIssue}</small>}
+            </div>
+            <button
+              className="gather-button"
+              type="button"
+              disabled={Boolean(discoveryIssue)}
+              onClick={() => startExploration(discoveryTask.id)}
+            >
+              Dò tìm đảo
+            </button>
+          </article>
+        </section>
+      )}
+
+      {islandTask && (
+        <>
+          <div className="section-heading exploration-section-heading">
+            <div>
+              <span className="section-kicker">ĐANG ĐẶT CHÂN ĐẾN</span>
+              <h2>Khám phá hòn đảo này</h2>
+            </div>
+          </div>
+          <section className="exploration-task-list">
+            <article className="exploration-task">
+              <div className="node-icon" aria-hidden="true">◈</div>
+              <div className="gathering-activity-copy">
+                <span className="section-kicker">{currentIsland?.name}</span>
+                <h3>{islandTask.name}</h3>
+                <p>{islandTask.description}</p>
+                <div className="activity-requirements">
+                  <span>{islandTask.durationSeconds} giây</span>
+                  <span>ϟ {islandTask.staminaCost}</span>
+                </div>
+                {islandTaskIssue && <small className="activity-blocked">{islandTaskIssue}</small>}
+              </div>
+              <button
+                className="gather-button"
+                type="button"
+                disabled={Boolean(islandTaskIssue)}
+                onClick={() => startExploration(islandTask.id)}
+              >
+                Khám phá đảo
+              </button>
+            </article>
+          </section>
+        </>
+      )}
+
       <div className="section-heading exploration-section-heading">
         <div>
           <span className="section-kicker">ĐỊA ĐIỂM ĐÃ PHÁT HIỆN</span>
@@ -85,7 +160,12 @@ export function ExplorationPage() {
         </div>
       </div>
       <section className="exploration-task-list">
-        {explorationTasks.filter((task) => !task.observedSpeciesId).map((task) => {
+        {explorationTasks.filter((task) => (
+          !task.observedSpeciesId
+            && task.id !== 'survey-nearby-island'
+            && !task.id.startsWith('survey-island-')
+            && !task.id.startsWith('explore-island-')
+        )).map((task) => {
           const taskIsland = getIslandDefinition(task.locationId)
           if (!taskIsland || !gameState.discoveredIslandIds.includes(taskIsland.id)) return null
           const issue = getExplorationAvailability(gameState, task.id)

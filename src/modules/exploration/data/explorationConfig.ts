@@ -35,7 +35,7 @@ const islandExplorationTasks: readonly ExplorationTaskDefinition[] = [
     durationSeconds: 12,
     staminaCost: 16,
     rewards: [{ itemId: 'item_wood', quantity: 4 }, { itemId: 'item_stone', quantity: 2 }],
-    discoveredIslandIds: ['island_003'],
+    discoveredIslandIds: [],
     worldEventId: 'event_drift_cache',
   },
   {
@@ -66,6 +66,18 @@ const islandDiscoveryTasks: readonly ExplorationTaskDefinition[] = islandDefinit
   }
 })
 
+const islandSurveyTasks: readonly ExplorationTaskDefinition[] = islandDefinitions.map((island) => ({
+  id: `explore-island-${island.id}`,
+  name: `Khám phá ${island.name}`,
+  description: `Khảo sát địa hình, bờ biển và môi trường tự nhiên tại ${island.name}.`,
+  locationId: island.id,
+  durationSeconds: 10,
+  staminaCost: 8,
+  rewards: [],
+  discoveredIslandIds: [],
+  worldEventId: null,
+}))
+
 export const wildlifeObservationTasks: readonly ExplorationTaskDefinition[] = islandDefinitions.flatMap((island) => (
   speciesDefinitions
     .filter((species) => species.role !== 'flora'
@@ -94,5 +106,6 @@ export const wildlifeObservationTasks: readonly ExplorationTaskDefinition[] = is
 export const explorationTasks: readonly ExplorationTaskDefinition[] = [
   ...islandExplorationTasks,
   ...islandDiscoveryTasks,
+  ...islandSurveyTasks,
   ...wildlifeObservationTasks,
 ]

@@ -4,6 +4,35 @@ import type { ActiveExploration, GameSnapshot } from '../../../shared/types/game
 import { worldEventDefinitions, getIslandDefinition } from '../../world/data/worldDefinitions'
 import { awardExperience } from '../../progression/services/progressionService'
 import { speciesDefinitionsById } from '../../ecology/data/ecologyDefinitions'
+import { islandDefinitions } from '../../world/data/worldDefinitions'
+
+const islandDiscoveryTaskId = 'survey-nearby-island'
+
+function getUndiscoveredIslands(state: GameSnapshot) {
+  const discovered = new Set(state.discoveredIslandIds)
+  return islandDefinitions.filter((island) => (
+    island.id !== state.character.currentLocationId && !discovered.has(island.id)
+  ))
+}
+
+function getNextIslandDiscovery(state: GameSnapshot) {
+  const candidates = getUndiscoveredIslands(state)
+  if (candidates.length === 0) return undefined
+
+  const seed = state.randomWorldEventSeed ?? state.character.id
+  const sequence = state.discoveredIslandIds.length
+  const hash = (value: string) => {
+    let result = 2166136261
+    for (let index = 0; index < value.length; index += 1) {
+      result ^= value.charCodeAt(index)
+      result = Math.imul(result, 16777619)
+    }
+    return result >>> 0
+  }
+  return candidates
+    .map((island) => ({ island, order: hash(`${seed}:${sequence}:${island.id}`) }))
+    .sort((left, right) => left.order - right.order || left.island.id.localeCompare(right.island.id))[0]?.island
+}
 
 export type ExplorationActionResult =
   | { ok: true; state: GameSnapshot; message: string }
@@ -26,8 +55,17 @@ function getTaskIssue(state: GameSnapshot, task: ExplorationTaskDefinition): str
   if (state.voyages.some((voyage) => voyage.status === 'departed' || voyage.status === 'traveling')) {
     return 'Không thể thám hiểm khi thuyền đang di chuyển.'
   }
-  if (state.character.currentLocationId !== task.locationId) return 'Bạn không ở đúng địa điểm để thực hiện nhiệm vụ này.'
-  if (state.explorationLog.some((entry) => entry.taskId === task.id)) return 'Nhiệm vụ này đã hoàn thành.'
+  const isIslandDiscovery = task.id === islandDiscoveryTaskId
+  if (task.id.startsWith('survey-island-')) return 'Tuyến dò đảo cũ không còn khả dụng.'
+  if (!isIslandDiscovery && state.character.currentLocationId !== task.locationId) {
+    return 'Bạn không ở đúng địa điểm để thực hiện nhiệm vụ này.'
+  }
+  if (!isIslandDiscovery && state.explorationLog.some((entry) => entry.taskId === task.id)) {
+    return 'Nhiệm vụ này đã hoàn thành.'
+  }
+  if (isIslandDiscovery && getUndiscoveredIslands(state).length === 0) {
+    return 'Bạn đã phát hiện tất cả các hòn đảo.'
+  }
   if (state.survival.stamina < task.staminaCost) return 'Không đủ thể lực để thám hiểm.'
 
   let inventory = state.inventory
@@ -55,7 +93,7 @@ export function startExploration(state: GameSnapshot, taskId: string, now: numbe
 
   const activeExploration: ActiveExploration = {
     taskId,
-    locationId: task.locationId,
+    locationId: taskId === islandDiscoveryTaskId ? state.character.currentLocationId : task.locationId,
     startedAt: now,
     completesAt: now + task.durationSeconds * 1000,
   }
@@ -71,7 +109,10 @@ export function completeExploration(state: GameSnapshot, now: number): Explorati
   if (!active || now < active.completesAt) return { status: 'pending', state }
 
   const task = getTask(active.taskId)
-  if (!task || active.locationId !== task.locationId || state.character.currentLocationId !== task.locationId) {
+  const isIslandDiscovery = active.taskId === islandDiscoveryTaskId
+  if (!task
+    || (!isIslandDiscovery && active.locationId !== task.locationId)
+    || state.character.currentLocationId !== active.locationId) {
     return {
       status: 'failed',
       state: { ...state, activeExploration: null },
@@ -92,7 +133,14 @@ export function completeExploration(state: GameSnapshot, now: number): Explorati
     inventory = result.container
   }
 
-  const discoveredIslandIds = [...new Set([...state.discoveredIslandIds, ...task.discoveredIslandIds])]
+  const islandDiscovery = isIslandDiscovery ? getNextIslandDiscovery(state) : undefined
+  if (isIslandDiscovery && !islandDiscovery) {
+    return { status: 'failed', state: { ...state, activeExploration: null }, message: 'Bạn đã phát hiện tất cả các hòn đảo.' }
+  }
+  const newlyDiscoveredIslandIds = islandDiscovery
+    ? [islandDiscovery.id]
+    : task.discoveredIslandIds
+  const discoveredIslandIds = [...new Set([...state.discoveredIslandIds, ...newlyDiscoveredIslandIds])]
   const event = task.worldEventId
     ? worldEventDefinitions.find((entry) => entry.id === task.worldEventId)
     : undefined
@@ -102,7 +150,7 @@ export function completeExploration(state: GameSnapshot, now: number): Explorati
     locationId: task.locationId,
     completedAt: now,
     rewards: task.rewards.map((reward) => ({ ...reward })),
-    discoveredIslandIds: [...task.discoveredIslandIds],
+    discoveredIslandIds: [...newlyDiscoveredIslandIds],
     worldEventId: event?.id ?? null,
     ...(task.observedSpeciesId ? { observedSpeciesId: task.observedSpeciesId } : {}),
   }
@@ -115,7 +163,7 @@ export function completeExploration(state: GameSnapshot, now: number): Explorati
     }]
     : state.worldEventLog
 
-  const newlyDiscovered = task.discoveredIslandIds
+  const newlyDiscovered = newlyDiscoveredIslandIds
     .map(getIslandDefinition)
     .filter((island) => island !== undefined)
     .map((island) => island.name)
@@ -126,7 +174,9 @@ export function completeExploration(state: GameSnapshot, now: number): Explorati
     ? `Đã ghi nhận ${observedSpecies.name} bằng dấu vết và âm thanh.`
     : event
     ? `Thám hiểm hoàn tất: ${event.title}.`
-    : newlyDiscovered.length > 0
+    : isIslandDiscovery && islandDiscovery
+      ? `Đã dò thấy ${islandDiscovery.name} ngoài khơi!`
+      : newlyDiscovered.length > 0
       ? `Đã phát hiện ${newlyDiscovered.join(', ')}.`
       : `Thám hiểm hoàn tất: ${task.name}.`
 
