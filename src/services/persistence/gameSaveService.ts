@@ -833,7 +833,6 @@ function isGameSnapshot(value: unknown): value is GameSnapshot {
     && (value.backpackEquipped === undefined || typeof value.backpackEquipped === 'boolean')
     && (value.backpackEquipped !== true || value.inventory.maxSlots >= 24)
     && (value.character.status !== 'dead' || value.survival.health === 0)
-    && (value.character.status !== 'alive' || value.survival.health > 0)
 }
 
 export function isValidGameSnapshot(value: unknown): value is GameSnapshot {

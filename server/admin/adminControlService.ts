@@ -72,7 +72,7 @@ export function createSupabaseAdminControlService(config: ApiConfig): AdminContr
       return {
         survival,
         ailments,
-        status: character.status,
+        status: survival.health === 0 ? 'dead' : character.status,
         currentLocationId: character.currentLocationId,
       }
     },

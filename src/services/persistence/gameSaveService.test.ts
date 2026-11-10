@@ -106,6 +106,20 @@ describe('gameSaveService', () => {
     })).toBe(true)
   })
 
+  it('accepts legacy saves with zero health and normalizes them as dead on load', () => {
+    const legacyDeadSave = {
+      ...initialGameState,
+      survival: { ...initialGameState.survival, health: 0 },
+      character: { ...initialGameState.character, status: 'alive' as const },
+    }
+
+    expect(isValidGameSnapshot(legacyDeadSave)).toBe(true)
+    expect(isValidGameSnapshot({
+      ...legacyDeadSave,
+      character: { ...legacyDeadSave.character, status: 'dead' as const },
+    })).toBe(true)
+  })
+
   it('persists the new-player intro state without rejecting older saves', () => {
     expect(isValidGameSnapshot(newPlayerGameState)).toBe(true)
     expect(isValidGameSnapshot({ ...newPlayerGameState, tutorialIntroCompleted: 'pending' })).toBe(false)
