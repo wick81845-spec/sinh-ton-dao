@@ -12,12 +12,12 @@ function getStatStatus(stat: SurvivalStatName, value: number): string {
   if (stat === 'hunger') {
     if (value === 0) return 'Đói lả'
     if (value <= 10) return 'Suy dinh dưỡng'
-    if (value <= 25) return 'Đói'
+    if (value < survivalConfig.needWarningThreshold) return 'Đói'
   }
   if (stat === 'thirst') {
     if (value === 0) return 'Mất nước nghiêm trọng'
     if (value <= 10) return 'Mất nước'
-    if (value <= 25) return 'Khát'
+    if (value < survivalConfig.needWarningThreshold) return 'Khát'
   }
   if (stat === 'stamina') {
     if (value <= 10) return 'Kiệt sức'
@@ -106,12 +106,12 @@ export function SurvivalPage() {
       />
 
       <p className="survival-rule-note">
-        Đói giảm {survivalConfig.hunger.decayPerHour} điểm/giờ, khát giảm {survivalConfig.thirst.decayPerHour} điểm/giờ
+        Đói giảm {survivalConfig.hunger.decayPerHour} điểm/giờ, khát giảm {survivalConfig.thirst.decayPerHour} điểm/giờ; khi làm hoạt động nặng, hai nhu cầu tụt nhanh hơn {Math.round((survivalConfig.activityNeedMultiplier - 1) * 100)}%
         {weather && weather.temperatureDelta >= 5
           ? ` (tăng ${Math.round((survivalConfig.hotWeatherThirstMultiplier - 1) * 100)}% khi trời nóng)`
           : ''}.
         Sức lực chỉ hồi khi nghỉ ngơi (không có hoạt động, chế tạo, xây dựng hoặc di chuyển), tối đa {survivalConfig.stamina.recoveryPerMinute} điểm/phút; đói, khát hoặc sức khỏe thấp làm chậm hồi phục.
-        Khi đói hoặc khát ≤ {survivalConfig.criticalNeedThreshold}, sức khỏe giảm lần lượt {survivalConfig.health.malnutritionDamagePerHour} và {survivalConfig.health.severeDehydrationDamagePerHour} điểm/giờ;
+        Khi đói hoặc khát dưới {survivalConfig.needWarningThreshold}%, hồi thể lực chậm hơn; khi dưới {survivalConfig.criticalNeedThreshold}, sức khỏe giảm lần lượt {survivalConfig.health.malnutritionDamagePerHour} và {survivalConfig.health.severeDehydrationDamagePerHour} điểm/giờ;
         khi cạn, mất lần lượt {survivalConfig.health.starvationDamagePerHour} và {survivalConfig.health.dehydrationDamagePerHour} điểm/giờ.
       </p>
     </div>

@@ -43,7 +43,7 @@ import type { StorageAdapter } from '../storage/StorageAdapter'
 import { localStorageAdapter } from '../storage/localStorageAdapter'
 
 const gameSaveKey = 'game.save'
-const currentSchemaVersion = 5
+const currentSchemaVersion = 7
 const migratedStorageCapacity = 40
 
 interface GameSnapshotV2 {
@@ -83,6 +83,18 @@ interface GameSaveV4 {
   schemaVersion: 4
   savedAt: string
   data: GameSnapshotV4
+}
+
+interface GameSaveV5 {
+  schemaVersion: 5
+  savedAt: string
+  data: GameSnapshot
+}
+
+interface GameSaveV6 {
+  schemaVersion: 6
+  savedAt: string
+  data: GameSnapshot
 }
 
 export interface GameSave {
@@ -163,6 +175,7 @@ function isInventorySlot(value: unknown): value is InventorySlot {
     && Number.isInteger(value.quantity)
     && value.quantity > 0
     && value.quantity <= itemDefinitions[value.itemId].maxStack
+    && (value.expiresAt === undefined || isFiniteNumber(value.expiresAt))
 }
 
 function isItemQuantity(value: unknown): value is ItemQuantity {
@@ -513,12 +526,42 @@ function isCombatLogEntry(value: unknown): value is CombatLogEntry {
 
 function isGameSnapshot(value: unknown): value is GameSnapshot {
   if (!isGameSnapshotV4(value) || !isRecord(value)) return false
+  const itemDurability = value.itemDurability
+  if (itemDurability !== undefined && (!isRecord(itemDurability)
+    || !Object.entries(itemDurability).every(([itemId, durability]) => (
+      isItemId(itemId)
+      && itemDefinitions[itemId].maxDurability !== undefined
+      && isFiniteNumber(durability)
+      && Number.isInteger(durability)
+      && durability >= 1
+      && durability <= (itemDefinitions[itemId].maxDurability ?? 0)
+    )))) return false
   const activeCombat = value.activeCombat
   if (activeCombat !== null && !isCombatSession(activeCombat)) return false
   const playerInventories = value.socialPlayerInventories
   if (!Array.isArray(playerInventories) || !playerInventories.every(isSocialPlayerInventory)) return false
   const playerInventoryIds = playerInventories.map((entry) => entry.playerId)
+  const campfireFuel = value.campfireFuel
+  const equippedWeaponId = value.equippedWeaponId
   return Array.isArray(value.friendIds)
+    && (equippedWeaponId === undefined
+      || (isItemId(equippedWeaponId)
+        && itemDefinitions[equippedWeaponId].equipmentSlot === 'weapon'
+        && !value.inventory.slots.some((slot) => slot.itemId === equippedWeaponId)))
+    && (campfireFuel === undefined || (isRecord(campfireFuel)
+      && Object.entries(campfireFuel).every(([buildingId, fuel]) => (
+        typeof buildingId === 'string'
+        && value.buildings.some((building) => (
+          building.id === buildingId
+          && building.definitionId === 'building_campfire'
+          && building.status === 'completed'
+        ))
+        && isRecord(fuel)
+        && isFiniteNumber(fuel.remainingMs)
+        && fuel.remainingMs >= 0
+        && isFiniteNumber(fuel.lastUpdatedAt)
+        && fuel.lastUpdatedAt >= 0
+      ))))
     && (value.weather === undefined || isValidWeatherState(value.weather))
     && (value.randomWorldEvents === undefined || (
       Array.isArray(value.randomWorldEvents)
@@ -553,6 +596,8 @@ function isGameSnapshot(value: unknown): value is GameSnapshot {
         && new Set(value.tutorialCompletedStepIds).size === value.tutorialCompletedStepIds.length))
     && (value.tutorialIntroCompleted === undefined || typeof value.tutorialIntroCompleted === 'boolean')
     && (value.isResting === undefined || typeof value.isResting === 'boolean')
+    && (value.backpackEquipped === undefined || typeof value.backpackEquipped === 'boolean')
+    && (value.backpackEquipped !== true || value.inventory.maxSlots >= 24)
     && (value.character.status !== 'dead' || value.survival.health === 0)
     && (value.character.status !== 'alive' || value.survival.health > 0)
 }
@@ -633,7 +678,7 @@ function migrateV3ToV4(value: Record<string, unknown>): GameSaveV4 {
   }
 }
 
-function migrateV4ToV5(value: Record<string, unknown>): GameSave {
+function migrateV4ToV5(value: Record<string, unknown>): GameSaveV5 {
   if (typeof value.savedAt !== 'string'
     || !Number.isFinite(Date.parse(value.savedAt))
     || !isGameSnapshotV4(value.data)) {
@@ -641,7 +686,7 @@ function migrateV4ToV5(value: Record<string, unknown>): GameSave {
   }
 
   return {
-    schemaVersion: currentSchemaVersion,
+    schemaVersion: 5,
     savedAt: value.savedAt,
     data: {
       ...value.data,
@@ -657,7 +702,7 @@ function migrateV4ToV5(value: Record<string, unknown>): GameSave {
   }
 }
 
-function migrateIncompleteV5(value: Record<string, unknown>): GameSave {
+function migrateIncompleteV5(value: Record<string, unknown>): GameSaveV5 {
   const data = value.data
   if (typeof value.savedAt !== 'string'
     || !Number.isFinite(Date.parse(value.savedAt))
@@ -672,7 +717,7 @@ function migrateIncompleteV5(value: Record<string, unknown>): GameSave {
   }
 
   return {
-    schemaVersion: currentSchemaVersion,
+    schemaVersion: 5,
     savedAt: value.savedAt,
     data: {
       ...data,
@@ -685,6 +730,49 @@ function migrateIncompleteV5(value: Record<string, unknown>): GameSave {
       activeCombat: null,
       combatLog: [],
     },
+  }
+}
+
+function addLegacyFoodFreshness(container: ItemContainer, savedAt: number): ItemContainer {
+  return {
+    ...container,
+    slots: container.slots.map((slot) => {
+      const shelfLife = itemDefinitions[slot.itemId].shelfLifeMs
+      return slot.expiresAt !== undefined || shelfLife === undefined
+        ? slot
+        : { ...slot, expiresAt: savedAt + shelfLife }
+    }),
+  }
+}
+
+function migrateV5ToV6(value: Record<string, unknown>): GameSaveV6 {
+  if (typeof value.savedAt !== 'string'
+    || !Number.isFinite(Date.parse(value.savedAt))
+    || !isGameSnapshot(value.data)) {
+    throw new Error('Dữ liệu trò chơi không hợp lệ hoặc không tương thích phiên bản.')
+  }
+  const savedAt = Date.parse(value.savedAt)
+  return {
+    schemaVersion: 6,
+    savedAt: value.savedAt,
+    data: {
+      ...value.data,
+      inventory: addLegacyFoodFreshness(value.data.inventory, savedAt),
+      storage: addLegacyFoodFreshness(value.data.storage, savedAt),
+    },
+  }
+}
+
+function migrateV6ToV7(value: Record<string, unknown>): GameSave {
+  if (typeof value.savedAt !== 'string'
+    || !Number.isFinite(Date.parse(value.savedAt))
+    || !isGameSnapshot(value.data)) {
+    throw new Error('Dữ liệu trò chơi phiên bản 6 không hợp lệ, không thể nâng cấp.')
+  }
+  return {
+    schemaVersion: currentSchemaVersion,
+    savedAt: value.savedAt,
+    data: { ...value.data, campfireFuel: value.data.campfireFuel ?? {} },
   }
 }
 
@@ -721,7 +809,7 @@ export function createGameSaveService(storage: StorageAdapter = localStorageAdap
         wasMigrated = true
       }
       if (isRecord(candidate)
-        && candidate.schemaVersion === currentSchemaVersion
+        && candidate.schemaVersion === 5
         && isRecord(candidate.data)
         && candidate.data.friendIds === undefined
         && candidate.data.socialPlayerInventories === undefined
@@ -729,6 +817,14 @@ export function createGameSaveService(storage: StorageAdapter = localStorageAdap
         && candidate.data.activeCombat === undefined
         && candidate.data.combatLog === undefined) {
         candidate = migrateIncompleteV5(candidate)
+        wasMigrated = true
+      }
+      if (isRecord(candidate) && candidate.schemaVersion === 5) {
+        candidate = migrateV5ToV6(candidate)
+        wasMigrated = true
+      }
+      if (isRecord(candidate) && candidate.schemaVersion === 6) {
+        candidate = migrateV6ToV7(candidate)
         wasMigrated = true
       }
 

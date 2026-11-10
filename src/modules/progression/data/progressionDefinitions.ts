@@ -33,6 +33,25 @@ export const technologyDefinitions: readonly TechnologyDefinition[] = [
   { id: 'tech_ocean_frontier', name: 'Biên giới đại dương', description: 'Chuẩn bị cho hành trình tới vùng biển xa.', requiredLevel: 8, skillId: 'exploration', prerequisites: ['tech_seafaring', 'tech_advanced_production'], researchCost: [{ itemId: 'item_charcoal', quantity: 4 }, { itemId: 'item_wood_plank', quantity: 6 }] },
 ]
 
+export const characterLevelTitles = [
+  'Tân thủ',
+  'Người sinh tồn',
+  'Thợ thủ công',
+  'Người dựng trại',
+  'Người khai phá',
+  'Thợ lành nghề',
+  'Người định cư',
+  'Bậc thầy chế tác',
+  'Nhà kiến tạo',
+  'Người khai đảo',
+] as const
+
+export function characterLevelTitle(level: number): string {
+  const normalizedLevel = Number.isFinite(level) ? Math.max(1, Math.floor(level)) : 1
+  const index = Math.min(normalizedLevel - 1, characterLevelTitles.length - 1)
+  return characterLevelTitles[index]
+}
+
 export function experienceRequiredForLevel(level: number): number {
   return Math.max(100, level * 100)
 }

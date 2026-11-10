@@ -4,7 +4,7 @@ import { useGame } from '../../../app/providers/useGame'
 import { SurvivalMeter, type SurvivalStatName } from '../../survival/components/SurvivalMeter'
 import { getBodyStatusEffects } from '../../survival/services/bodyStatusService'
 import { survivalConfig } from '../../survival/data/survivalConfig'
-import { getIslandDefinition } from '../../world/data/worldDefinitions'
+import { getIslandDefinition, worldLocations } from '../../world/data/worldDefinitions'
 import { getCurrentWeather } from '../../world/services/weatherService'
 import { isSurvivorResting } from '../../survival/utils/survivalCalculator'
 import { gameClock } from '../../../services/clock/gameClock'
@@ -36,6 +36,7 @@ export function HomePage() {
   const appearance = character.appearance ?? 'male'
   const homeIslandName = character.homeIslandName ?? 'Mầm Xanh'
   const currentIsland = getIslandDefinition(character.currentLocationId)
+  const currentLocation = worldLocations.find((location) => location.islandId === character.currentLocationId)
   const locationName = character.currentLocationId === character.homeIslandId
     ? homeIslandName
     : currentIsland?.name ?? character.currentLocationId
@@ -108,11 +109,15 @@ export function HomePage() {
           </p>
 
           <div className="overview-home">
-            <span className="overview-home-icon" aria-hidden="true">⌂</span>
+            <img
+              className="overview-home-art"
+              src={currentIsland?.artwork ?? '/assets/world/tropical-island.jpg'}
+              alt={`Ảnh ${locationName}`}
+            />
             <div>
               <span className="section-kicker">{character.currentLocationId === character.homeIslandId ? 'ĐANG Ở ĐẢO NHÀ' : 'VỊ TRÍ HIỆN TẠI'}</span>
               <strong>{locationName}</strong>
-              <small>Đảo nhà · {homeIslandName}</small>
+              <small>{currentLocation?.name ?? currentIsland?.description ?? 'Vị trí hiện tại'}</small>
             </div>
             <Link to="/world" aria-label="Xem thế giới">↗</Link>
           </div>

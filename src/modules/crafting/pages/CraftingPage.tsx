@@ -6,6 +6,8 @@ import { getRecipeAvailability, recipes } from '../services/craftingService'
 import { craftingConceptGroups } from '../data/craftingConceptCatalog'
 import { ItemStack } from '../../../shared/components/ItemArtwork'
 import { buildingDefinitions } from '../../building/data/buildingDefinitions'
+import { characterLevelTitle } from '../../progression/data/progressionDefinitions'
+import { getIslandDefinition } from '../../world/data/worldDefinitions'
 
 export function CraftingPage() {
   const { gameState, isLoading, error, queueRecipe } = useGame()
@@ -93,22 +95,33 @@ export function CraftingPage() {
       </div>
       <section className="recipe-grid" aria-label="Danh sách công thức">
         {recipes.map((recipe) => {
-          const issue = getRecipeAvailability(gameState, recipe.id)
+          const issue = getRecipeAvailability(gameState, recipe.id, now)
           const output = itemDefinitions[recipe.output.itemId]
           return (
             <article className="recipe-card" key={recipe.id}>
               <img className={`resource-icon ${output.tone}`} src={output.image} alt="" aria-hidden="true" />
               <div className="recipe-card-copy">
-                <span className="section-kicker">{recipe.kind === 'processing' ? 'SƠ CHẾ' : 'CHẾ TẠO'} · {recipe.durationSeconds} GIÂY</span>
+                <span className="section-kicker">{recipe.kind === 'processing' ? 'SƠ CHẾ' : 'CHẾ TẠO'} · CẤP {recipe.requiredLevel ?? 1} — {characterLevelTitle(recipe.requiredLevel ?? 1)} · {recipe.durationSeconds} GIÂY</span>
                 <h3>{recipe.name}</h3>
                 <p>{recipe.description}</p>
               </div>
               <div className="recipe-materials">
                 <strong>Nguyên liệu</strong>
                 <div className="activity-requirements">
-                  {recipe.ingredients.map((ingredient) => (
-                    <ItemStack key={ingredient.itemId} itemId={ingredient.itemId} quantity={ingredient.quantity} />
-                  ))}
+                  {recipe.ingredients.map((ingredient) => {
+                    const available = gameState.inventory.slots
+                      .filter((slot) => slot.itemId === ingredient.itemId)
+                      .reduce((total, slot) => total + slot.quantity, 0)
+                    return (
+                      <span key={ingredient.itemId} className={available < ingredient.quantity ? 'activity-blocked' : undefined}>
+                        <ItemStack itemId={ingredient.itemId} quantity={ingredient.quantity} /> · Có {available}
+                        {available < ingredient.quantity ? ` · Thiếu ${ingredient.quantity - available}` : ''}
+                      </span>
+                    )
+                  })}
+                  {recipe.requiredDiscoveryId && (
+                    <span>Khám phá: {getIslandDefinition(recipe.requiredDiscoveryId)?.name ?? 'đảo mới'}</span>
+                  )}
                   {recipe.stationId && (
                     <span>{buildingDefinitions.find((building) => building.id === recipe.stationId)?.name ?? 'Trạm sản xuất'}</span>
                   )}

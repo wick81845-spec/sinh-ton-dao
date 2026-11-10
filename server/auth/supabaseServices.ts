@@ -25,7 +25,7 @@ export function createSupabaseAuthenticationServices(config: ApiConfig): Authent
       })
       const { data, error } = await userClient
         .from('player_profiles')
-        .select('id, username, display_name, island_name, created_at, updated_at')
+        .select('id, username, display_name, island_name, is_admin, created_at, updated_at')
         .eq('id', userId)
         .maybeSingle()
       if (error) throw error

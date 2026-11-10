@@ -17,10 +17,10 @@ function durationBelowThreshold(value: number, threshold: number, decayPerHour: 
 export function getSurvivalConditions(stats: SurvivalStats): string[] {
   const conditions: string[] = []
 
-  if (stats.hunger <= survivalConfig.warningThreshold) {
+  if (stats.hunger < survivalConfig.needWarningThreshold) {
     conditions.push(stats.hunger === 0 ? 'starving' : 'hungry')
   }
-  if (stats.thirst <= survivalConfig.warningThreshold) {
+  if (stats.thirst < survivalConfig.needWarningThreshold) {
     conditions.push(stats.thirst === 0 ? 'dehydrated' : 'thirsty')
   }
 
@@ -51,27 +51,31 @@ export function advanceSurvival(
   isResting = false,
   weather?: WeatherDefinition,
   restBonusMultiplier = 1,
+  activityMultiplier = 1,
 ): SurvivalStats {
   const elapsed = Math.max(0, elapsedMilliseconds)
   const hotWeather = weather !== undefined && weather.temperatureDelta >= 5
+  const needMultiplier = Math.max(1, activityMultiplier)
+  const hungerDecayPerHour = survivalConfig.hunger.decayPerHour * needMultiplier
   const thirstDecayPerHour = survivalConfig.thirst.decayPerHour
+    * needMultiplier
     * (hotWeather ? survivalConfig.hotWeatherThirstMultiplier : 1)
   const hunger = Math.max(
     0,
-    stats.hunger - (elapsed / millisecondsPerHour) * survivalConfig.hunger.decayPerHour,
+    stats.hunger - (elapsed / millisecondsPerHour) * hungerDecayPerHour,
   )
   const thirst = Math.max(
     0,
     stats.thirst - (elapsed / millisecondsPerHour) * thirstDecayPerHour,
   )
-  const hungerDepletedAt = stats.hunger / survivalConfig.hunger.decayPerHour * millisecondsPerHour
+  const hungerDepletedAt = stats.hunger / hungerDecayPerHour * millisecondsPerHour
   const thirstDepletedAt = stats.thirst / thirstDecayPerHour * millisecondsPerHour
   const starvationDuration = Math.max(0, elapsed - hungerDepletedAt)
   const dehydrationDuration = Math.max(0, elapsed - thirstDepletedAt)
   const malnutritionDuration = durationBelowThreshold(
     stats.hunger,
     survivalConfig.criticalNeedThreshold,
-    survivalConfig.hunger.decayPerHour,
+    hungerDecayPerHour,
     elapsed,
   )
   const severeDehydrationDuration = durationBelowThreshold(
@@ -89,10 +93,10 @@ export function advanceSurvival(
     + dehydrationDuration * (survivalConfig.health.dehydrationDamagePerHour - survivalConfig.health.severeDehydrationDamagePerHour)
   ) / millisecondsPerHour
   let staminaRecoveryMultiplier = 1
-  if (stats.hunger <= survivalConfig.warningThreshold) {
+  if (stats.hunger < survivalConfig.needWarningThreshold) {
     staminaRecoveryMultiplier *= survivalConfig.stamina.lowNeedRecoveryMultiplier
   }
-  if (stats.thirst <= survivalConfig.warningThreshold) {
+  if (stats.thirst < survivalConfig.needWarningThreshold) {
     staminaRecoveryMultiplier *= survivalConfig.stamina.lowNeedRecoveryMultiplier
   }
   if (stats.hunger <= survivalConfig.criticalNeedThreshold) {
@@ -109,8 +113,8 @@ export function advanceSurvival(
     : 0
   const healthRecovery = isResting
     && stats.health > 0
-    && stats.hunger > survivalConfig.warningThreshold
-    && stats.thirst > survivalConfig.warningThreshold
+    && stats.hunger >= survivalConfig.needWarningThreshold
+    && stats.thirst >= survivalConfig.needWarningThreshold
     ? (elapsed / millisecondsPerHour) * survivalConfig.health.restRecoveryPerHour * restBonusMultiplier
     : 0
   const updatedStats = {

@@ -81,7 +81,7 @@ export function completeExploration(state: GameSnapshot, now: number): Explorati
 
   let inventory = state.inventory
   for (const reward of task.rewards) {
-    const result = addItems(inventory, reward.itemId, reward.quantity)
+    const result = addItems(inventory, reward.itemId, reward.quantity, now)
     if (!result.ok) {
       return {
         status: 'failed',

@@ -115,6 +115,13 @@ describe('advanceSurvival', () => {
     expect(advanceSurvival(stats, 60 * 60 * 1000, false, getWeatherDefinition('extreme_heat')).thirst).toBe(86.5)
   })
 
+  it('increases hunger and thirst loss during strenuous activity', () => {
+    const stats = { ...initialGameState.survival, hunger: 100, thirst: 100 }
+
+    expect(advanceSurvival(stats, 60 * 60 * 1000, false, undefined, 1, 1.5))
+      .toMatchObject({ hunger: 91, thirst: 86.5 })
+  })
+
   it('gradually damages health during severe hunger and dehydration before needs reach zero', () => {
     const stats = { ...initialGameState.survival, health: 80, hunger: 10, thirst: 10 }
 

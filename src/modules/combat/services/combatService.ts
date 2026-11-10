@@ -1,4 +1,5 @@
-import { addItems } from '../../inventory/services/inventoryService'
+import { addItems, degradeItemDurability } from '../../inventory/services/inventoryService'
+import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import type { CombatLogEntry, GameSnapshot, ItemQuantity } from '../../../shared/types/game'
 import { combatEncounters, combatRules, type CombatEncounterDefinition } from '../data/combatConfig'
 import { getMockPlayer } from '../../social/data/playerDirectory'
@@ -79,7 +80,7 @@ function finishCombat(
   if (!active) return { ok: false, message: 'Không có trận chiến đang diễn ra.' }
   let inventory = state.inventory
   for (const reward of loot) {
-    const result = addItems(inventory, reward.itemId, reward.quantity)
+    const result = addItems(inventory, reward.itemId, reward.quantity, now)
     if (!result.ok) return { ok: false, message: 'Không thể nhận chiến lợi phẩm; hãy dọn chỗ trong túi đồ.' }
     inventory = result.container
   }
@@ -132,13 +133,26 @@ export function attackCombat(state: GameSnapshot, now: number): CombatActionResu
   const encounter = getEncounter(active.encounterId)
   if (!encounter) return { ok: false, message: 'Không tìm thấy đối thủ.' }
 
-  const carriesAxe = state.inventory.slots.some((slot) => slot.itemId === 'item_wooden_axe')
-  const playerDamage = combatRules.baseDamage + (carriesAxe ? combatRules.woodenAxeBonus : 0)
+  const legacyAxe = state.inventory.slots.some((slot) => slot.itemId === 'item_wooden_axe')
+  const weaponId = state.equippedWeaponId ?? (legacyAxe ? 'item_wooden_axe' : undefined)
+  const weapon = weaponId ? itemDefinitions[weaponId] : undefined
+  const weaponDurability = weaponId ? state.itemDurability?.[weaponId] ?? weapon?.maxDurability ?? 0 : 0
+  const hasUsableWeapon = Boolean(weapon && weaponDurability > 0)
+  const attackedState = hasUsableWeapon && weaponId
+    ? degradeItemDurability(state, weaponId).state
+    : state
+  const playerDamage = combatRules.baseDamage + (hasUsableWeapon ? weapon?.weaponDamageBonus ?? 0 : 0)
+  const remainingWeaponDurability = weaponId ? attackedState.itemDurability?.[weaponId] : undefined
+  const durabilityMessage = hasUsableWeapon && weapon
+    ? remainingWeaponDurability === undefined
+      ? ` ${weapon.name} đã hỏng.`
+      : ` Độ bền ${weapon.name}: ${remainingWeaponDurability}/${weapon.maxDurability}.`
+    : ''
   const opponentHealth = Math.max(0, active.opponentHealth - playerDamage)
   const rounds = active.rounds + 1
   if (opponentHealth === 0) {
     return finishCombat(
-      { ...state, activeCombat: { ...active, opponentHealth, rounds } },
+      { ...attackedState, activeCombat: { ...active, opponentHealth, rounds } },
       encounter,
       'victory',
       now,
@@ -151,11 +165,20 @@ export function attackCombat(state: GameSnapshot, now: number): CombatActionResu
 
   const health = Math.max(0, state.survival.health - encounter.attackDamage)
   if (health === 0) {
-    const droppedItems = state.inventory.slots.map((slot) => ({ itemId: slot.itemId, quantity: slot.quantity }))
+    const droppedItems = [
+      ...attackedState.inventory.slots.map((slot) => ({ itemId: slot.itemId, quantity: slot.quantity })),
+      ...(attackedState.equippedWeaponId
+        ? [{ itemId: attackedState.equippedWeaponId, quantity: 1 }]
+        : []),
+    ]
+    const itemDurability = { ...attackedState.itemDurability }
+    if (attackedState.equippedWeaponId) delete itemDurability[attackedState.equippedWeaponId]
     const result = finishCombat(
       {
-        ...state,
-        inventory: { ...state.inventory, slots: [] },
+        ...attackedState,
+        inventory: { ...attackedState.inventory, slots: [] },
+        equippedWeaponId: undefined,
+        itemDurability,
         survival: { ...state.survival, health: 0 },
         activeCombat: { ...active, opponentHealth, rounds },
       },
@@ -174,11 +197,11 @@ export function attackCombat(state: GameSnapshot, now: number): CombatActionResu
   return {
     ok: true,
     state: {
-      ...state,
+      ...attackedState,
       survival: { ...state.survival, health, conditions: getSurvivalConditions({ ...state.survival, health }) },
       activeCombat: { ...active, opponentHealth, rounds },
     },
-    message: `Bạn gây ${playerDamage} sát thương; đối thủ còn ${opponentHealth} máu.`,
+    message: `Bạn gây ${playerDamage} sát thương; đối thủ còn ${opponentHealth} máu.${durabilityMessage}`,
   }
 }
 

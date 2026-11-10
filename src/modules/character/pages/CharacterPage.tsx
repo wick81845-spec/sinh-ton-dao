@@ -1,6 +1,7 @@
 import { useGame } from '../../../app/providers/useGame'
 import { BodyStatusPanel } from '../../survival/components/BodyStatusPanel'
 import { getCurrentWeather } from '../../world/services/weatherService'
+import { getIslandDefinition } from '../../world/data/worldDefinitions'
 
 export function CharacterPage() {
   const { gameState, isLoading, error } = useGame()
@@ -9,6 +10,8 @@ export function CharacterPage() {
   if (!gameState) return <p className="page-state error-state" role="alert">{error ?? 'Chưa có dữ liệu nhân vật.'}</p>
 
   const { character } = gameState
+  const homeIsland = getIslandDefinition(character.homeIslandId)
+  const currentIsland = getIslandDefinition(character.currentLocationId)
 
   return (
     <div className="character-page">
@@ -44,12 +47,14 @@ export function CharacterPage() {
       <section className="character-details">
         <article className="detail-card">
           <span className="section-kicker">ĐẢO NHÀ</span>
-          <h2>Mầm Xanh</h2>
+          <h2>{character.homeIslandName ?? homeIsland?.name ?? character.homeIslandId}</h2>
           <p>Mã đảo: {character.homeIslandId}</p>
         </article>
         <article className="detail-card">
           <span className="section-kicker">VỊ TRÍ HIỆN TẠI</span>
-          <h2>{character.currentLocationId === character.homeIslandId ? 'Đảo Mầm Xanh' : character.currentLocationId}</h2>
+          <h2>{character.currentLocationId === character.homeIslandId
+            ? character.homeIslandName ?? homeIsland?.name ?? character.currentLocationId
+            : currentIsland?.name ?? character.currentLocationId}</h2>
           <p>Mã địa điểm: {character.currentLocationId}</p>
         </article>
         <article className="detail-card">

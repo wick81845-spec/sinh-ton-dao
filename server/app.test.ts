@@ -10,6 +10,7 @@ const profile = {
   username: 'islander',
   display_name: 'Người chơi',
   island_name: 'Đảo mới',
+  is_admin: false,
   created_at: '2026-11-08T00:00:00.000Z',
   updated_at: '2026-11-08T00:00:00.000Z',
 }

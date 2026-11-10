@@ -12,6 +12,8 @@ export type FishingActionResult =
 export interface GameContextValue {
   gameState: GameSnapshot | null
   isLoading: boolean
+  isAdmin: boolean
+  adminError: string | null
   error: string | null
   notice: string | null
   beginTutorial(): GameActionResult
@@ -26,13 +28,21 @@ export interface GameContextValue {
   buyMarketItem(itemId: ItemId): GameActionResult
   sellMarketItem(itemId: ItemId, quantity: number): GameActionResult
   consumeItem(itemId: ItemId): GameActionResult
+  discardItems(itemId: ItemId, quantity: number): GameActionResult
+  repairItem(itemId: ItemId): GameActionResult
+  equipBackpack(): GameActionResult
+  unequipBackpack(): GameActionResult
+  equipWeapon(itemId: ItemId): GameActionResult
+  unequipWeapon(): GameActionResult
   queueRecipe(recipeId: string): GameActionResult
   researchTechnology(technologyId: string): GameActionResult
   startBuilding(definitionId: string): GameActionResult
   upgradeBuilding(buildingId: string): GameActionResult
+  fuelCampfire(buildingId: string, fuelItemId: ItemId): GameActionResult
   startExploration(taskId: string): GameActionResult
   buildShip(definitionId: string): GameActionResult
   startVoyage(destinationId: string): GameActionResult
+  visitIslandAsAdmin(islandId: string): GameActionResult
   addFriend(playerId: string): GameActionResult
   visitPlayerIsland(playerId: string): GameActionResult
   returnHomeIsland(): GameActionResult

@@ -200,7 +200,7 @@ export function resolveRandomWorldEvent(
     inventory = result.container
   }
   for (const reward of choice.rewards ?? []) {
-    const result = addItems(inventory, reward.itemId, reward.quantity)
+    const result = addItems(inventory, reward.itemId, reward.quantity, now)
     if (!result.ok) return { ok: false, message: `Không đủ chỗ trong hành trang để nhận thưởng: ${result.message}` }
     inventory = result.container
   }

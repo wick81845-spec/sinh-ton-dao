@@ -35,16 +35,16 @@ type FishSeed = readonly [
   weatherIds?: readonly string[],
 ]
 
-const tropicalCoast: readonly BiomeId[] = ['tropical_island', 'rainforest_island', 'mangrove_island', 'coral_island']
+const tropicalCoast: readonly BiomeId[] = ['tropical_island', 'rainforest_island', 'mangrove_island', 'coral_island', 'desert_island']
 const warmShallows: readonly BiomeId[] = ['tropical_island', 'mangrove_island', 'swamp_island', 'rainforest_island']
 const reefs: readonly BiomeId[] = ['tropical_island', 'coral_island', 'rocky_island']
 const temperateCoast: readonly BiomeId[] = ['rocky_island', 'temperate_island', 'coniferous_island']
 const coldSeas: readonly BiomeId[] = ['coniferous_island', 'frozen_island']
 const deepSea: readonly BiomeId[] = ['rocky_island', 'volcanic_island', 'ancient_island', 'frozen_island']
-const coastal = ['coastal_water']
+const coastal = ['coastal_water', 'coral_sea']
 const offshore = ['open_ocean']
 const wreck = ['shipwreck_zone']
-const coastAndOffshore = ['coastal_water', 'open_ocean']
+const coastAndOffshore = ['coastal_water', 'coral_sea', 'open_ocean']
 const offshoreAndWreck = ['open_ocean', 'shipwreck_zone']
 
 function makeTier(

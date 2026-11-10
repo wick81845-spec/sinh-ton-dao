@@ -1,0 +1,53 @@
+import { describe, expect, it } from 'vitest'
+import { initialGameState } from '../../../data/mockGameState'
+import { advanceCampfireFuel, fuelCampfire, getCampfireRemainingMs, isCampfireLitAt } from './campfireService'
+
+function litCampfireState() {
+  return {
+    ...initialGameState,
+    buildings: [{
+      id: 'campfire-1',
+      definitionId: 'building_campfire',
+      islandId: initialGameState.character.homeIslandId,
+      level: 1,
+      health: 80,
+      status: 'completed' as const,
+    }],
+    inventory: {
+      ...initialGameState.inventory,
+      slots: [
+        ...initialGameState.inventory.slots,
+        { itemId: 'item_branch' as const, quantity: 2 },
+      ],
+    },
+  }
+}
+
+describe('campfireService', () => {
+  it('consumes fuel and starts the fire for the fuel-specific duration', () => {
+    const result = fuelCampfire(litCampfireState(), 'campfire-1', 'item_branch', 1_000)
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error(result.message)
+    expect(result.state.campfireFuel?.['campfire-1']).toEqual({ remainingMs: 5 * 60_000, lastUpdatedAt: 1_000 })
+    expect(result.state.inventory.slots.find((slot) => slot.itemId === 'item_branch')?.quantity).toBe(1)
+    expect(isCampfireLitAt(result.state, 'campfire-1', 1_000)).toBe(true)
+  })
+
+  it('advances fuel by elapsed real time and records when the fire goes out', () => {
+    const fueled = fuelCampfire(litCampfireState(), 'campfire-1', 'item_branch', 1_000)
+    if (!fueled.ok) throw new Error(fueled.message)
+    const advanced = advanceCampfireFuel(fueled.state, 301_000)
+    expect(advanced.extinguishedBuildingIds).toEqual(['campfire-1'])
+    expect(advanced.state.campfireFuel?.['campfire-1']).toEqual({ remainingMs: 0, lastUpdatedAt: 301_000 })
+    expect(getCampfireRemainingMs(advanced.state, 'campfire-1', 301_000)).toBe(0)
+  })
+
+  it('adds new fuel to remaining burn time instead of resetting it', () => {
+    const first = fuelCampfire(litCampfireState(), 'campfire-1', 'item_branch', 1_000)
+    if (!first.ok) throw new Error(first.message)
+    const second = fuelCampfire(first.state, 'campfire-1', 'item_branch', 61_000)
+    expect(second.ok).toBe(true)
+    if (!second.ok) throw new Error(second.message)
+    expect(second.state.campfireFuel?.['campfire-1']?.remainingMs).toBe(9 * 60_000)
+  })
+})

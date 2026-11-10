@@ -8,6 +8,9 @@ export type AuthActionResult =
 export interface AuthContextValue {
   configured: boolean
   isLoading: boolean
+  isAdmin: boolean
+  isAdminLoading: boolean
+  adminError: string | null
   session: Session | null
   error: string | null
   signIn(identifier: string, password: string): Promise<AuthActionResult>

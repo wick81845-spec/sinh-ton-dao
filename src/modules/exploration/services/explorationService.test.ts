@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { initialGameState } from '../../../data/mockGameState'
-import { wildlifeObservationTasks } from '../data/explorationConfig'
+import { explorationTasks, wildlifeObservationTasks } from '../data/explorationConfig'
 import { completeExploration, getExplorationAvailability, startExploration } from './explorationService'
+import { islandDefinitions } from '../../world/data/worldDefinitions'
 
 describe('explorationService', () => {
   it('reveals new islands and grants the configured reward only after the task completes', () => {
@@ -14,7 +15,8 @@ describe('explorationService', () => {
     const result = completeExploration(started.state, 9_000)
     expect(result.status).toBe('completed')
     expect(result.state.discoveredIslandIds).toEqual(['island_001', 'island_002'])
-    expect(result.state.inventory.slots).toContainEqual({ itemId: 'item_wild_fruit', quantity: 7 })
+    expect(result.state.inventory.slots.find((slot) => slot.itemId === 'item_wild_fruit'))
+      .toMatchObject({ itemId: 'item_wild_fruit', quantity: 7, expiresAt: expect.any(Number) })
     expect(result.state.explorationLog).toHaveLength(1)
   })
 
@@ -39,6 +41,32 @@ describe('explorationService', () => {
       { eventId: 'event_drift_cache', locationId: 'island_002', occurredAt: 22_000 },
     ])
     expect(result.state.inventory.slots).toContainEqual({ itemId: 'item_wood', quantity: 16 })
+  })
+
+  it('provides a sequential discovery route to all 12 islands', () => {
+    const discoveryTasks = explorationTasks.filter((task) => (
+      task.discoveredIslandIds.length > 0 && !task.observedSpeciesId
+    ))
+    let state = initialGameState
+    let now = 1_000
+
+    expect(discoveryTasks).toHaveLength(11)
+    for (const task of discoveryTasks) {
+      state = {
+        ...state,
+        character: { ...state.character, currentLocationId: task.locationId },
+        survival: { ...state.survival, stamina: 100 },
+      }
+      const started = startExploration(state, task.id, now)
+      if (!started.ok) throw new Error(started.message)
+
+      const result = completeExploration(started.state, started.state.activeExploration!.completesAt)
+      if (result.status !== 'completed') throw new Error('Island survey should complete.')
+      state = result.state
+      now += 30_000
+    }
+
+    expect(new Set(state.discoveredIslandIds)).toEqual(new Set(islandDefinitions.map((island) => island.id)))
   })
 
   it('records a safe wildlife sighting in the exploration journal', () => {

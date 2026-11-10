@@ -9,6 +9,7 @@ export const survivalConfig = {
   },
   hunger: { max: 100, decayPerHour: 6 },
   thirst: { max: 100, decayPerHour: 9 },
+  activityNeedMultiplier: 1.5,
   stamina: {
     max: 100,
     recoveryPerMinute: 5,
@@ -18,5 +19,6 @@ export const survivalConfig = {
   },
   hotWeatherThirstMultiplier: 1.5,
   warningThreshold: 25,
+  needWarningThreshold: 50,
   criticalNeedThreshold: 10,
 } as const

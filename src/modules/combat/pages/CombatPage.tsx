@@ -1,4 +1,5 @@
 import { useGame } from '../../../app/providers/useGame'
+import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import { ItemStack } from '../../../shared/components/ItemArtwork'
 import { getIslandDefinition } from '../../world/data/worldDefinitions'
 import { combatEncounters } from '../data/combatConfig'
@@ -32,6 +33,8 @@ export function CombatPage() {
 
   const active = gameState.activeCombat
   const encounter = active && combatEncounters.find((entry) => entry.id === active.encounterId)
+  const weaponId = gameState.equippedWeaponId
+    ?? (gameState.inventory.slots.some((slot) => slot.itemId === 'item_wooden_axe') ? 'item_wooden_axe' : undefined)
 
   return (
     <div className="combat-page">
@@ -93,7 +96,11 @@ export function CombatPage() {
             <p>{gameState.character.status === 'alive' ? 'Sẵn sàng chiến đấu' : 'Cần hồi sinh'}</p>
             <div className="activity-requirements">
               <span>Máu {gameState.survival.health} / 100</span>
-              <span>Vũ khí: {gameState.inventory.slots.some((slot) => slot.itemId === 'item_wooden_axe') ? 'Rìu gỗ (+14 sát thương)' : 'Không trang bị (+12 sát thương)'}</span>
+              <span>
+                Vũ khí: {weaponId
+                  ? `${itemDefinitions[weaponId].name} (+${itemDefinitions[weaponId].weaponDamageBonus ?? 0} sát thương, độ bền ${gameState.itemDurability?.[weaponId] ?? itemDefinitions[weaponId].maxDurability})`
+                  : 'Không trang bị (+12 sát thương)'}
+              </span>
               <span>Vị trí: {getIslandDefinition(gameState.character.currentLocationId)?.name ?? gameState.character.currentLocationId}</span>
             </div>
           </div>

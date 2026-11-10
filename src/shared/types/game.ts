@@ -194,7 +194,16 @@ export type ItemId =
   | 'item_rotten_wood'
   | 'item_honey'
   | 'item_wooden_axe'
+  | 'item_wooden_spear'
+  | 'item_fishing_rod'
+  | 'item_cooked_fish'
+  | 'item_roasted_crab'
+  | 'item_roasted_shrimp'
+  | 'item_mushroom_soup'
+  | 'item_rope'
+  | 'item_backpack'
   | 'item_fresh_fish'
+  | 'item_spoiled_food'
   | FishingLootItemId
   | FishItemId
   | LegacyFishItemId
@@ -202,6 +211,7 @@ export type ItemId =
 export interface InventorySlot {
   itemId: ItemId
   quantity: number
+  expiresAt?: number
 }
 
 export interface ItemQuantity {
@@ -213,6 +223,11 @@ export interface ItemContainer {
   ownerId: string
   slots: InventorySlot[]
   maxSlots: number
+}
+
+export interface CampfireFuelState {
+  remainingMs: number
+  lastUpdatedAt: number
 }
 
 export interface ResourceNodeState {
@@ -374,8 +389,12 @@ export interface GameSnapshot {
   character: Character
   survival: SurvivalStats
   isResting?: boolean
+  backpackEquipped?: boolean
+  equippedWeaponId?: ItemId
+  campfireFuel?: Record<string, CampfireFuelState>
   weather?: WeatherState
   inventory: ItemContainer
+  itemDurability?: Partial<Record<ItemId, number>>
   storage: ItemContainer
   resourceNodes: ResourceNodeState[]
   activeGathering: ActiveGathering | null

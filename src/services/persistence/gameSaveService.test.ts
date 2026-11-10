@@ -34,6 +34,32 @@ describe('gameSaveService', () => {
     })).toBe(false)
   })
 
+  it('validates dedicated weapon and campfire fuel state', () => {
+    const state = {
+      ...initialGameState,
+      buildings: [{
+        id: 'campfire-1',
+        definitionId: 'building_campfire',
+        islandId: initialGameState.character.homeIslandId,
+        level: 1,
+        health: 80,
+        status: 'completed' as const,
+      }],
+      equippedWeaponId: 'item_wooden_spear' as const,
+      campfireFuel: { 'campfire-1': { remainingMs: 120_000, lastUpdatedAt: 1_000 } },
+      itemDurability: { item_wooden_spear: 12 },
+    }
+    expect(isValidGameSnapshot(state)).toBe(true)
+    expect(isValidGameSnapshot({ ...state, campfireFuel: { missing: { remainingMs: 1, lastUpdatedAt: 1 } } })).toBe(false)
+    expect(isValidGameSnapshot({
+      ...state,
+      inventory: {
+        ...state.inventory,
+        slots: [...state.inventory.slots, { itemId: 'item_wooden_spear' as const, quantity: 1 }],
+      },
+    })).toBe(false)
+  })
+
   it('accepts existing saves that predate coins and skill experience', () => {
     const { coins: _coins, skillExperience: _skills, researchedTechnologyIds: _technologies, ...legacyCharacter } = initialGameState.character
     expect(isValidGameSnapshot({
@@ -47,6 +73,19 @@ describe('gameSaveService', () => {
     expect(isValidGameSnapshot({ ...newPlayerGameState, tutorialIntroCompleted: 'pending' })).toBe(false)
     expect(isValidGameSnapshot({ ...newPlayerGameState, isResting: true })).toBe(true)
     expect(isValidGameSnapshot({ ...newPlayerGameState, isResting: 'yes' })).toBe(false)
+    expect(isValidGameSnapshot({
+      ...newPlayerGameState,
+      inventory: { ...newPlayerGameState.inventory, maxSlots: 24 },
+      backpackEquipped: true,
+    })).toBe(true)
+    expect(isValidGameSnapshot({
+      ...newPlayerGameState,
+      inventory: { ...newPlayerGameState.inventory, maxSlots: 12 },
+      backpackEquipped: true,
+    })).toBe(false)
+    expect(isValidGameSnapshot({ ...newPlayerGameState, backpackEquipped: 'yes' })).toBe(false)
+    expect(isValidGameSnapshot({ ...newPlayerGameState, itemDurability: { item_wooden_axe: 20 } })).toBe(true)
+    expect(isValidGameSnapshot({ ...newPlayerGameState, itemDurability: { item_wooden_axe: 21 } })).toBe(false)
     expect(isValidGameSnapshot(initialGameState)).toBe(true)
   })
 
@@ -69,7 +108,7 @@ describe('gameSaveService', () => {
     await service.save(initialGameState, timestamp)
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 5,
+      schemaVersion: 7,
       savedAt: '2026-11-08T00:00:00.000Z',
       data: initialGameState,
     })
@@ -118,6 +157,38 @@ describe('gameSaveService', () => {
     expect(restored?.data.resourceNodes).toHaveLength(8)
     expect(restored?.data.resourceNodes.find((node) => node.nodeId === 'tidal-rocks'))
       .toMatchObject({ available: 18, respawnAt: null })
+  })
+
+  it('migrates version 5 food stacks with an expiry based on the saved timestamp', async () => {
+    const storage = new MemoryStorage()
+    const service = createGameSaveService(storage)
+    const savedAt = Date.parse('2026-11-08T00:00:00.000Z')
+    await storage.set('game.save', {
+      schemaVersion: 5,
+      savedAt: new Date(savedAt).toISOString(),
+      data: initialGameState,
+    })
+
+    const restored = await service.load()
+    expect(restored?.schemaVersion).toBe(7)
+    expect(restored?.data.inventory.slots.find((slot) => slot.itemId === 'item_wild_fruit')?.expiresAt)
+      .toBe(savedAt + 3 * 60 * 60 * 1000)
+    await expect(storage.get('game.save')).resolves.toMatchObject({ schemaVersion: 7 })
+  })
+
+  it('migrates version 6 saves to include empty campfire fuel state', async () => {
+    const storage = new MemoryStorage()
+    const service = createGameSaveService(storage)
+    await storage.set('game.save', {
+      schemaVersion: 6,
+      savedAt: '2026-11-08T00:00:00.000Z',
+      data: initialGameState,
+    })
+
+    await expect(service.load()).resolves.toMatchObject({
+      schemaVersion: 7,
+      data: { campfireFuel: {} },
+    })
   })
 
   it('keeps player saves separate when using different storage keys', async () => {
@@ -177,7 +248,7 @@ describe('gameSaveService', () => {
     })
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 5,
+      schemaVersion: 7,
       data: {
         character: initialGameState.character,
         survival: initialGameState.survival,
@@ -231,7 +302,7 @@ describe('gameSaveService', () => {
     })
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 5,
+      schemaVersion: 7,
       data: {
         character: initialGameState.character,
         inventory: initialGameState.inventory,
@@ -281,7 +352,7 @@ describe('gameSaveService', () => {
     })
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 5,
+      schemaVersion: 7,
       data: {
         character: initialGameState.character,
         inventory: initialGameState.inventory,
@@ -322,7 +393,7 @@ describe('gameSaveService', () => {
     })
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 5,
+      schemaVersion: 7,
       data: {
         character: initialGameState.character,
         discoveredIslandIds: initialGameState.discoveredIslandIds,
@@ -356,7 +427,7 @@ describe('gameSaveService', () => {
     await storage.set('game.save', incompleteSave)
 
     await expect(service.load()).resolves.toMatchObject({
-      schemaVersion: 5,
+      schemaVersion: 7,
       data: {
         character: initialGameState.character,
         inventory: initialGameState.inventory,
@@ -369,6 +440,6 @@ describe('gameSaveService', () => {
         combatLog: [],
       },
     })
-    await expect(storage.get('game.save')).resolves.toMatchObject({ schemaVersion: 5, data: { friendIds: [] } })
+    await expect(storage.get('game.save')).resolves.toMatchObject({ schemaVersion: 7, data: { friendIds: [] } })
   })
 })

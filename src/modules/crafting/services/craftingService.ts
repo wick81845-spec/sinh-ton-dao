@@ -4,6 +4,8 @@ import type { CraftingJob, GameSnapshot, ItemId } from '../../../shared/types/ga
 import { craftingQueueLimit, recipes, type RecipeDefinition, type RecipeIngredient } from '../data/recipes'
 import { awardExperience } from '../../progression/services/progressionService'
 import { buildingDefinitions } from '../../building/data/buildingDefinitions'
+import { getIslandDefinition } from '../../world/data/worldDefinitions'
+import { isCampfireLitAt } from '../../building/services/campfireService'
 
 export type CraftingActionResult =
   | { ok: true; state: GameSnapshot; message: string }
@@ -49,7 +51,7 @@ function simulateReservedOutputs(state: GameSnapshot, nextOutput: RecipeIngredie
   return reservation.ok ? reservation.container : null
 }
 
-export function getRecipeAvailability(state: GameSnapshot, recipeId: string): string | null {
+export function getRecipeAvailability(state: GameSnapshot, recipeId: string, now = Date.now()): string | null {
   const recipe = getRecipe(recipeId)
   if (!recipe) return 'Công thức không tồn tại.'
   if (state.character.status !== 'alive') return 'Bạn cần hồi sinh trước khi chế tạo.'
@@ -61,6 +63,10 @@ export function getRecipeAvailability(state: GameSnapshot, recipeId: string): st
   }
   if (state.craftingQueue.length >= craftingQueueLimit) return 'Hàng đợi chế tạo đã đầy.'
   if (state.character.level < (recipe.requiredLevel ?? 1)) return `Cần đạt cấp ${recipe.requiredLevel}.`
+  if (recipe.requiredDiscoveryId && !state.discoveredIslandIds.includes(recipe.requiredDiscoveryId)) {
+    const island = getIslandDefinition(recipe.requiredDiscoveryId)
+    return `Cần khám phá ${island?.name ?? 'địa điểm mới'} để học công thức này.`
+  }
   if (recipe.technologyId && !(state.character.researchedTechnologyIds ?? []).includes(recipe.technologyId)) {
     return 'Cần nghiên cứu công nghệ mở khóa công thức này.'
   }
@@ -68,6 +74,9 @@ export function getRecipeAvailability(state: GameSnapshot, recipeId: string): st
     const station = buildingDefinitions.find((building) => building.id === recipe.stationId)
     return `Cần có ${station?.name.toLocaleLowerCase('vi-VN') ?? 'trạm chế biến'} đã hoàn thành.`
   }
+  if (recipe.requiresLitCampfire && !state.buildings.some((building) => (
+    building.definitionId === 'building_campfire' && isCampfireLitAt(state, building.id, now)
+  ))) return 'Cần có lửa trại đang cháy; hãy thêm nhiên liệu ở trang Xây dựng.'
   if (!hasIngredients(state, recipe.ingredients)) return 'Không đủ nguyên liệu trong túi đồ.'
   if (!simulateReservedOutputs(state, recipe.output)) return 'Không đủ chỗ trong túi đồ cho sản phẩm.'
   return null
@@ -84,7 +93,7 @@ function consumeIngredients(state: GameSnapshot, ingredients: RecipeIngredient[]
 }
 
 export function queueRecipe(state: GameSnapshot, recipeId: string, now: number): CraftingActionResult {
-  const issue = getRecipeAvailability(state, recipeId)
+  const issue = getRecipeAvailability(state, recipeId, now)
   if (issue) return { ok: false, message: issue }
   const recipe = getRecipe(recipeId)
   if (!recipe) return { ok: false, message: 'Công thức không tồn tại.' }
@@ -133,7 +142,7 @@ export function completeCrafting(state: GameSnapshot, now: number): CraftingComp
     }
   }
 
-  const inventory = addItems(state.inventory, recipe.output.itemId, recipe.output.quantity)
+  const inventory = addItems(state.inventory, recipe.output.itemId, recipe.output.quantity, now)
   if (!inventory.ok) {
     return {
       status: 'failed',
@@ -143,12 +152,16 @@ export function completeCrafting(state: GameSnapshot, now: number): CraftingComp
   }
 
   const remainingQueue = startNextJob(state.craftingQueue.slice(1), now)
+  const maxDurability = itemDefinitions[recipe.output.itemId].maxDurability
   return {
     status: 'completed',
     state: {
       ...state,
       character: awardExperience(state.character, 'processing', recipe.kind === 'processing' ? 8 : 10),
       inventory: inventory.container,
+      ...(maxDurability
+        ? { itemDurability: { ...state.itemDurability, [recipe.output.itemId]: maxDurability } }
+        : {}),
       craftingQueue: remainingQueue,
     },
     jobId: activeJob.id,

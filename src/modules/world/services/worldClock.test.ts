@@ -5,7 +5,7 @@ import { getWorldClock, getWorldWeatherAtTime, worldDayDurationMs } from './worl
 const timestampAtGameMinute = (minute: number) => minute * worldDayDurationMs / (24 * 60)
 
 describe('worldClock', () => {
-  it('runs a synchronized 24-hour cycle in 60 real minutes', () => {
+  it('runs a synchronized 24-hour cycle in 30 real minutes', () => {
     expect(getWorldClock(0).time).toBe('00:00')
     expect(getWorldClock(worldDayDurationMs / 2).time).toBe('12:00')
     expect(getWorldClock(worldDayDurationMs).time).toBe('00:00')

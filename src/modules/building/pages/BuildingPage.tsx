@@ -3,6 +3,7 @@ import { useGame } from '../../../app/providers/useGame'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import { gameClock } from '../../../services/clock/gameClock'
 import { buildingDefinitions, getConstructionAvailability, getUpgradeAvailability } from '../services/buildingService'
+import { campfireFuelOptions, getCampfireRemainingMs } from '../services/campfireService'
 import { ItemStack } from '../../../shared/components/ItemArtwork'
 
 function formatCost(cost: { itemId: keyof typeof itemDefinitions; quantity: number }[]) {
@@ -14,7 +15,7 @@ function formatCost(cost: { itemId: keyof typeof itemDefinitions; quantity: numb
 }
 
 export function BuildingPage() {
-  const { gameState, isLoading, error, startBuilding, upgradeBuilding } = useGame()
+  const { gameState, isLoading, error, startBuilding, upgradeBuilding, fuelCampfire } = useGame()
   const [now, setNow] = useState(gameClock.now())
 
   useEffect(() => {
@@ -123,6 +124,8 @@ export function BuildingPage() {
               const nextLevel = building.level + 1
               const upgradeCost = definition.upgradeCosts[nextLevel]
               const issue = getUpgradeAvailability(gameState, building.id)
+              const isCampfire = building.definitionId === 'building_campfire'
+              const fuelRemaining = getCampfireRemainingMs(gameState, building.id, now)
               return (
                 <article className="owned-building" key={building.id}>
                   <span className="building-emblem" aria-hidden="true">⌂</span>
@@ -130,7 +133,35 @@ export function BuildingPage() {
                     <span className="section-kicker">{building.status === 'completed' ? 'ĐÃ HOÀN THÀNH' : 'ĐANG THI CÔNG'}</span>
                     <h3>{definition.name}</h3>
                     <p>Cấp {building.level} / {definition.maxLevel} · Độ bền {building.health} / {definition.maxHealth}</p>
+                    {isCampfire && building.status === 'completed' && (
+                      <p role="status">
+                        {fuelRemaining > 0
+                          ? `Đang cháy · còn ${Math.ceil(fuelRemaining / 60_000)} phút`
+                          : 'Đã tắt · cần thêm nhiên liệu'}
+                      </p>
+                    )}
                   </div>
+                  {isCampfire && building.status === 'completed' && (
+                    <div className="owned-building-upgrade">
+                      {campfireFuelOptions.map(({ itemId, durationMs }) => {
+                        const quantity = gameState.inventory.slots
+                          .filter((slot) => slot.itemId === itemId)
+                          .reduce((total, slot) => total + slot.quantity, 0)
+                        const item = itemDefinitions[itemId]
+                        return (
+                          <button
+                            className="small-action"
+                            type="button"
+                            key={itemId}
+                            disabled={quantity < 1 || gameState.character.currentLocationId !== building.islandId}
+                            onClick={() => fuelCampfire(building.id, itemId)}
+                          >
+                            Thêm {item.name} (+{durationMs / 60_000} phút) · có {quantity}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                   {upgradeCost && (
                     <div className="owned-building-upgrade">
                       <small>{formatCost(upgradeCost)}</small>

@@ -186,9 +186,9 @@ export function resolveTrade(
   if (!reducedPlayer.ok) return { ok: false, message: 'Không thể lấy vật phẩm từ người chơi mô phỏng.' }
   const reducedInventory = removeItems(state.inventory, offer.offered.itemId, offer.offered.quantity)
   if (!reducedInventory.ok) return { ok: false, message: 'Không thể tiêu hao vật phẩm đã đề nghị.' }
-  const newInventory = addItems(reducedInventory.container, offer.requested.itemId, offer.requested.quantity)
+  const newInventory = addItems(reducedInventory.container, offer.requested.itemId, offer.requested.quantity, now)
   if (!newInventory.ok) return { ok: false, message: 'Túi đồ không đủ chỗ nhận giao dịch.' }
-  const newPlayerInventory = addItems(reducedPlayer.container, offer.offered.itemId, offer.offered.quantity)
+  const newPlayerInventory = addItems(reducedPlayer.container, offer.offered.itemId, offer.offered.quantity, now)
   if (!newPlayerInventory.ok) return { ok: false, message: 'Kho người chơi mô phỏng không đủ chỗ.' }
 
   return {

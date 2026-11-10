@@ -9,6 +9,7 @@ export interface Database {
           username: string
           display_name: string
           island_name: string
+          is_admin: boolean
           created_at: string
           updated_at: string
         }

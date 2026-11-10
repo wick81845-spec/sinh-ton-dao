@@ -1,6 +1,7 @@
 import { useGame } from '../../../app/providers/useGame'
 import {
   currentLevelProgress,
+  characterLevelTitle,
   skillDefinitions,
   skillLevelForExperience,
   technologyDefinitions,
@@ -26,13 +27,13 @@ export function ProgressionPage() {
           <h1>Tiến trình & công nghệ</h1>
           <p>Kinh nghiệm từ hoạt động giúp nâng cấp cấp độ và chuyên môn.</p>
         </div>
-        <div className="stamina-chip"><strong>Cấp {character.level}</strong> · {character.experience} XP</div>
+        <div className="stamina-chip"><strong>Cấp {character.level} · {characterLevelTitle(character.level)}</strong> · {character.experience} XP</div>
       </div>
 
       <section className="detail-card progression-level-card">
         <div>
           <span className="section-kicker">CẤP ĐỘ NHÂN VẬT</span>
-          <h2>Cấp {character.level}</h2>
+          <h2>Cấp {character.level} — {characterLevelTitle(character.level)}</h2>
           <p>{progress.current} / {progress.required} XP tới cấp tiếp theo</p>
         </div>
         <div className="gathering-progress-track" role="progressbar" aria-label="Kinh nghiệm cấp độ" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>

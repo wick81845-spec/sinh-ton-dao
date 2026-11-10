@@ -116,6 +116,7 @@ export function getFishingSkillCastPower(castPower: number, skillLevel: number):
 
 export const fishingZoneNames: Readonly<Record<string, string>> = {
   coastal_water: 'Ven bờ & rạn san hô',
+  coral_sea: 'Rạn san hô',
   open_ocean: 'Ngoài khơi',
   shipwreck_zone: 'Vùng xác tàu',
 }
@@ -126,6 +127,12 @@ export const fishingZoneDefinitions = [
     name: fishingZoneNames.coastal_water,
     image: '/assets/fishing/locations/coast.jpg',
     description: 'Bờ cát nông và rạn san hô quanh Đảo Mầm Xanh.',
+  },
+  {
+    id: 'coral_sea',
+    name: fishingZoneNames.coral_sea,
+    image: '/assets/fishing/locations/coast.jpg',
+    description: 'Đầm phá và rạn san hô quanh Đảo Vành San Hô.',
   },
   {
     id: 'open_ocean',

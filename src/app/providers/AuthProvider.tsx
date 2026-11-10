@@ -13,7 +13,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [client, setClient] = useState<SupabaseClient<Database> | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(Boolean(browserAuthConfig))
+  const [adminRole, setAdminRole] = useState<{
+    userId: string
+    isAdmin: boolean
+    error: string | null
+  } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const isAdmin = Boolean(session && adminRole?.userId === session.user.id && adminRole.isAdmin)
+  const isAdminLoading = Boolean(client && session && adminRole?.userId !== session.user.id)
+  const adminError = session && adminRole?.userId === session.user.id ? adminRole.error : null
 
   useEffect(() => {
     if (!browserAuthConfig) return
@@ -45,6 +53,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unsubscribe()
     }
   }, [])
+
+  useEffect(() => {
+    let active = true
+    if (client && session) {
+      void (async () => {
+        try {
+          const { data, error: profileError } = await client
+            .from('player_profiles')
+            .select('is_admin')
+            .eq('id', session.user.id)
+            .maybeSingle()
+          if (!active) return
+          if (profileError) {
+            const message = `Không thể xác minh quyền tài khoản: ${profileError.message}`
+            setError(message)
+            setAdminRole({ userId: session.user.id, isAdmin: false, error: message })
+          } else if (!data) {
+            const message = 'Không thể xác minh quyền tài khoản: chưa tìm thấy hồ sơ người chơi.'
+            setError(message)
+            setAdminRole({ userId: session.user.id, isAdmin: false, error: message })
+          } else {
+            setAdminRole({ userId: session.user.id, isAdmin: data.is_admin, error: null })
+          }
+        } catch (profileError: unknown) {
+          if (!active) return
+          const message = `Không thể xác minh quyền tài khoản: ${describeAuthError(profileError)}`
+          setError(message)
+          setAdminRole({ userId: session.user.id, isAdmin: false, error: message })
+        }
+      })()
+    }
+
+    return () => {
+      active = false
+    }
+  }, [client, session])
 
   const signIn = useCallback(async (identifier: string, password: string): Promise<AuthActionResult> => {
     if (!client) return { ok: false, message: 'Tài khoản chưa được cấu hình hoặc chưa sẵn sàng.' }
@@ -102,12 +146,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({
     configured: Boolean(browserAuthConfig),
     isLoading,
+    isAdmin,
+    isAdminLoading,
+    adminError,
     session,
     error,
     signIn,
     signUp,
     signOut,
-  }), [isLoading, session, error, signIn, signUp, signOut])
+  }), [isLoading, isAdmin, isAdminLoading, adminError, session, error, signIn, signUp, signOut])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

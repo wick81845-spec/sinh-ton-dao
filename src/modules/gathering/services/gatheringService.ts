@@ -7,7 +7,7 @@ import {
   resourceNodeDefinitions,
 } from '../data/gatheringConfig'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
-import { addItems } from '../../inventory/services/inventoryService'
+import { addItems, degradeItemDurability, hasItemOrEquipped } from '../../inventory/services/inventoryService'
 import type { GameSnapshot, ItemId, ItemQuantity, ResourceNodeState } from '../../../shared/types/game'
 import { awardExperience } from '../../progression/services/progressionService'
 import { getFishingLootAvailableAt, getFishAvailableAt, fishingActivity, rollFishCatch } from '../data/fishingConfig'
@@ -30,9 +30,9 @@ function getNodeState(states: ResourceNodeState[], nodeId: string): ResourceNode
   return states.find((node) => node.nodeId === nodeId)
 }
 
-function addUpToQuantity(inventory: GameSnapshot['inventory'], itemId: ItemId, requested: number) {
+function addUpToQuantity(inventory: GameSnapshot['inventory'], itemId: ItemId, requested: number, now: number) {
   for (let quantity = requested; quantity > 0; quantity -= 1) {
-    const result = addItems(inventory, itemId, quantity)
+    const result = addItems(inventory, itemId, quantity, now)
     if (result.ok) return { inventory: result.container, quantity }
   }
   return null
@@ -69,7 +69,7 @@ export function getNodeUnlockIssue(state: GameSnapshot, nodeId: string): string 
     return 'Hãy hoàn thành một lần thám hiểm để mở khóa địa điểm này.'
   }
   if (node.unlockStage === 'tool'
-    && !state.inventory.slots.some((slot) => slot.itemId === 'item_wooden_axe')) {
+    && !hasItemOrEquipped(state, 'item_wooden_axe')) {
     return 'Cần có Rìu gỗ để mở khóa các địa điểm sâu hơn.'
   }
   return null
@@ -97,11 +97,8 @@ function getGatheringIssue(state: GameSnapshot, activityId: string, now: number)
   if (state.survival.stamina < resource.harvesting.staminaCost) return 'Không đủ thể lực để thực hiện hoạt động này.'
 
   if (resource.harvesting.toolItemId) {
-    const requiredQuantity = state.inventory.slots
-      .filter((slot) => slot.itemId === resource.harvesting.toolItemId)
-      .reduce((total, slot) => total + slot.quantity, 0)
-    if (requiredQuantity < 1) {
-      return `Cần có ${itemDefinitions[resource.harvesting.toolItemId].name} trong túi đồ.`
+    if (!hasItemOrEquipped(state, resource.harvesting.toolItemId)) {
+      return `Cần có ${itemDefinitions[resource.harvesting.toolItemId].name} trong túi hoặc ô trang bị.`
     }
   }
 
@@ -147,8 +144,19 @@ export function getGatheringAvailability(state: GameSnapshot, activityId: string
 export function refreshResourceNodes(nodes: ResourceNodeState[], now: number): ResourceNodeState[] {
   return nodes.map((node) => {
     const definition = resourceNodeDefinitions.find((entry) => entry.id === node.nodeId)
-    if (!definition || node.available > 0 || node.respawnAt === null || now < node.respawnAt) return node
-    return { ...node, available: definition.capacity, respawnAt: null }
+    if (!definition || node.available >= definition.capacity) return node
+    const intervalMilliseconds = definition.respawnSeconds * 1000
+    if (node.respawnAt === null) return { ...node, respawnAt: now + intervalMilliseconds }
+    if (now < node.respawnAt) return node
+    const elapsedIntervals = 1 + Math.floor((now - node.respawnAt) / intervalMilliseconds)
+    const available = Math.min(definition.capacity, node.available + elapsedIntervals)
+    return {
+      ...node,
+      available,
+      respawnAt: available >= definition.capacity
+        ? null
+        : node.respawnAt + elapsedIntervals * intervalMilliseconds,
+    }
   })
 }
 
@@ -271,17 +279,26 @@ export function completeGathering(
       return { status: 'failed', state: { ...state, activeGathering: null }, message: 'Không tìm được chỗ trống trong túi cho vật phẩm vừa câu.' }
     }
     const isFishReward = fishAtLocation.some((fish) => fish.itemId === itemId)
-    const inventory = addItems(state.inventory, itemId, fishingActivity.baseYield)
-    if (!inventory.ok) {
-      return { status: 'failed', state: { ...state, activeGathering: null }, message: inventory.message }
+    const inventoryResult = addItems(state.inventory, itemId, fishingActivity.baseYield, now)
+    if (!inventoryResult.ok) {
+      return { status: 'failed', state: { ...state, activeGathering: null }, message: inventoryResult.message }
     }
+    const rodUse = hasItemOrEquipped(state, 'item_fishing_rod')
+      ? degradeItemDurability({ ...state, inventory: inventoryResult.container }, 'item_fishing_rod')
+      : { state: { ...state, inventory: inventoryResult.container }, remaining: 0, broke: false }
+    const rodMessage = hasItemOrEquipped(state, 'item_fishing_rod')
+      ? rodUse.broke
+        ? ' Cần câu đã hỏng.'
+        : ` Độ bền cần câu: ${rodUse.remaining}/${itemDefinitions.item_fishing_rod.maxDurability}.`
+      : ''
 
     return {
       status: 'completed',
       state: {
-        ...state,
+        ...rodUse.state,
         character: { ...awardExperience(state.character, 'gathering', 2) },
-        inventory: inventory.container,
+        inventory: rodUse.state.inventory,
+        itemDurability: rodUse.state.itemDurability,
         activeGathering: null,
         survival: {
           ...state.survival,
@@ -292,7 +309,7 @@ export function completeGathering(
       itemId,
       quantity: fishingActivity.baseYield,
       rewards: [{ itemId, quantity: fishingActivity.baseYield }],
-      message: `${isFishReward ? 'Câu cá thành công' : 'Trục vớt thành công'}: ${itemDefinitions[itemId].name} × ${fishingActivity.baseYield}.`,
+      message: `${isFishReward ? 'Câu cá thành công' : 'Trục vớt thành công'}: ${itemDefinitions[itemId].name} × ${fishingActivity.baseYield}.${rodMessage}`,
     }
   }
   const data = getGatheringActivityData(active.activityId)
@@ -319,7 +336,7 @@ export function completeGathering(
   const minimumYield = Math.max(1, baseMinimum - 1)
   const rolledQuantity = minimumYield + Math.floor(Math.random() * (baseMaximum - minimumYield + 1))
   const requestedQuantity = Math.min(rolledQuantity, node.available)
-  const gathered = addUpToQuantity(state.inventory, data.resource.inventoryItemId, requestedQuantity)
+  const gathered = addUpToQuantity(state.inventory, data.resource.inventoryItemId, requestedQuantity, now)
   if (!gathered) {
     return {
       status: 'failed',
@@ -335,7 +352,7 @@ export function completeGathering(
     : {
       ...entry,
       available: remaining,
-      respawnAt: remaining === 0
+      respawnAt: remaining < data.node.capacity
         ? now + data.node.respawnSeconds * 1000
         : null,
     })
@@ -346,7 +363,7 @@ export function completeGathering(
   for (const byproduct of data.activity.ordinaryByproducts) {
     if (Math.random() >= byproduct.chance) continue
     const amount = rollQuantity(byproduct.quantity)
-    const added = addItems(inventory, byproduct.itemId, amount)
+    const added = addItems(inventory, byproduct.itemId, amount, now)
     if (added.ok) {
       inventory = added.container
       rewards.push({ itemId: byproduct.itemId, quantity: amount })
@@ -356,7 +373,7 @@ export function completeGathering(
   }
   if (fortune === 'lucky') {
     const amount = rollQuantity(data.activity.luckyDrop.quantity)
-    const added = addItems(inventory, data.activity.luckyDrop.itemId, amount)
+    const added = addItems(inventory, data.activity.luckyDrop.itemId, amount, now)
     if (added.ok) {
       inventory = added.container
       rewards.push({ itemId: data.activity.luckyDrop.itemId, quantity: amount })
@@ -364,19 +381,30 @@ export function completeGathering(
       missedByproducts = true
     }
   }
+  const toolItemId = data.resource.harvesting.toolItemId
+  const toolUse = toolItemId
+    ? degradeItemDurability({ ...state, inventory }, toolItemId)
+    : { state: { ...state, inventory }, remaining: 0, broke: false }
   const fortuneMessage = fortune === 'adverse'
     ? ` ${data.activity.adverseMessage}`
     : fortune === 'lucky'
       ? ' May mắn tìm thấy thêm tài nguyên tại địa điểm này.'
       : ''
   const inventoryMessage = missedByproducts ? ' Túi đồ chật nên bạn bỏ lỡ một phần vật liệu phụ.' : ''
+  const durabilityMessage = toolItemId
+    ? toolUse.broke
+      ? ` ${itemDefinitions[toolItemId].name} đã hỏng.`
+      : ` Độ bền ${itemDefinitions[toolItemId].name}: ${toolUse.remaining}/${itemDefinitions[toolItemId].maxDurability}.`
+    : ''
 
   return {
     status: 'completed',
     state: {
       ...state,
       character: { ...awardExperience(state.character, 'gathering', Math.max(1, Math.ceil(quantity / 2))) },
-      inventory,
+      inventory: toolUse.state.inventory,
+      itemDurability: toolUse.state.itemDurability,
+      equippedWeaponId: toolUse.state.equippedWeaponId,
       resourceNodes,
       activeGathering: null,
       survival: {
@@ -389,7 +417,7 @@ export function completeGathering(
     itemId: data.resource.inventoryItemId,
     quantity,
     rewards,
-    message: `Thu thập hoàn tất: ${formatRewards(rewards)}.${fortuneMessage}${inventoryMessage}`,
+    message: `Thu thập hoàn tất: ${formatRewards(rewards)}.${fortuneMessage}${inventoryMessage}${durabilityMessage}`,
   }
 }
 

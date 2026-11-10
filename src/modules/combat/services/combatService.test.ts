@@ -20,6 +20,7 @@ describe('combatService', () => {
     if (!result.ok) throw new Error(result.message)
 
     expect(result.state.activeCombat).toBeNull()
+    expect(result.state.itemDurability?.item_wooden_axe).toBe(18)
     expect(result.state.inventory.slots).toContainEqual({ itemId: 'item_wood', quantity: 15 })
     expect(result.state.combatLog[0]).toMatchObject({
       outcome: 'victory',
@@ -29,6 +30,42 @@ describe('combatService', () => {
         { itemId: 'item_wild_fruit', quantity: 1 },
       ],
     })
+
+  })
+
+  it('removes the wooden axe after it loses its final durability point', () => {
+    const state = {
+      ...initialGameState,
+      itemDurability: { item_wooden_axe: 1 },
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [...initialGameState.inventory.slots, { itemId: 'item_wooden_axe' as const, quantity: 1 }],
+      },
+    }
+    const started = startCombat(state, 'encounter_pirate_patrol', 1_000)
+    if (!started.ok) throw new Error(started.message)
+    const result = attackCombat(started.state, 2_000)
+    if (!result.ok) throw new Error(result.message)
+
+    expect(result.state.inventory.slots.some((slot) => slot.itemId === 'item_wooden_axe')).toBe(false)
+    expect(result.state.itemDurability?.item_wooden_axe).toBeUndefined()
+    expect(result.message).toContain('Rìu gỗ đã hỏng')
+  })
+
+  it('uses and wears a separately equipped spear in combat', () => {
+    const state = {
+      ...initialGameState,
+      equippedWeaponId: 'item_wooden_spear' as const,
+      itemDurability: { item_wooden_spear: 15 },
+    }
+    const started = startCombat(state, 'encounter_pirate_patrol', 1_000)
+    if (!started.ok) throw new Error(started.message)
+    const result = attackCombat(started.state, 2_000)
+    if (!result.ok) throw new Error(result.message)
+
+    expect(result.state.activeCombat?.opponentHealth).toBe(8)
+    expect(result.state.itemDurability?.item_wooden_spear).toBe(14)
+    expect(result.state.equippedWeaponId).toBe('item_wooden_spear')
   })
 
   it('drops all carried items on death but preserves storage, then respawns at home', () => {

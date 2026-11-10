@@ -30,14 +30,8 @@ const ecologyRoleIcons = {
   insect: '🐝',
 } as const
 
-function getIslandArtwork(biomeId: string): string {
-  if (biomeId === 'ancient_island') return '/assets/world/ancient-island.svg'
-  if (biomeId === 'rainforest_island') return '/assets/world/rainforest-island.svg'
-  return '/assets/world/tropical-island.svg'
-}
-
 export function WorldPage() {
-  const { gameState, isLoading, error } = useGame()
+  const { gameState, isLoading, isAdmin, adminError, error, visitIslandAsAdmin } = useGame()
 
   if (isLoading) return <p className="page-state">Đang tải dữ liệu thế giới…</p>
   if (!gameState) return <p className="page-state error-state" role="alert">{error ?? 'Chưa có dữ liệu thế giới.'}</p>
@@ -55,8 +49,12 @@ export function WorldPage() {
           <h1>Đảo nhà &amp; thế giới</h1>
           <p>Thế giới được mô tả bằng dữ liệu đảo, vùng biển và địa điểm đã phát hiện.</p>
         </div>
-        <div className="stamina-chip"><strong>{gameState.discoveredIslandIds.length}</strong> đảo đã biết</div>
+        <div className="stamina-chip">
+          <strong>{gameState.discoveredIslandIds.length}/{islandDefinitions.length}</strong> đảo đã biết
+          {isAdmin && <span className="admin-exploration-badge">ADMIN · Tự do khám phá</span>}
+        </div>
       </div>
+      {adminError && <p className="error-state" role="alert">{adminError}</p>}
 
       <section className="world-current-location">
         <div className="building-emblem" aria-hidden="true">◈</div>
@@ -73,7 +71,8 @@ export function WorldPage() {
 
       {worldRegions.map((region) => {
         const islands = islandDefinitions.filter((island) => (
-          island.regionId === region.id && gameState.discoveredIslandIds.includes(island.id)
+          island.regionId === region.id
+          && (isAdmin || gameState.discoveredIslandIds.includes(island.id))
         ))
         if (islands.length === 0) return null
         return (
@@ -90,13 +89,23 @@ export function WorldPage() {
                 const biome = biomeDefinitionsById[island.biomeId]
                 const oceanZone = getOceanZoneDefinition(island.oceanZoneId)
                 const resources = getBiomeResources(island.biomeId)
-                const wildlife = speciesDefinitions.filter((entry) => entry.habitats.includes(island.biomeId)
-                  || entry.habitats.includes(island.oceanZoneId))
+                const flora = speciesDefinitions.filter((entry) => (
+                  entry.role === 'flora' && entry.habitats.includes(island.biomeId)
+                ))
+                const landFauna = speciesDefinitions.filter((entry) => (
+                  entry.role !== 'flora'
+                  && entry.role !== 'aquatic'
+                  && entry.habitats.includes(island.biomeId)
+                ))
+                const marineLife = speciesDefinitions.filter((entry) => (
+                  (entry.role === 'aquatic' || entry.habitats.includes(island.oceanZoneId))
+                  && (entry.habitats.includes(island.biomeId) || entry.habitats.includes(island.oceanZoneId))
+                ))
                 const buildings = gameState.buildings.filter((building) => building.islandId === island.id)
                 return (
                   <article className={`world-island-card biome-${island.biomeId}`} key={island.id}>
                     <div className="island-artwork">
-                      <img src={getIslandArtwork(island.biomeId)} alt="" aria-hidden="true" />
+                      <img src={island.artwork} alt="" aria-hidden="true" />
                       <span className="island-artwork-label">{islandTypeNames[island.type]}</span>
                       <span className={`island-risk island-risk-${island.weatherRisk}`}>
                         Rủi ro {island.weatherRisk === 'low' ? 'thấp' : island.weatherRisk === 'moderate' ? 'vừa' : 'cao'}
@@ -143,15 +152,40 @@ export function WorldPage() {
                           ))}
                         </div>
                       </div>
+                      {[
+                        { title: 'Thực vật', entries: flora },
+                        { title: 'Động vật trên cạn', entries: landFauna },
+                        { title: 'Sinh vật biển', entries: marineLife },
+                      ].map(({ title, entries }) => (
+                        <div className="biome-detail-group" key={title}>
+                          <strong>{title} ({entries.length})</strong>
+                          <div className="biome-tag-list biome-species-list">
+                            {entries.slice(0, 8).map((species) => (
+                              <span key={species.id} title={species.protected ? 'Loài được bảo tồn' : species.danger === 'none' ? 'Không nguy hiểm' : `Nguy cơ: ${species.danger}`}>
+                                <i aria-hidden="true">{ecologyRoleIcons[species.role]}</i> {species.name}{species.protected ? ' · Bảo tồn' : ''}
+                              </span>
+                            ))}
+                            {entries.length === 0 && <span>Chưa có loài được ghi nhận.</span>}
+                            {entries.length > 8 && <span>+{entries.length - 8} loài khác</span>}
+                          </div>
+                        </div>
+                      ))}
                       <div className="biome-detail-group">
-                        <strong>Sinh vật ({wildlife.length})</strong>
-                        <div className="biome-tag-list biome-species-list">
-                          {wildlife.slice(0, 8).map((species) => (
-                            <span key={species.id} title={species.protected ? 'Loài được bảo tồn' : species.danger === 'none' ? 'Không nguy hiểm' : `Nguy cơ: ${species.danger}`}>
-                              <i aria-hidden="true">{ecologyRoleIcons[species.role]}</i> {species.name}{species.protected ? ' · Bảo tồn' : ''}
-                            </span>
-                          ))}
-                          {wildlife.length > 8 && <span>+{wildlife.length - 8} loài khác</span>}
+                        <strong>Nguồn nước ngọt</strong>
+                        <div className="biome-tag-list">
+                          {biome.freshwaterSources.map((source) => <span key={source}>{source}</span>)}
+                        </div>
+                      </div>
+                      <div className="biome-detail-group">
+                        <strong>Nguồn thức ăn</strong>
+                        <div className="biome-tag-list">
+                          {biome.foodSources.map((source) => <span key={source}>{source}</span>)}
+                        </div>
+                      </div>
+                      <div className="biome-detail-group">
+                        <strong>Tái tạo &amp; giới hạn</strong>
+                        <div className="biome-tag-list">
+                          {biome.regenerationNotes.map((note) => <span key={note}>{note}</span>)}
                         </div>
                       </div>
                       {biome.specialMechanics.map((mechanic) => <p className="biome-mechanic" key={mechanic}>{mechanic}</p>)}
@@ -163,6 +197,16 @@ export function WorldPage() {
                           return <span key={building.id}>{definition?.name ?? 'Công trình'} · cấp {building.level}</span>
                         })}
                       </div>
+                    )}
+                    {isAdmin && island.id !== gameState.character.currentLocationId && (
+                      <button
+                        className="small-action"
+                        type="button"
+                        onClick={() => visitIslandAsAdmin(island.id)}
+                        aria-label={`Quản trị: di chuyển đến ${island.name}`}
+                      >
+                        {gameState.discoveredIslandIds.includes(island.id) ? 'Di chuyển nhanh' : 'Mở khóa & đến đảo'}
+                      </button>
                     )}
                   </article>
                 )

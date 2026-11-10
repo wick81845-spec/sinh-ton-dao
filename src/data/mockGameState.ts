@@ -72,6 +72,7 @@ export const newPlayerGameState: GameSnapshot = {
   },
   inventory: {
     ...initialGameState.inventory,
+    maxSlots: 12,
     slots: [
       { itemId: 'item_wood', quantity: 4 },
       { itemId: 'item_stone', quantity: 5 },

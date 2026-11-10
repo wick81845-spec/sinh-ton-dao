@@ -4,6 +4,7 @@ import { getFishingLootAvailableAt } from '../../../data/items/fishingLootCatalo
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import { legacyFishItemIds } from '../../../shared/types/game'
 import { getMarketListing } from '../../economy/data/marketDefinitions'
+import { islandDefinitions } from '../../world/data/worldDefinitions'
 import {
   getFishAvailableAt,
   getFishFightProfile,
@@ -56,16 +57,27 @@ describe('fishingConfig', () => {
 
   it('limits catches by biome and ocean zone', () => {
     const coastalFish = getFishAvailableAt('tropical_island', undefined, 'coastal_water')
+    const coralFish = getFishAvailableAt('coral_island', undefined, 'coral_sea')
+    const desertCoastFish = getFishAvailableAt('desert_island', undefined, 'coastal_water')
     const shipwreckFish = getFishAvailableAt('ancient_island', undefined, 'shipwreck_zone')
     const calmOffshoreFish = getFishAvailableAt('tropical_island', 'calm_sea', 'open_ocean')
     const stormOffshoreFish = getFishAvailableAt('tropical_island', 'thunderstorm', 'open_ocean')
 
     expect(coastalFish.some((fish) => fish.itemId === 'item_damselfish')).toBe(true)
+    expect(coralFish.some((fish) => fish.itemId === 'item_damselfish')).toBe(true)
+    expect(desertCoastFish.length).toBeGreaterThan(0)
     expect(coastalFish.some((fish) => fish.itemId === 'item_leviathan')).toBe(false)
     expect(shipwreckFish.some((fish) => fish.itemId === 'item_leviathan')).toBe(true)
     expect(shipwreckFish.some((fish) => fish.itemId === 'item_anchovy')).toBe(false)
     expect(calmOffshoreFish.some((fish) => fish.itemId === 'item_yellowfin_tuna')).toBe(true)
     expect(stormOffshoreFish.some((fish) => fish.itemId === 'item_yellowfin_tuna')).toBe(false)
+  })
+
+  it('keeps fishing available in each of the 12 island sea regions', () => {
+    for (const island of islandDefinitions) {
+      expect(getFishAvailableAt(island.biomeId, undefined, island.oceanZoneId).length)
+        .toBeGreaterThan(0)
+    }
   })
 
   it('lets a stronger cast improve the chance of a legendary catch', () => {

@@ -1398,6 +1398,25 @@ p {
   gap: 4px;
 }
 
+.transfer-quantity {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  color: #71847c;
+  font-size: 8px;
+}
+
+.transfer-quantity input {
+  width: 58px;
+  padding: 3px 4px;
+  border: 1px solid #dce9e1;
+  border-radius: 5px;
+  color: #355553;
+  background: #fff;
+  font: inherit;
+  text-align: right;
+}
+
 .small-action {
   padding: 5px 7px;
   border: 1px solid #dce9e1;
@@ -7227,6 +7246,20 @@ body {
   font-size: 19px;
 }
 
+.admin-exploration-badge {
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--sea) 25%, var(--line));
+  border-radius: 99px;
+  color: var(--sea-dark);
+  background: var(--sea-soft);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  vertical-align: middle;
+}
+
 .world-island-meta {
   gap: 7px;
   padding: 10px;
@@ -7502,7 +7535,7 @@ body {
 .overview-home {
   display: grid;
   width: 100%;
-  grid-template-columns: 35px minmax(0, 1fr) 24px;
+  grid-template-columns: 72px minmax(0, 1fr) 24px;
   align-items: center;
   gap: 9px;
   padding: 10px;
@@ -7521,6 +7554,14 @@ body {
   color: var(--sea-dark);
   background: var(--sea-soft);
   font-size: 19px;
+}
+
+.overview-home-art {
+  display: block;
+  width: 72px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
 }
 
 .overview-home > div {
@@ -7994,7 +8035,7 @@ body {
   }
 
   .overview-home {
-    grid-template-columns: 29px minmax(0, 1fr) 22px;
+    grid-template-columns: 58px minmax(0, 1fr) 22px;
     gap: 6px;
     padding: 7px;
     margin-top: 12px;
@@ -8003,6 +8044,11 @@ body {
   .overview-home-icon {
     width: 28px;
     height: 28px;
+  }
+
+  .overview-home-art {
+    width: 58px;
+    height: 38px;
   }
 
   .overview-body {

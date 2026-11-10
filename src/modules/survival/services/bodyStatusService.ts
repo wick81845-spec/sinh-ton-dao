@@ -21,7 +21,7 @@ export function getBodyStatusEffects(
 ): BodyStatusEffect[] {
   const effects: BodyStatusEffect[] = []
 
-  if (stats.hunger <= survivalConfig.warningThreshold) {
+  if (stats.hunger < survivalConfig.needWarningThreshold) {
     const starving = stats.hunger === 0
     const malnourished = stats.hunger <= survivalConfig.criticalNeedThreshold
     effects.push({
@@ -49,7 +49,7 @@ export function getBodyStatusEffects(
     })
   }
 
-  if (stats.thirst <= survivalConfig.warningThreshold) {
+  if (stats.thirst < survivalConfig.needWarningThreshold) {
     const dehydrated = stats.thirst === 0
     const severeDehydration = stats.thirst <= survivalConfig.criticalNeedThreshold
     effects.push({
@@ -88,8 +88,8 @@ export function getBodyStatusEffects(
       icon: 'ϟ',
     })
   } else if (stats.stamina >= 80
-    && stats.hunger > survivalConfig.warningThreshold
-    && stats.thirst > survivalConfig.warningThreshold
+    && stats.hunger >= survivalConfig.needWarningThreshold
+    && stats.thirst >= survivalConfig.needWarningThreshold
     && isResting) {
     effects.push({
       id: 'vigorous',
@@ -125,8 +125,8 @@ export function getBodyStatusEffects(
   }
 
   if (isResting && (stats.stamina < survivalConfig.stamina.max || stats.health < survivalConfig.health.max)
-    && stats.hunger > survivalConfig.warningThreshold
-    && stats.thirst > survivalConfig.warningThreshold) {
+    && stats.hunger >= survivalConfig.needWarningThreshold
+    && stats.thirst >= survivalConfig.needWarningThreshold) {
     const recoveryDetails = [
       stats.stamina < survivalConfig.stamina.max
         ? `Hồi ${survivalConfig.stamina.recoveryPerMinute} sức lực/phút`

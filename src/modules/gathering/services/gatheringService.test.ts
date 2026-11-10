@@ -48,7 +48,7 @@ describe('gatheringService', () => {
     expect(completed.state.inventory.slots[0]).toEqual({ itemId: 'item_wood', quantity: 15 })
     expect(completed.state.inventory.slots).toContainEqual({ itemId: 'item_seashell', quantity: 2 })
     expect(completed.state.resourceNodes.find((node) => node.nodeId === 'shoreline'))
-      .toMatchObject({ available: 27, respawnAt: null })
+      .toMatchObject({ available: 27, respawnAt: 126_000 })
     expect(completed.rewards).toContainEqual({ itemId: 'item_seashell', quantity: 2 })
     expect(completed.state.activeGathering).toBeNull()
     expect(completed.state.survival.stamina).toBe(83)
@@ -125,7 +125,7 @@ describe('gatheringService', () => {
     expect(getGatheringAvailability(initialGameState, 'collect-palm-grove', 1000)).toBeNull()
   })
 
-  it('depletes and restores each location resource according to its respawn time', () => {
+  it('regenerates one resource at a time after depletion', () => {
     const depletedState = {
       ...initialGameState,
       resourceNodes: initialGameState.resourceNodes.map((node) => (
@@ -145,7 +145,34 @@ describe('gatheringService', () => {
     expect(refreshResourceNodes(completed.state.resourceNodes, 125_999)
       .find((node) => node.nodeId === 'shoreline')?.available).toBe(0)
     expect(refreshResourceNodes(completed.state.resourceNodes, 126_000)
-      .find((node) => node.nodeId === 'shoreline')).toMatchObject({ available: 30, respawnAt: null })
+      .find((node) => node.nodeId === 'shoreline')).toMatchObject({ available: 1, respawnAt: 246_000 })
+    expect(refreshResourceNodes(completed.state.resourceNodes, 366_000)
+      .find((node) => node.nodeId === 'shoreline')).toMatchObject({ available: 3, respawnAt: 486_000 })
+  })
+
+  it('starts resource regeneration before the node is depleted', () => {
+    const partiallyDepleted = {
+      ...initialGameState,
+      resourceNodes: initialGameState.resourceNodes.map((node) => (
+        node.nodeId === 'shoreline'
+          ? { ...node, available: 10, respawnAt: 1000 }
+          : node
+      )),
+    }
+
+    expect(refreshResourceNodes(partiallyDepleted.resourceNodes, 999)
+      .find((node) => node.nodeId === 'shoreline')).toMatchObject({ available: 10, respawnAt: 1000 })
+    expect(refreshResourceNodes(partiallyDepleted.resourceNodes, 1000)
+      .find((node) => node.nodeId === 'shoreline')).toMatchObject({ available: 11, respawnAt: 121_000 })
+  })
+
+  it('schedules regeneration for partially depleted legacy saves', () => {
+    const legacyNodes = initialGameState.resourceNodes.map((node) => (
+      node.nodeId === 'shoreline' ? { ...node, available: 10, respawnAt: null } : node
+    ))
+
+    expect(refreshResourceNodes(legacyNodes, 50_000)
+      .find((node) => node.nodeId === 'shoreline')).toMatchObject({ available: 10, respawnAt: 170_000 })
   })
 
   it('uses the selected island-appropriate activity for a random harvest', () => {
@@ -174,7 +201,8 @@ describe('gatheringService', () => {
     expect(completed.status).toBe('completed')
     if (completed.status !== 'completed') throw new Error('Gathering should complete.')
     expect(completed.itemId).toBe('item_wild_fruit')
-    expect(completed.state.inventory.slots).toContainEqual({ itemId: 'item_wild_fruit', quantity: 8 })
+    expect(completed.state.inventory.slots.find((slot) => slot.itemId === 'item_wild_fruit'))
+      .toMatchObject({ itemId: 'item_wild_fruit', quantity: 8, expiresAt: expect.any(Number) })
     expect(completed.state.activeGathering).toBeNull()
   })
 
@@ -223,6 +251,25 @@ describe('gatheringService', () => {
     expect(completed.itemId).toBe('item_wood_soft')
     expect(completed.quantity).toBeGreaterThanOrEqual(1)
     expect(completed.quantity).toBeLessThanOrEqual(7)
+    expect(completed.state.itemDurability?.item_wooden_axe).toBe(19)
+  })
+
+  it('breaks a wooden axe after its final use', () => {
+    const wornAxeState = {
+      ...stateWithAxe,
+      itemDurability: { item_wooden_axe: 1 },
+    }
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const started = startGathering(wornAxeState, 'chop-forest-wood', 1000)
+    if (!started.ok) throw new Error(started.message)
+    const completed = completeGathering(started.state, 11_000)
+    random.mockRestore()
+
+    expect(completed.status).toBe('completed')
+    if (completed.status !== 'completed') throw new Error('Gathering should complete.')
+    expect(completed.state.inventory.slots.some((slot) => slot.itemId === 'item_wooden_axe')).toBe(false)
+    expect(completed.state.itemDurability?.item_wooden_axe).toBeUndefined()
+    expect(completed.message).toContain('Rìu gỗ đã hỏng')
   })
 
   it('runs a timed fishing activity and adds one fish only when it completes', () => {
@@ -240,9 +287,27 @@ describe('gatheringService', () => {
     expect(completed.itemId).toBe('item_anchovy')
     expect(completed.quantity).toBe(1)
     expect(completed.rewards).toEqual([{ itemId: 'item_anchovy', quantity: 1 }])
-    expect(completed.state.inventory.slots).toContainEqual({ itemId: 'item_anchovy', quantity: 1 })
+    expect(completed.state.inventory.slots.find((slot) => slot.itemId === 'item_anchovy'))
+      .toMatchObject({ itemId: 'item_anchovy', quantity: 1, expiresAt: expect.any(Number) })
     expect(completed.state.survival.stamina).toBe(79)
     expect(completed.state.resourceNodes).toEqual(initialGameState.resourceNodes)
+  })
+
+  it('wears a crafted fishing rod when it catches a fish', () => {
+    const state = {
+      ...initialGameState,
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [...initialGameState.inventory.slots, { itemId: 'item_fishing_rod' as const, quantity: 1 }],
+      },
+    }
+    const started = startGathering(state, 'shore-fishing', 1_000)
+    if (!started.ok) throw new Error(started.message)
+    const completed = completeGathering(started.state, 8_000, 60, 'item_anchovy')
+    expect(completed.status).toBe('completed')
+    if (completed.status !== 'completed') throw new Error('Fishing should complete.')
+    expect(completed.state.itemDurability?.item_fishing_rod).toBe(11)
+    expect(completed.message).toContain('Độ bền cần câu: 11/12')
   })
 
   it('catches a fish from the current biome and ocean zone', () => {
