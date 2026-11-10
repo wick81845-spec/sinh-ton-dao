@@ -6728,19 +6728,13 @@ body {
   box-shadow: 0 12px 30px rgb(46 73 58 / 9%);
 }
 
-.fishing-session-backdrop {
-  position: fixed;
-  z-index: 120;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: clamp(10px, 2vw, 24px);
-  background: rgb(17 30 27 / 68%);
-  backdrop-filter: blur(5px);
+.fishing-session-inline {
+  width: min(660px, 100%);
+  margin: clamp(12px, 3vh, 30px) auto;
 }
 
 .fishing-session-dialog {
-  width: min(660px, 100%);
+  width: 100%;
   max-height: min(94dvh, 860px);
   overflow: auto;
   border: 1px solid rgb(230 237 215 / 60%);
@@ -6753,7 +6747,7 @@ body {
   padding: 18px;
 }
 
-.fishing-session-backdrop .fishing-session-dialog .fishing-game-panel .fishing-scene {
+.fishing-session-inline .fishing-session-dialog .fishing-game-panel .fishing-scene {
   height: clamp(155px, 30vh, 245px);
   min-height: 155px;
 }

@@ -191,6 +191,25 @@ export function AdminControlsPanel({ accessToken }: { accessToken: string }) {
     }
   }
 
+  async function clearPlayerAilments(): Promise<void> {
+    setSavingSurvival(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const target = players.find((player) => player.id === playerId)
+      if (!target || !playerSurvival || playerSurvival.ailments.length === 0) {
+        throw new Error('Người chơi đã chọn không có bệnh hoặc chấn thương cần xóa.')
+      }
+      await queueAdminSurvivalCommand(accessToken, playerId, { ailments: [] })
+      setNotice(`Đã xếp lệnh xóa toàn bộ hiệu ứng xấu cho ${target.displayName}. Lệnh sẽ áp dụng khi người chơi kết nối, tối đa sau 15 giây.`)
+    } catch (clearError: unknown) {
+      console.error('Không thể xếp lệnh xóa hiệu ứng xấu.', clearError)
+      setError(clearError instanceof Error ? clearError.message : 'Không thể xếp lệnh xóa hiệu ứng xấu.')
+    } finally {
+      setSavingSurvival(false)
+    }
+  }
+
   return (
     <section className="settings-card admin-controls-card">
       <div className="settings-section-heading">
@@ -276,6 +295,15 @@ export function AdminControlsPanel({ accessToken }: { accessToken: string }) {
                           )).join(' · ')
                           : 'Không có bệnh hoặc chấn thương'}
                       </p>
+                      <button
+                        className="small-action admin-survival-submit"
+                        type="button"
+                        disabled={savingSurvival || playerSurvival.ailments.length === 0}
+                        onClick={() => void clearPlayerAilments()}
+                      >
+                        {savingSurvival ? 'Đang xếp lệnh…' : 'Xóa toàn bộ hiệu ứng xấu'}
+                      </button>
+                      <p className="settings-note">Thao tác này xóa bệnh và chấn thương đang ghi nhận, không thay đổi các chỉ số sinh tồn.</p>
                       {playerSurvival.status === 'dead' && (
                         <button
                           className="small-action admin-survival-submit"

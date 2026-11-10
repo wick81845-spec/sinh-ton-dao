@@ -244,8 +244,8 @@ export function GatheringPage({
     return (
       <div className="gathering-page gathering-map-preview">
         {isFishingActive && active ? (
-          <div className="fishing-session-backdrop">
-            <div className="fishing-session-dialog" role="dialog" aria-modal="true" aria-label="Câu cá">
+          <div className="fishing-session-inline">
+            <div className="fishing-session-dialog" role="dialog" aria-label="Câu cá">
               <FishingMinigame
                 key={active.startedAt}
                 startedAt={active.startedAt}
@@ -607,8 +607,8 @@ export function GatheringPage({
         <div className="stamina-chip">ϟ <strong>{gameState.survival.stamina.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%</strong> thể lực</div>
       </div>
       {isFishingActive && active && (
-        <div className="fishing-session-backdrop">
-          <div className="fishing-session-dialog" role="dialog" aria-modal="true" aria-label="Câu cá">
+        <div className="fishing-session-inline">
+          <div className="fishing-session-dialog" role="dialog" aria-label="Câu cá">
             <FishingMinigame
               key={active.startedAt}
               startedAt={active.startedAt}
