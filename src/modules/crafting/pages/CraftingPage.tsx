@@ -12,6 +12,8 @@ import { getIslandDefinition } from '../../world/data/worldDefinitions'
 export function CraftingPage() {
   const { gameState, isLoading, error, queueRecipe } = useGame()
   const [now, setNow] = useState(gameClock.now())
+  const [recipeFilter, setRecipeFilter] = useState<'all' | 'processing' | 'crafting'>('all')
+  const [recipeSearch, setRecipeSearch] = useState('')
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(gameClock.now()), 250)
@@ -30,6 +32,13 @@ export function CraftingPage() {
   const secondsRemaining = isActive
     ? Math.max(0, Math.ceil((activeJob.completesAt! - now) / 1000))
     : 0
+  const visibleRecipes = recipes.filter((recipe) => {
+    const matchesKind = recipeFilter === 'all' || recipe.kind === recipeFilter
+    const ingredientNames = recipe.ingredients.map((ingredient) => itemDefinitions[ingredient.itemId].name).join(' ')
+    const matchesSearch = `${recipe.name} ${recipe.description} ${ingredientNames}`.toLocaleLowerCase('vi')
+      .includes(recipeSearch.trim().toLocaleLowerCase('vi'))
+    return matchesKind && matchesSearch
+  })
 
   return (
     <div className="crafting-page">
@@ -93,20 +102,57 @@ export function CraftingPage() {
           <h2>Sơ chế & chế tác</h2>
         </div>
       </div>
+      <div className="crafting-toolbar">
+        <div className="crafting-filter-group" role="group" aria-label="Lọc công thức">
+          {([
+            ['all', 'Tất cả'],
+            ['processing', 'Sơ chế'],
+            ['crafting', 'Chế tạo'],
+          ] as const).map(([filter, label]) => (
+            <button
+              className={recipeFilter === filter ? 'is-selected' : ''}
+              type="button"
+              key={filter}
+              aria-pressed={recipeFilter === filter}
+              onClick={() => setRecipeFilter(filter)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <label className="crafting-search">
+          <span className="visually-hidden">Tìm công thức</span>
+          <input
+            type="search"
+            value={recipeSearch}
+            placeholder="Tìm món cần làm…"
+            onChange={(event) => setRecipeSearch(event.currentTarget.value)}
+          />
+          <span aria-hidden="true">⌕</span>
+        </label>
+      </div>
       <section className="recipe-grid" aria-label="Danh sách công thức">
-        {recipes.map((recipe) => {
+        {visibleRecipes.map((recipe) => {
           const issue = getRecipeAvailability(gameState, recipe.id, now)
           const output = itemDefinitions[recipe.output.itemId]
           return (
-            <article className="recipe-card" key={recipe.id}>
-              <img className={`resource-icon ${output.tone}`} src={output.image} alt="" aria-hidden="true" />
-              <div className="recipe-card-copy">
-                <span className="section-kicker">{recipe.kind === 'processing' ? 'SƠ CHẾ' : 'CHẾ TẠO'} · CẤP {recipe.requiredLevel ?? 1} — {characterLevelTitle(recipe.requiredLevel ?? 1)} · {recipe.durationSeconds} GIÂY</span>
-                <h3>{recipe.name}</h3>
-                <p>{recipe.description}</p>
+            <article className={`recipe-card${issue ? ' is-unavailable' : ''}`} key={recipe.id}>
+              <div className="recipe-summary">
+                <img className={`resource-icon ${output.tone}`} src={output.image} alt="" aria-hidden="true" />
+                <div className="recipe-card-copy">
+                  <span className="recipe-meta">
+                    {recipe.kind === 'processing' ? 'Sơ chế' : 'Chế tạo'} · Cấp {recipe.requiredLevel ?? 1} · {recipe.durationSeconds} giây
+                    {recipe.requiredLevel && <span className="visually-hidden"> · {characterLevelTitle(recipe.requiredLevel)}</span>}
+                  </span>
+                  <h3>{recipe.name}</h3>
+                  <p>{recipe.description}</p>
+                </div>
               </div>
               <div className="recipe-materials">
-                <strong>Nguyên liệu</strong>
+                <div className="recipe-materials-heading">
+                  <strong>Nguyên liệu</strong>
+                  <ItemStack itemId={recipe.output.itemId} quantity={recipe.output.quantity} className="recipe-output" />
+                </div>
                 <div className="activity-requirements">
                   {recipe.ingredients.map((ingredient) => {
                     const available = gameState.inventory.slots
@@ -126,7 +172,6 @@ export function CraftingPage() {
                     <span>{buildingDefinitions.find((building) => building.id === recipe.stationId)?.name ?? 'Trạm sản xuất'}</span>
                   )}
                 </div>
-                <ItemStack itemId={recipe.output.itemId} quantity={recipe.output.quantity} className="recipe-output" />
                 {issue && <small className="activity-blocked">{issue}</small>}
               </div>
               <button
@@ -140,6 +185,7 @@ export function CraftingPage() {
             </article>
           )
         })}
+        {visibleRecipes.length === 0 && <p className="crafting-empty-state">Không tìm thấy công thức phù hợp.</p>}
       </section>
       <section className="crafting-concept-section" aria-labelledby="crafting-concepts-title">
         <div className="section-heading crafting-section-heading">
@@ -152,8 +198,8 @@ export function CraftingPage() {
           </div>
         </div>
         <div className="crafting-concept-groups">
-          {craftingConceptGroups.map((group, index) => (
-            <details className="crafting-concept-group" key={group.id} open={index === 0}>
+          {craftingConceptGroups.map((group) => (
+            <details className="crafting-concept-group" key={group.id}>
               <summary>
                 <span>{group.name}</span>
                 <small>{group.items.length} hình</small>

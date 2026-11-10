@@ -20,6 +20,7 @@ import {
   discardItems,
   equipBackpack,
   equipWeapon,
+  isInventoryOverloaded,
   initializeFoodFreshness,
   repairItem,
   spoilExpiredFood,
@@ -160,19 +161,36 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const commitState = useCallback((nextState: GameSnapshot, message: string) => {
     const currentState = stateRef.current
+    const leftShelter = Boolean(currentState?.isResting && !message.startsWith('Bạn đã rời lều'))
     const stateToCommit = currentState && (
       isSurvivorBusy(nextState)
       || currentState.character.currentLocationId !== nextState.character.currentLocationId
       || nextState.character.status !== 'alive'
+      || leftShelter
     )
       ? { ...nextState, isResting: false }
       : nextState
     stateRef.current = stateToCommit
     setGameState(stateToCommit)
-    setNotice(message)
+    setNotice(leftShelter
+      ? `${message} Bạn đã rời lều; hiệu ứng nghỉ ngơi tại lều đã kết thúc.`
+      : message)
     void persistCurrentState()
     return { ok: true, message } as const
   }, [persistCurrentState])
+
+  const commitWorkState = useCallback((
+    currentState: GameSnapshot,
+    nextState: GameSnapshot,
+    message: string,
+  ): GameActionResult => {
+    if (isInventoryOverloaded(currentState.inventory)) {
+      const notice = 'Hành trang quá tải. Hãy cất hoặc vứt bớt đồ trước khi làm việc.'
+      setNotice(notice)
+      return { ok: false, message: notice }
+    }
+    return commitState(nextState, message)
+  }, [commitState])
 
   const startResting = useCallback((): GameActionResult => {
     const currentState = stateRef.current
@@ -183,12 +201,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (isSurvivorBusy(currentState)) {
       return { ok: false, message: 'Hãy hoàn thành hoạt động hiện tại trước khi nghỉ ngơi.' }
     }
+    const shelter = currentState.buildings.find((building) => (
+      building.definitionId === 'building_shelter'
+      && building.status === 'completed'
+      && building.islandId === currentState.character.currentLocationId
+    ))
+    if (!shelter) {
+      return { ok: false, message: 'Bạn cần dựng lều nghỉ ngơi trên đảo này trước.' }
+    }
     if (currentState.survival.stamina >= 100) {
       return { ok: false, message: 'Sức lực đã đầy, bạn chưa cần nghỉ ngơi.' }
     }
     return commitState(
       { ...currentState, isResting: true },
-      'Bạn bắt đầu nghỉ ngơi. Sức lực sẽ hồi phục cho đến khi bạn tiếp tục hành trình.',
+      'Bạn bắt đầu nghỉ ngơi tại lều. Sức lực sẽ hồi phục cho đến khi bạn tiếp tục hành trình.',
     )
   }, [commitState])
 
@@ -200,14 +226,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const stopResting = useCallback((): GameActionResult => {
     const currentState = stateRef.current
     if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
     if (!currentState.isResting) return { ok: false, message: 'Bạn hiện không nghỉ ngơi.' }
-    return commitState({ ...currentState, isResting: false }, 'Bạn đã dừng nghỉ ngơi.')
+    return commitState({ ...currentState, isResting: false }, 'Bạn đã rời lều và dừng nghỉ ngơi.')
   }, [commitState])
 
   const beginTutorial = useCallback((): GameActionResult => {
@@ -229,8 +255,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const cancelGatheringAction = useCallback(() => {
     const currentState = stateRef.current
@@ -370,8 +396,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const equipBackpackAction = useCallback((): GameActionResult => {
     const currentState = stateRef.current
@@ -448,8 +474,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const startBuildingAction = useCallback((definitionId: string): GameActionResult => {
     const currentState = stateRef.current
@@ -460,8 +486,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const upgradeBuildingAction = useCallback((buildingId: string): GameActionResult => {
     const currentState = stateRef.current
@@ -472,8 +498,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const fuelCampfireAction = useCallback((buildingId: string, fuelItemId: ItemId): GameActionResult => {
     const currentState = stateRef.current
@@ -483,8 +509,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const plantCropAction = useCallback((buildingId: string, cropId: CropId): GameActionResult => {
     const currentState = stateRef.current
@@ -494,8 +520,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const harvestCropAction = useCallback((plotId: string): GameActionResult => {
     const currentState = stateRef.current
@@ -505,8 +531,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const raiseChickenAction = useCallback((buildingId: string): GameActionResult => {
     const currentState = stateRef.current
@@ -516,8 +542,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const collectEggsAction = useCallback((buildingId: string): GameActionResult => {
     const currentState = stateRef.current
@@ -527,8 +553,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const raiseGoatAction = useCallback((buildingId: string): GameActionResult => {
     const currentState = stateRef.current
@@ -538,8 +564,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const collectGoatMilkAction = useCallback((buildingId: string): GameActionResult => {
     const currentState = stateRef.current
@@ -549,8 +575,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const startExplorationAction = useCallback((taskId: string): GameActionResult => {
     const currentState = stateRef.current
@@ -561,8 +587,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const buildShipAction = useCallback((definitionId: string): GameActionResult => {
     const currentState = stateRef.current
@@ -573,8 +599,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const startVoyageAction = useCallback((destinationId: string): GameActionResult => {
     const currentState = stateRef.current
@@ -585,8 +611,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const visitIslandAsAdminAction = useCallback((islandId: string): GameActionResult => {
     const currentState = stateRef.current
@@ -675,8 +701,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    return commitState(result.state, result.message)
-  }, [commitState])
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
 
   const attackCombatAction = useCallback((): GameActionResult => {
     const currentState = stateRef.current
@@ -742,10 +768,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNotice(result.message)
       return result
     }
-    const outcome = commitState(result.state, result.message)
-    gameEventBus.emit('technology:researched', { technologyId })
+    const outcome = commitWorkState(currentState, result.state, result.message)
+    if (outcome.ok) gameEventBus.emit('technology:researched', { technologyId })
     return outcome
-  }, [commitState])
+  }, [commitWorkState])
 
   const resolveRandomWorldEventAction = useCallback((recordId: string, choiceId: string): GameActionResult => {
     const currentState = stateRef.current

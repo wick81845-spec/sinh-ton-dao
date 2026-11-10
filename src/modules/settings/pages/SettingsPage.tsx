@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/providers/useAuth'
 import { useThemePreference } from '../../../app/providers/useThemePreference'
 import { localStorageAdapter } from '../../../services/storage/localStorageAdapter'
@@ -150,6 +150,16 @@ export function SettingsPage() {
         <p className="account-state">Đang mở cài đặt…</p>
       ) : (
         <>
+          <section className="settings-card settings-shortcuts">
+            <div className="settings-section-heading">
+              <span className="settings-section-icon" aria-hidden="true">✦</span>
+              <div><h2>Tiện ích</h2><p>Mở hoạt động và xem tin cập nhật của trò chơi.</p></div>
+            </div>
+            <div className="settings-shortcut-links">
+              <Link className="small-action" to="/activities">Hoạt động</Link>
+              <Link className="small-action" to="/updates">Cập nhật</Link>
+            </div>
+          </section>
           <section className="settings-card">
             <div className="settings-section-heading">
               <span className="settings-section-icon" aria-hidden="true">◐</span>

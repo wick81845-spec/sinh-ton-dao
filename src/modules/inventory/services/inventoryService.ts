@@ -41,6 +41,7 @@ export interface FoodFreshnessResult {
 
 const baseInventoryCapacity = 12
 const backpackInventoryCapacity = 24
+export const carriedWeightPerSlotKg = 2.5
 const freshnessBucketMs = 15 * 60 * 1000
 const toolRepairCosts: Partial<Record<ItemId, readonly ItemQuantity[]>> = {
   item_wooden_axe: [
@@ -81,6 +82,21 @@ const toolRepairCosts: Partial<Record<ItemId, readonly ItemQuantity[]>> = {
     { itemId: 'item_branch', quantity: 1 },
     { itemId: 'item_plant_fiber', quantity: 1 },
   ],
+}
+
+export function getCarriedWeight(container: ItemContainer): number {
+  return container.slots.reduce(
+    (total, slot) => total + itemDefinitions[slot.itemId].weight * slot.quantity,
+    0,
+  )
+}
+
+export function getCarriedWeightLimit(container: ItemContainer): number {
+  return container.maxSlots * carriedWeightPerSlotKg
+}
+
+export function isInventoryOverloaded(container: ItemContainer): boolean {
+  return getCarriedWeight(container) >= getCarriedWeightLimit(container)
 }
 
 function getExpiry(itemId: ItemId, now: number): number | undefined {

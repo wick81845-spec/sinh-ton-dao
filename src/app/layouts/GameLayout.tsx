@@ -7,6 +7,7 @@ import { GatheringPage } from '../../modules/gathering/pages/GatheringPage'
 import { SurvivalPage } from '../../modules/survival/pages/SurvivalPage'
 import { CraftingPage } from '../../modules/crafting/pages/CraftingPage'
 import { BuildingPage } from '../../modules/building/pages/BuildingPage'
+import { CampfirePage } from '../../modules/building/pages/CampfirePage'
 import { WorldPage } from '../../modules/world/pages/WorldPage'
 import { ExplorationPage } from '../../modules/exploration/pages/ExplorationPage'
 import { VoyagePage } from '../../modules/voyage/pages/VoyagePage'
@@ -54,10 +55,7 @@ function formatActivityTime(completesAt: number, now: number): string {
 const gameNavigation = [
   { id: 'character', label: 'Nhân vật', icon: '◉', path: '/character' },
   { id: 'world', label: 'Bản đồ', icon: '⌖', path: '/island' },
-  { id: 'gathering', label: 'Thu hoạch', icon: '⌁', path: '/gathering' },
   { id: 'inventory', label: 'Túi đồ', icon: '▤', path: '/inventory' },
-  { id: 'activities', label: 'Hoạt động', icon: '✦', path: '/activities' },
-  { id: 'updates', label: 'Cập nhật', icon: '↻', path: '/updates' },
 ]
 
 const activityPanelLinks = [
@@ -74,6 +72,13 @@ const activityPanelLinks = [
   { path: '/overview', label: 'Tổng quan hành trình', icon: '⌂', group: 'Khác' },
 ]
 
+const sidePanelNavigation = activityPanelLinks.filter((item) => (
+  item.path !== '/overview'
+  && item.path !== '/settings'
+  && item.path !== '/crafting'
+  && item.path !== '/building'
+))
+
 const panelContentByPath: Record<string, () => ReactNode> = {
   '/overview': () => <HomePage />,
   '/character': () => <CharacterPage />,
@@ -82,6 +87,7 @@ const panelContentByPath: Record<string, () => ReactNode> = {
   '/gathering': () => <GatheringPage asPanel />,
   '/crafting': () => <CraftingPage />,
   '/building': () => <BuildingPage />,
+  '/campfire': () => null,
   '/island': () => <WorldPage />,
   '/exploration': () => <ExplorationPage />,
   '/voyage': () => <VoyagePage />,
@@ -91,6 +97,7 @@ const panelContentByPath: Record<string, () => ReactNode> = {
   '/progression': () => <ProgressionPage />,
   '/market': () => <MarketPage />,
   '/updates': () => <UpdatesPage />,
+  '/activities': () => null,
 }
 
 export function GameLayout() {
@@ -106,7 +113,7 @@ export function GameLayout() {
   const [activePanel, setActivePanel] = useState<{ path: string; title: string } | null>(() => {
     if (!panelContentByPath[pathname]) return null
     const item = [...gameNavigation, ...activityPanelLinks].find((entry) => entry.path === pathname)
-    return { path: pathname, title: item?.label ?? 'Thông tin' }
+    return { path: pathname, title: item?.label ?? (pathname === '/activities' ? 'Hoạt động' : 'Thông tin') }
   })
   const [worldTimeNow, setWorldTimeNow] = useState(gameClock.now())
   const sessionName = typeof session?.user.user_metadata.username === 'string'
@@ -199,6 +206,7 @@ export function GameLayout() {
     if (activeActivity && isActivityLocked(activeActivity)) {
       return renderActivityHub()
     }
+    if (activePanel.path === '/campfire') return <CampfirePage />
     if (activePanel.path !== '/activities') return panelContentByPath[activePanel.path]?.() ?? null
     return renderActivityHub()
   }
@@ -380,23 +388,28 @@ export function GameLayout() {
           </span>
         </Link>
 
-        <nav className="main-nav map-preview-nav" aria-label="Menu trong game">
-          {gameNavigation.map((item) => {
-            const isActive = activePanel?.path === item.path
-            return (
-              <button
-                className={`map-preview-nav-button${isActive ? ' is-open' : ''}`}
-                key={item.id}
-                type="button"
-                aria-pressed={isActive}
-                onClick={() => setActivePanel({ path: item.path, title: item.label })}
-              >
-                <span aria-hidden="true">{item.icon}</span>
-                {item.label}
-              </button>
-            )
-          })}
-        </nav>
+        <div className="map-world-info" aria-label="Thời gian và thời tiết hiện tại">
+          <div
+            className={`world-clock-pill world-clock-${worldClock.phaseId}`}
+            title={`Chu kỳ toàn cục · đổi giai đoạn trong khoảng ${Math.ceil(worldClock.minutesUntilNextPhase)} phút`}
+            aria-label={`Giờ thế giới ${worldClock.time}, ${worldClock.phaseName}`}
+          >
+            <span aria-hidden="true">{worldClock.icon}</span>
+            <strong>{worldClock.time}</strong>
+            <small>{worldClock.phaseName}</small>
+          </div>
+          <div
+            className={`weather-pill${currentWeather ? ` weather-${currentWeather.severity}` : ''}`}
+            title={currentWeather?.description ?? 'Thời tiết ổn định'}
+            aria-label={currentWeather
+              ? `${currentWeather.name}, ${weatherSeverityLabels[currentWeather.severity]}, ${displayTemperature} độ`
+              : 'Thời tiết ổn định'}
+          >
+            <span aria-hidden="true">{currentWeather?.icon ?? '☀'}</span>
+            <span>{displayTemperature}°</span>
+            <small>{currentWeather?.name ?? 'Thời tiết ổn định'}</small>
+          </div>
+        </div>
 
         <div className="sidebar-bottom">
           <button
@@ -429,7 +442,7 @@ export function GameLayout() {
       </aside>
 
       <div className="main-column">
-        <header className="topbar">
+        <header className="topbar topbar-map-hidden">
           <div className="breadcrumb"><span>Đại dương</span><span className="breadcrumb-separator">/</span><strong>{currentIslandName ?? 'Đảo Mầm Xanh'}</strong></div>
           <div className="topbar-actions">
             <span className="game-beta-badge" title="Phiên bản hiện tại: beta test">
@@ -522,13 +535,72 @@ export function GameLayout() {
           </div>
         )}
         <main className="page-content">
-          <GatheringPage />
+          <GatheringPage onOpenPanel={(path, title) => setActivePanel({ path, title })} />
         </main>
         <footer className="app-footer">
           <span>HẢI GIỚI SINH TỒN</span>
           <span>Chúc bạn một hành trình bình an</span>
         </footer>
       </div>
+      <nav className="game-side-rail game-side-rail-left" aria-label="Điều hướng chính">
+        {gameNavigation.map((item) => {
+          const isActive = activePanel?.path === item.path
+          return (
+            <button
+              className={`game-side-rail-button${isActive ? ' is-open' : ''}`}
+              key={item.id}
+              type="button"
+              aria-label={item.label}
+              aria-pressed={isActive}
+              title={item.label}
+              onClick={() => setActivePanel({ path: item.path, title: item.label })}
+            >
+              <span aria-hidden="true">{item.icon}</span>
+            </button>
+          )
+        })}
+      </nav>
+      <nav className="game-side-rail game-side-rail-right" aria-label="Công cụ và hoạt động">
+        {sidePanelNavigation.map((item) => {
+          const isActive = activePanel?.path === item.path
+          const locked = isActivityLocked(item)
+          return (
+            <button
+              className={`game-side-rail-button${isActive ? ' is-open' : ''}${locked ? ' is-locked' : ''}`}
+              key={item.path}
+              type="button"
+              aria-label={item.label}
+              aria-pressed={isActive}
+              title={locked ? `${item.label} · ${item.requiredLevel ? `Cấp ${item.requiredLevel}` : 'Chưa có chợ tại đảo này'}` : item.label}
+              disabled={locked}
+              onClick={() => setActivePanel({ path: item.path, title: item.label })}
+            >
+              <span aria-hidden="true">{item.icon}</span>
+            </button>
+          )
+        })}
+        <button
+          className="game-side-rail-button game-side-rail-theme"
+          type="button"
+          aria-label={theme === 'dark' ? 'Bật giao diện sáng' : 'Bật giao diện tối'}
+          aria-pressed={theme === 'dark'}
+          title={theme === 'dark' ? 'Bật giao diện sáng' : 'Bật giao diện tối'}
+          disabled={!themeReady}
+          onClick={toggleTheme}
+        >
+          <span aria-hidden="true">{theme === 'dark' ? '☼' : '☾'}</span>
+        </button>
+        <button
+          className={`game-side-rail-button game-side-rail-settings${activePanel?.path === '/settings' ? ' is-open' : ''}`}
+          type="button"
+          aria-label="Cài đặt"
+          aria-pressed={activePanel?.path === '/settings'}
+          title="Cài đặt"
+          onClick={() => setActivePanel({ path: '/settings', title: 'Cài đặt' })}
+        >
+          <span aria-hidden="true">⚙</span>
+        </button>
+      </nav>
       {activePanel && (
         <div
           className="game-module-overlay"

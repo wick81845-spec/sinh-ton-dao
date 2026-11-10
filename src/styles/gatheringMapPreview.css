@@ -7,7 +7,35 @@
   margin: 0;
 }
 
-.gathering-navigation-preview .topbar,
+.gathering-navigation-preview .topbar-map-hidden {
+  display: none;
+}
+
+.gathering-navigation-preview .map-world-info {
+  position: absolute;
+  left: 50%;
+  z-index: 21;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-50%);
+}
+
+.gathering-navigation-preview .map-world-info .world-clock-pill,
+.gathering-navigation-preview .map-world-info .weather-pill {
+  color: #e7efd9;
+}
+
+.gathering-navigation-preview .map-world-info .world-clock-pill {
+  border-color: rgb(215 237 205 / 24%);
+  background: rgb(255 255 255 / 5%);
+}
+
+.gathering-navigation-preview .map-world-info .world-clock-pill small,
+.gathering-navigation-preview .map-world-info .weather-pill small {
+  color: #bdcfb8;
+}
+
 .gathering-navigation-preview .app-footer {
   display: none;
 }
@@ -15,6 +43,10 @@
 .gathering-navigation-preview .main-column {
   height: calc(100dvh - 66px);
   min-height: 0;
+}
+
+.game-interface-preview .page-content:has(.gathering-map-preview) {
+  height: calc(100dvh - 66px);
 }
 
 .gathering-navigation-preview .sidebar {
@@ -36,7 +68,7 @@
   display: flex;
   min-height: 36px;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   padding: 0 clamp(9px, 1.15vw, 15px);
   border: 1px solid transparent;
   border-radius: 8px;
@@ -197,6 +229,222 @@
   overflow: auto;
   overscroll-behavior: contain;
   padding: 18px;
+}
+
+.game-module-panel:has(.inventory-page) {
+  width: min(100%, 980px);
+  max-height: min(80dvh, 740px);
+}
+
+.game-module-panel-content:has(.inventory-page) {
+  padding: 12px;
+}
+
+.game-module-panel-content .inventory-page {
+  gap: 10px;
+}
+
+.game-module-panel-content .inventory-containers {
+  grid-template-columns: minmax(0, 1.35fr) minmax(230px, .8fr);
+  gap: 8px;
+}
+
+.game-module-panel-content .inventory-page .page-title-row {
+  min-height: 0;
+  padding: 12px 14px;
+}
+
+.game-module-panel-content .inventory-page .page-title-row h1 {
+  font-size: 23px;
+}
+
+.game-module-panel-content .inventory-page .page-title-row p {
+  margin: 4px 0 0;
+  font-size: 10px;
+}
+
+.game-module-panel-content .inventory-survival-panel,
+.game-module-panel-content .equipped-weapon-panel,
+.game-module-panel-content .inventory-container-panel {
+  padding: 12px;
+  border-radius: 11px;
+}
+
+.game-module-panel-content .inventory-survival-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.game-module-panel-content .inventory-survival-heading h2 {
+  margin: 2px 0 0;
+  font-size: 15px;
+}
+
+.game-module-panel-content .inventory-survival-grid {
+  gap: 7px;
+}
+
+.game-module-panel-content .inventory-survival-grid .stat-card {
+  min-height: 68px;
+  padding: 8px;
+}
+
+.game-module-panel-content .inventory-survival-grid .stat-card h3 {
+  font-size: 10px;
+}
+
+.game-module-panel-content .inventory-survival-grid .stat-card strong {
+  font-size: 14px;
+}
+
+.game-module-panel-content .body-exposure-meters {
+  gap: 7px;
+}
+
+.game-module-panel-content .body-exposure-meter {
+  padding: 8px 10px;
+}
+
+.game-module-panel-content .inventory-container-panel .container-heading h2 {
+  font-size: 17px;
+}
+
+.game-module-panel-content .container-capacity-copy {
+  margin-top: 8px;
+  font-size: 10px;
+}
+
+.game-module-panel-content .inventory-slot-grid {
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.game-module-panel-content .inventory-slot,
+.game-module-panel-content .storage-container-panel .inventory-slot {
+  min-height: 104px;
+  gap: 3px;
+  padding: 8px 5px 6px;
+  border-radius: 9px;
+}
+
+.game-module-panel-content .inventory-slot-index,
+.game-module-panel-content .inventory-slot-count {
+  top: 5px;
+  min-height: 16px;
+  padding: 1px 4px;
+  border-radius: 5px;
+  font-size: 8px;
+}
+
+.game-module-panel-content .inventory-slot-index {
+  left: 5px;
+}
+
+.game-module-panel-content .inventory-slot-count {
+  right: 5px;
+}
+
+.game-module-panel-content .inventory-slot-discard {
+  top: 24px;
+  right: 5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  font-size: 10px;
+}
+
+.game-module-panel-content .inventory-slot-art {
+  width: 38px;
+  height: 38px;
+  margin-top: 8px;
+  border-radius: 10px;
+}
+
+.game-module-panel-content .inventory-slot-art .resource-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.game-module-panel-content .inventory-slot-name {
+  font-size: 9px;
+}
+
+.game-module-panel-content .inventory-slot-meta {
+  font-size: 8px;
+}
+
+.game-module-panel-content .inventory-slot-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding-top: 3px;
+}
+
+.game-module-panel-content .inventory-slot-actions:has(.inventory-slot-secondary) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.game-module-panel-content .inventory-slot-more {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: 100%;
+  text-align: center;
+}
+
+.game-module-panel-content .inventory-slot-more summary {
+  display: inline-flex;
+  min-height: 17px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border: 1px solid color-mix(in srgb, var(--sea) 18%, var(--line));
+  border-radius: 999px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--paper) 90%, var(--sea-soft));
+  font-size: 7px;
+  letter-spacing: 0;
+  list-style: none;
+}
+
+.game-module-panel-content .inventory-slot-more summary::-webkit-details-marker {
+  display: none;
+}
+
+.game-module-panel-content .inventory-slot-more summary::after {
+  content: "⌄";
+  font-size: 9px;
+  line-height: 1;
+}
+
+.game-module-panel-content .inventory-slot-more[open] summary::after {
+  content: "⌃";
+}
+
+.game-module-panel-content .inventory-slot-primary,
+.game-module-panel-content .inventory-slot-secondary {
+  width: 100%;
+  min-width: 0;
+  min-height: 22px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 8px;
+}
+
+.game-module-panel-content .inventory-slot-more-panel {
+  gap: 3px;
+  padding-top: 3px;
+}
+
+.game-module-panel-content .inventory-slot-more-panel .small-action {
+  min-height: 20px;
+  padding: 2px 4px;
+  font-size: 8px;
+}
+
+.game-module-panel-content .container-footer {
+  margin-top: 7px;
+  font-size: 9px;
 }
 
 .world-chat-widget {
@@ -697,8 +945,8 @@
 
 .world-chat-close {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   place-items: center;
   border: 1px solid #cbd9c7;
   border-radius: 50%;
@@ -1227,7 +1475,7 @@
   width: min(27%, 300px);
   padding: clamp(9px, 1.1vw, 15px);
   border: 1px solid rgb(219 236 210 / 28%);
-  border-radius: 13px;
+  border-radius: 11px;
   color: #edf2d7;
   background: rgb(9 47 52 / 82%);
   box-shadow: 0 10px 24px rgb(6 28 34 / 22%), inset 0 1px rgb(248 255 227 / 8%);
@@ -1297,7 +1545,11 @@
 .gathering-map-marker-list {
   position: absolute;
   z-index: 2;
-  inset: 0;
+  top: 0;
+  left: 50%;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  transform: translateX(-50%);
 }
 
 .gathering-map-marker {
@@ -1418,8 +1670,8 @@
 .gathering-map-compass {
   position: absolute;
   z-index: 3;
-  top: 5%;
-  right: 3%;
+  top: 17%;
+  right: clamp(72px, 6vw, 88px);
   display: grid;
   width: 38px;
   height: 48px;
@@ -1441,7 +1693,7 @@
   position: absolute;
   z-index: 4;
   top: 50%;
-  right: clamp(14px, 2.5vw, 36px);
+  right: clamp(72px, 6vw, 88px);
   display: grid;
   width: 46px;
   justify-items: center;
@@ -1487,20 +1739,22 @@
 .gathering-map-dock {
   position: absolute;
   z-index: 4;
-  right: clamp(12px, 2vw, 28px);
-  bottom: clamp(12px, 2.5vh, 26px);
+  left: 50%;
+  top: clamp(14px, 2.5vh, 26px);
   display: grid;
-  width: min(440px, calc(100% - 32px));
-  grid-template-columns: minmax(0, 1fr) minmax(155px, .8fr);
+  width: min(360px, calc(100% - 32px));
+  grid-template-columns: minmax(0, 1fr) 112px;
   align-items: center;
-  gap: 10px;
-  padding: 9px 36px 9px 11px;
-  border: 1px solid rgb(222 235 198 / 32%);
-  border-radius: 15px;
+  column-gap: 10px;
+  row-gap: 7px;
+  padding: 11px 36px 10px 12px;
+  border: 1px solid rgb(222 235 198 / 40%);
+  border-radius: 16px;
   color: #e7edd8;
-  background: rgb(11 49 53 / 91%);
-  box-shadow: 0 12px 28px rgb(7 29 32 / 24%), inset 0 1px rgb(247 248 220 / 8%);
-  backdrop-filter: blur(13px);
+  background: linear-gradient(145deg, rgb(15 62 62 / 96%), rgb(8 39 47 / 94%));
+  box-shadow: 0 14px 34px rgb(4 27 33 / 36%), inset 0 1px rgb(247 248 220 / 12%);
+  backdrop-filter: blur(16px);
+  transform: translateX(-50%);
 }
 
 .pixel-fx-canvas {
@@ -1637,32 +1891,33 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
 }
 
 .gathering-map-selected > img {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   flex: 0 0 auto;
   border: 1px solid rgb(222 235 198 / 24%);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgb(240 242 214 / 9%);
   object-fit: contain;
 }
 
 .gathering-map-selected > .gathering-map-fishing-icon {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border-color: rgb(222 235 198 / 24%);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgb(240 242 214 / 9%);
-  font-size: 22px;
+  font-size: 19px;
 }
 
 .gathering-map-selected h2 {
   margin: 2px 0;
   color: #fff0c8;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.15;
 }
 
 .gathering-map-selected p,
@@ -1670,14 +1925,19 @@
   display: block;
   margin: 2px 0 0;
   color: #a9d2a4;
-  font-size: 9px;
+  font-size: 8px;
   line-height: 1.25;
 }
 
-.gathering-map-selected > div > .gathering-map-loot {
+.gathering-map-loot {
+  grid-column: 1 / -1;
   display: -webkit-box;
   overflow: hidden;
+  padding-top: 6px;
+  border-top: 1px solid rgb(222 235 198 / 14%);
   color: #d3ddc2;
+  font-size: 9px;
+  line-height: 1.3;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -1687,7 +1947,13 @@
 }
 
 .gathering-map-actions {
+  grid-column: 2;
+  grid-row: 1 / span 2;
   min-width: 0;
+}
+
+.gathering-map-dock.is-fishing .gathering-map-actions {
+  grid-row: 1;
 }
 
 .gathering-map-buttons {
@@ -1707,7 +1973,7 @@
   border: 1px solid transparent;
   border-radius: 9px;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   transition: filter .16s ease, transform .16s ease;
 }
@@ -1770,11 +2036,11 @@
 
 @media (max-width: 760px) {
   .game-interface-preview .page-content:has(.gathering-map-preview) {
-    height: calc(100dvh - 106px);
+    height: calc(100dvh - 58px);
   }
 
   .gathering-navigation-preview .main-column {
-    height: calc(100dvh - 106px);
+    height: calc(100dvh - 58px);
   }
 
   .gathering-navigation-preview .map-preview-nav {
@@ -1798,6 +2064,10 @@
     border-radius: 14px;
   }
 
+  .game-module-panel:has(.inventory-page) {
+    max-height: 86dvh;
+  }
+
   .game-module-panel-header {
     min-height: 50px;
     padding: 7px 12px;
@@ -1805,6 +2075,10 @@
 
   .game-module-panel-content {
     padding: 12px;
+  }
+
+  .game-module-panel-content:has(.inventory-page) {
+    padding: 8px;
   }
 
   .game-activity-grid {
@@ -1864,8 +2138,8 @@
   }
 
   .gathering-map-compass {
-    top: 10px;
-    right: 10px;
+    top: 22%;
+    right: 50px;
     width: 30px;
     height: 40px;
   }
@@ -1884,19 +2158,20 @@
   }
 
   .gathering-map-dock {
-    width: min(400px, calc(100% - 24px));
-    grid-template-columns: minmax(0, 1fr) minmax(125px, .7fr);
-    gap: 8px;
-    padding: 8px 32px 8px 9px;
+    width: min(340px, calc(100% - 24px));
+    grid-template-columns: minmax(0, 1fr) 104px;
+    column-gap: 8px;
+    row-gap: 6px;
+    padding: 9px 32px 9px 10px;
   }
 
   .gathering-map-dock.is-fishing {
-    width: min(400px, calc(100% - 24px));
+    width: min(340px, calc(100% - 24px));
   }
 
   .gathering-map-selected > img {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
   }
 
   .gathering-map-selected h2 {
@@ -1904,9 +2179,9 @@
   }
 
   .gathering-map-selected > .gathering-map-fishing-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 19px;
+    width: 32px;
+    height: 32px;
+    font-size: 17px;
   }
 
   .gathering-map-dock.is-fishing .gathering-map-buttons {
@@ -1922,5 +2197,559 @@
   .gathering-map-primary-action,
   .gathering-map-fishing-action {
     transition: none;
+  }
+}
+
+.gathering-navigation-preview .sidebar {
+  justify-content: space-between;
+}
+
+.gathering-navigation-preview .sidebar .main-nav {
+  display: none;
+}
+
+.game-side-rail {
+  position: fixed;
+  z-index: 18;
+  top: 50%;
+  display: flex;
+  max-height: calc(100dvh - 72px);
+  flex-direction: column;
+  gap: 3px;
+  overflow: auto;
+  padding: 6px 4px;
+  border: 1px solid rgb(205 228 205 / 32%);
+  border-radius: 17px;
+  background: rgb(7 42 46 / 72%);
+  box-shadow: 0 10px 28px rgb(3 24 31 / 26%);
+  backdrop-filter: blur(12px);
+  scrollbar-width: none;
+  transform: translateY(-50%);
+}
+
+.game-side-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.game-side-rail-left {
+  left: max(10px, env(safe-area-inset-left));
+}
+
+.game-side-rail-right {
+  right: max(10px, env(safe-area-inset-right));
+}
+
+.game-side-rail-button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  flex: 0 0 auto;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  padding: 5px 2px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: #e4efd7;
+  background: transparent;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease, transform .16s ease;
+}
+
+.game-side-rail-button:hover,
+.game-side-rail-button:focus-visible,
+.game-side-rail-button.is-open {
+  transform: translateY(-1px);
+  border-color: rgb(206 230 179 / 48%);
+  color: #fff1bd;
+  background: rgb(61 115 94 / 72%);
+}
+
+.game-side-rail-button > span {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.game-side-rail-button small {
+  display: none;
+}
+
+.game-side-rail-button.is-locked {
+  opacity: .48;
+  cursor: not-allowed;
+}
+
+.game-side-rail-settings {
+  margin-top: 3px;
+  border-top: 1px solid rgb(206 230 179 / 24%);
+  border-radius: 0 0 11px 11px;
+}
+
+.gathering-map-location-card {
+  top: 10px;
+  left: max(10px, env(safe-area-inset-left));
+  width: min(25%, 290px);
+  padding: 9px 11px;
+}
+
+.gathering-map-location-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gathering-map-location-card h1 {
+  margin: 3px 0 0;
+  font-size: clamp(15px, 1.35vw, 19px);
+  line-height: 1.1;
+}
+
+.gathering-map-current-position {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 7px;
+  border: 1px solid rgb(216 237 191 / 21%);
+  border-radius: 999px;
+  color: #d7e8ce;
+  background: rgb(255 255 255 / 5%);
+}
+
+.gathering-map-current-position > span:first-child {
+  display: grid;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #ffdfa0;
+}
+
+.gathering-map-current-position strong {
+  overflow: hidden;
+  color: #f1f3dd;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gathering-map-player-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  color: #c7d9c1;
+  font-size: 8px;
+}
+
+.gathering-map-player-line > strong {
+  color: #f1f3dd;
+  font-size: 9px;
+}
+
+.gathering-map-player-line > span {
+  padding-left: 7px;
+  border-left: 1px solid rgb(223 241 212 / 20%);
+}
+
+.gathering-map-player-line .gathering-map-resting-indicator {
+  overflow: hidden;
+  color: #f1d38f;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gathering-map-survival-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgb(223 241 212 / 15%);
+}
+
+.gathering-map-active-effects {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 7px;
+}
+
+.gathering-map-active-effects > strong {
+  margin-right: 2px;
+  color: #b7cdb5;
+  font-size: 7px;
+  letter-spacing: .08em;
+}
+
+.gathering-map-effect,
+.gathering-map-effects-clear,
+.gathering-map-effect-overflow {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 6px;
+  overflow: hidden;
+  border: 1px solid rgb(219 236 210 / 16%);
+  border-radius: 999px;
+  color: #e4e9d4;
+  background: rgb(255 255 255 / 5%);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gathering-map-effect-mild {
+  border-color: rgb(230 196 119 / 26%);
+  color: #f0d99c;
+  background: rgb(125 91 42 / 18%);
+}
+
+.gathering-map-effect-moderate {
+  border-color: rgb(234 151 93 / 34%);
+  color: #ffce9d;
+  background: rgb(126 61 39 / 24%);
+}
+
+.gathering-map-effect-severe {
+  border-color: rgb(234 116 102 / 42%);
+  color: #ffc2b8;
+  background: rgb(132 42 42 / 30%);
+}
+
+.gathering-map-effects-clear {
+  color: #bdd9b4;
+}
+
+.gathering-map-effect-overflow {
+  flex: 0 0 auto;
+  color: #d7dfca;
+}
+
+.gathering-map-stat > div {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 3px;
+  color: #d4e4cc;
+  font-size: 8px;
+}
+
+.gathering-map-stat > div span {
+  color: #f2d89a;
+}
+
+.gathering-map-stat > div strong {
+  justify-self: end;
+  color: #f1f3dd;
+  font-size: 8px;
+}
+
+.gathering-map-stat > small {
+  display: block;
+  margin-top: 1px;
+  color: #b7cdb5;
+  font-size: 7px;
+}
+
+.gathering-map-stat > i {
+  display: block;
+  height: 2px;
+  margin-top: 3px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: rgb(222 239 214 / 18%);
+}
+
+.gathering-map-stat > i b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #b8d58d;
+}
+
+.gathering-map-stat-thirst > i b {
+  background: #85d5d8;
+}
+
+.gathering-map-stat-health > i b {
+  background: #e7a18c;
+}
+
+.gathering-map-home-actions {
+  position: absolute;
+  z-index: 4;
+  top: clamp(14px, 2.5vh, 22px);
+  left: 50%;
+  display: flex;
+  max-width: calc(100% - 170px);
+  gap: 8px;
+  transform: translateX(-50%);
+}
+
+.gathering-map-home-actions button {
+  display: flex;
+  min-width: 0;
+  min-height: 42px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid rgb(215 237 205 / 32%);
+  border-radius: 13px;
+  color: #edf2d7;
+  background: rgb(9 47 52 / 82%);
+  box-shadow: 0 8px 20px rgb(6 28 34 / 20%);
+  cursor: pointer;
+  text-align: left;
+  backdrop-filter: blur(12px);
+  transition: transform .16s ease, border-color .16s ease, background .16s ease;
+}
+
+.gathering-map-home-actions button:hover,
+.gathering-map-home-actions button:focus-visible {
+  transform: translateY(-2px);
+  border-color: #b6d59f;
+  background: rgb(28 82 75 / 94%);
+}
+
+.gathering-map-home-actions button > span:first-child {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgb(222 237 190 / 30%);
+  border-radius: 10px;
+  color: #ffdfa0;
+  background: rgb(50 117 106 / 72%);
+  font-size: 16px;
+}
+
+.gathering-map-home-actions strong {
+  color: #fff3cc;
+  font-size: 8px;
+}
+
+.gathering-map-world-status {
+  position: absolute;
+  z-index: 4;
+  top: clamp(14px, 2.5vh, 22px);
+  right: clamp(70px, 6vw, 86px);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gathering-map-world-time,
+.gathering-map-world-weather {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid rgb(215 237 205 / 27%);
+  border-radius: 999px;
+  color: #e7efd9;
+  background: rgb(9 47 52 / 82%);
+  box-shadow: 0 6px 16px rgb(6 28 34 / 18%);
+  backdrop-filter: blur(12px);
+}
+
+.gathering-map-world-time > span,
+.gathering-map-world-weather > span {
+  color: #f4d18c;
+  font-size: 12px;
+}
+
+.gathering-map-world-time strong,
+.gathering-map-world-weather strong {
+  color: #fff3cc;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gathering-map-world-time small,
+.gathering-map-world-weather small {
+  color: #bdcfb8;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+:root[data-theme="dark"] .game-side-rail {
+  border-color: rgb(141 186 172 / 35%);
+  background: rgb(7 35 40 / 84%);
+}
+
+:root[data-theme="dark"] .game-side-rail-button {
+  color: #e2edda;
+}
+
+:root[data-theme="dark"] .game-side-rail-button small {
+  color: #b7d0bc;
+}
+
+@media (max-width: 760px) {
+  .game-interface-preview .page-content:has(.gathering-map-preview) {
+    height: calc(100dvh - 58px);
+  }
+
+  .gathering-navigation-preview .main-column {
+    height: calc(100dvh - 58px);
+  }
+
+  .gathering-navigation-preview .map-world-info {
+    gap: 5px;
+  }
+
+  .gathering-navigation-preview .map-world-info .world-clock-pill,
+  .gathering-navigation-preview .map-world-info .weather-pill {
+    gap: 4px;
+    padding: 4px 7px;
+    font-size: 10px;
+  }
+
+  .gathering-navigation-preview .map-world-info .world-clock-pill small,
+  .gathering-navigation-preview .map-world-info .weather-pill small {
+    font-size: 8px;
+  }
+
+  .gathering-navigation-preview .sidebar {
+    display: flex;
+    height: 58px;
+    min-height: 58px;
+    grid-template-columns: none;
+    padding: 5px 10px;
+  }
+
+  .gathering-navigation-preview .sidebar .brand-mark {
+    width: 44px;
+    height: 42px;
+  }
+
+  .gathering-navigation-preview .sidebar .profile-chip {
+    display: none;
+  }
+
+  .game-side-rail {
+    top: 54%;
+    max-height: min(68dvh, 560px);
+    gap: 3px;
+    padding: 4px 3px;
+    border-radius: 14px;
+  }
+
+  .game-side-rail-left {
+    left: max(3px, env(safe-area-inset-left));
+  }
+
+  .game-side-rail-right {
+    right: max(3px, env(safe-area-inset-right));
+  }
+
+  .game-side-rail-button {
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    border-radius: 9px;
+  }
+
+  .game-side-rail-button > span {
+    font-size: 17px;
+  }
+
+  .gathering-map-location-card {
+    top: 8px;
+    left: max(8px, env(safe-area-inset-left));
+    width: min(68%, 300px);
+    padding: 8px 9px;
+  }
+
+  .gathering-map-location-card h1 {
+    font-size: 13px;
+  }
+
+  .gathering-map-location-heading {
+    gap: 4px;
+  }
+
+  .gathering-map-current-position {
+    max-width: 45%;
+    padding: 4px 5px;
+  }
+
+  .gathering-map-current-position strong {
+    font-size: 7px;
+  }
+
+  .gathering-map-player-line {
+    margin-top: 5px;
+    gap: 5px;
+  }
+
+  .gathering-map-world-status {
+    top: 7px;
+    right: 48px;
+    left: 48px;
+    justify-content: center;
+  }
+
+  .gathering-map-world-time,
+  .gathering-map-world-weather {
+    min-height: 30px;
+    gap: 4px;
+    padding: 4px 7px;
+  }
+
+  .gathering-map-world-time small,
+  .gathering-map-world-weather small {
+    font-size: 7px;
+  }
+
+  .gathering-map-survival-stats {
+    gap: 5px;
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+
+  .gathering-map-home-actions {
+    right: 48px;
+    top: auto;
+    bottom: 80px;
+    left: 48px;
+    max-width: none;
+    justify-content: center;
+    gap: 5px;
+    transform: none;
+  }
+
+  .gathering-map-home-actions button {
+    min-width: 0;
+    min-height: 43px;
+    justify-content: center;
+    gap: 0;
+    padding: 4px;
+    border-radius: 11px;
+  }
+
+  .gathering-map-home-actions button > span:first-child {
+    width: 32px;
+    height: 32px;
+    font-size: 17px;
+  }
+
+  .gathering-map-home-actions button > span:last-child {
+    display: none;
+  }
+
+  .gathering-map-zoom-controls {
+    top: auto;
+    right: 48px;
+    bottom: 72px;
   }
 }

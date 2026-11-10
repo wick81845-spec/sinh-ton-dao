@@ -95,7 +95,7 @@ describe('craftingService', () => {
     }
 
     expect(getRecipeAvailability(state, 'recipe_roast_fish', 1_000))
-      .toBe('Cần có lửa trại đang cháy; hãy thêm nhiên liệu ở trang Xây dựng.')
+      .toBe('Cần có lửa trại đang cháy; hãy thêm nhiên liệu cho lửa trại.')
     const fueled = { ...state, campfireFuel: { 'campfire-1': { remainingMs: 60_000, lastUpdatedAt: 1_000 } } }
     const queued = queueRecipe(fueled, 'recipe_roast_fish', 1_000)
     if (!queued.ok) throw new Error(queued.message)

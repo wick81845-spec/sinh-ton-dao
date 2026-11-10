@@ -76,7 +76,7 @@ export function getRecipeAvailability(state: GameSnapshot, recipeId: string, now
   }
   if (recipe.requiresLitCampfire && !state.buildings.some((building) => (
     building.definitionId === 'building_campfire' && isCampfireLitAt(state, building.id, now)
-  ))) return 'Cần có lửa trại đang cháy; hãy thêm nhiên liệu ở trang Xây dựng.'
+  ))) return 'Cần có lửa trại đang cháy; hãy thêm nhiên liệu cho lửa trại.'
   if (!hasIngredients(state, recipe.ingredients)) return 'Không đủ nguyên liệu trong túi đồ.'
   if (!simulateReservedOutputs(state, recipe.output)) return 'Không đủ chỗ trong túi đồ cho sản phẩm.'
   return null

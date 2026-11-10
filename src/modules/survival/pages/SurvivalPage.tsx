@@ -8,6 +8,7 @@ import { getCurrentWeather } from '../../world/services/weatherService'
 import { isSurvivorResting } from '../utils/survivalCalculator'
 import { gameClock } from '../../../services/clock/gameClock'
 import { getWorldWeatherAtTime } from '../../world/services/worldClock'
+import { buildingDefinitions } from '../../building/data/buildingDefinitions'
 
 function getStatStatus(stat: SurvivalStatName, value: number): string {
   if (stat === 'hunger') {
@@ -53,6 +54,10 @@ export function SurvivalPage() {
     && building.status === 'completed'
     && building.islandId === gameState.character.currentLocationId
   ))
+  const shelterName = buildingDefinitions.find((building) => building.id === shelter?.definitionId)?.name
+  const shelterLabel = shelter
+    ? `${shelterName ?? 'Lều'} · Cấp ${shelter.level}`
+    : 'lều nghỉ ngơi'
 
   return (
     <div className="survival-page">
@@ -79,16 +84,19 @@ export function SurvivalPage() {
 
       <section className={`survival-rest-control${isResting ? ' is-resting' : ''}`} aria-live="polite">
         <div>
-          <strong>{isResting ? 'Đang nghỉ ngơi' : 'Sức lực chỉ hồi khi nghỉ'}</strong>
+          <strong>{isResting ? `Đang nghỉ tại ${shelterLabel}` : `Nghỉ ngơi tại ${shelterLabel}`}</strong>
           <p>
             {isResting
-              ? `Đang hồi tối đa ${survivalConfig.stamina.recoveryPerMinute} điểm thể lực mỗi phút${shelter ? ` · Lều cấp ${shelter.level} tăng hiệu quả nghỉ ${shelter.level === 1 ? 25 : 40}%` : ''}.`
+              ? `Đang hồi tối đa ${survivalConfig.stamina.recoveryPerMinute} điểm thể lực mỗi phút · hiệu quả nghỉ tăng ${shelter?.level === 1 ? 25 : 25 + Math.max(0, (shelter?.level ?? 1) - 1) * 15}%.`
               : gameState.character.status !== 'alive'
                 ? 'Bạn cần hồi sinh trước khi nghỉ ngơi.'
               : isBusy
                 ? 'Hãy hoàn thành hoạt động hiện tại trước khi nghỉ ngơi.'
-                : 'Chủ động nghỉ ngơi để hồi thể lực. Bạn có thể dừng bất cứ lúc nào.'}
+                : shelter
+                  ? 'Nghỉ trong lều để hồi phục. Khi thực hiện hoạt động khác, bạn sẽ rời lều và mất hiệu ứng nghỉ.'
+                  : 'Bạn chưa có lều hoàn thành trên đảo này. Hãy dựng lều trước khi nghỉ ngơi.'}
           </p>
+          {!shelter && <Link className="text-link survival-build-shelter-link" to="/building">Đến xây lều <span aria-hidden="true">↗</span></Link>}
         </div>
         <button
           className="survival-rest-button"
@@ -96,6 +104,7 @@ export function SurvivalPage() {
           disabled={!isResting && (
             gameState.character.status !== 'alive'
             || isBusy
+            || !shelter
             || gameState.survival.stamina >= survivalConfig.stamina.max
           )}
           onClick={() => (isResting ? stopResting() : startResting())}

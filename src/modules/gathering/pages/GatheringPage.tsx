@@ -11,6 +11,7 @@ import {
   getNodeUnlockIssue,
   resourceNodeDefinitions,
 } from '../services/gatheringService'
+import { gatheringMapLayouts } from '../data/gatheringMapLayouts'
 import { randomGatheringActivityId } from '../data/gatheringConfig'
 import {
   getFishAvailableAt,
@@ -25,7 +26,10 @@ import {
 } from '../data/fishingConfig'
 import { fishCatalog } from '../../../data/items/fishCatalog'
 import { biomeDefinitionsById } from '../../world/data/biomeDefinitions'
-import { getIslandDefinition } from '../../world/data/worldDefinitions'
+import { getIslandDefinition, worldLocations } from '../../world/data/worldDefinitions'
+import { getCurrentWeather } from '../../world/services/weatherService'
+import { buildingDefinitions } from '../../building/data/buildingDefinitions'
+import { getBodyStatusEffects, type BodyStatusSeverity } from '../../survival/services/bodyStatusService'
 import { skillLevelForExperience } from '../../progression/data/progressionDefinitions'
 import { FishingCatchReveal, FishingCatchToast, FishingEscapeReveal, FishingMinigame } from '../components/FishingMinigame'
 import { ItemArtwork } from '../../../shared/components/ItemArtwork'
@@ -40,32 +44,13 @@ function getMapFitZoom(): number {
   return window.matchMedia('(max-width: 760px)').matches ? 1.25 : 1
 }
 
-const gatheringMapMarkers: Record<string, { left: string; top: string; icon: string }> = {
-  shoreline: { left: '22%', top: '68%', icon: '⌁' },
-  'rocky-outcrop': { left: '77%', top: '38%', icon: '◆' },
-  'wild-grove': { left: '41%', top: '33%', icon: '❋' },
-  'forest-edge': { left: '55%', top: '57%', icon: '♧' },
-  'palm-grove': { left: '70%', top: '67%', icon: '♧' },
-  'fallen-tree': { left: '53%', top: '22%', icon: '▥' },
-  'freshwater-stream': { left: '32%', top: '47%', icon: '≈' },
-  'tidal-rocks': { left: '83%', top: '72%', icon: '◈' },
-  'iron-deposit': { left: '72%', top: '31%', icon: '◆' },
-  'copper-deposit': { left: '57%', top: '39%', icon: '◆' },
-  'tin-deposit': { left: '65%', top: '51%', icon: '◆' },
-  'coal-seam': { left: '46%', top: '43%', icon: '⬟' },
-  'riverbank-clay': { left: '33%', top: '58%', icon: '⬡' },
-  'old-growth-forest': { left: '55%', top: '25%', icon: '♧' },
-}
-
-function FishingBetaRoadmap() {
-  return (
-    <div className="fishing-beta-roadmap">
-      <span>SẮP RA MẮT</span>
-    </div>
-  )
-}
-
-export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
+export function GatheringPage({
+  asPanel = false,
+  onOpenPanel,
+}: {
+  asPanel?: boolean
+  onOpenPanel?: (path: string, title: string) => void
+}) {
   const { gameState, isLoading, error, startGathering, cancelGathering, finishFishing } = useGame()
   const [now, setNow] = useState(gameClock.now())
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
@@ -90,10 +75,6 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
 
   const changeMapZoom = useCallback((amount: number) => {
     setMapZoom((current) => Math.max(1, Math.min(3.5, Math.round((current + amount) * 100) / 100)))
-  }, [])
-  const resetMapView = useCallback(() => {
-    setMapZoom(getMapFitZoom())
-    setMapOffset({ x: 0, y: 0 })
   }, [])
   const handleMapPointerDown = useCallback((event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || (event.target instanceof HTMLElement && event.target.closest('button'))) return
@@ -179,7 +160,38 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
   if (!gameState) return <p className="page-state error-state" role="alert">{error ?? 'Chưa có dữ liệu trò chơi.'}</p>
 
   const currentIsland = getIslandDefinition(gameState.character.currentLocationId)
+  const currentMapLayout = currentIsland ? gatheringMapLayouts[currentIsland.id] : undefined
+  const currentWorldLocation = worldLocations.find((location) => location.islandId === gameState.character.currentLocationId)
+  const currentPositionName = currentWorldLocation?.name ?? currentIsland?.name ?? 'Vị trí chưa xác định'
   const currentFishingZone = fishingZoneDefinitions.find((entry) => entry.id === currentIsland?.oceanZoneId)
+  const shelter = gameState.buildings.find((building) => (
+    building.definitionId === 'building_shelter'
+    && building.status === 'completed'
+    && building.islandId === gameState.character.currentLocationId
+  ))
+  const shelterName = buildingDefinitions.find((building) => building.id === shelter?.definitionId)?.name
+  const shelterLabel = shelter
+    ? `${shelterName ?? 'Lều'} · Cấp ${shelter.level}`
+    : 'Lều nghỉ ngơi'
+  const shelterActionLabel = shelter
+    ? `Nghỉ tại ${shelterLabel}`
+    : 'Nghỉ ngơi tại lều'
+  const currentWeather = getCurrentWeather(gameState)
+  const severityOrder: Record<BodyStatusSeverity, number> = {
+    severe: 0,
+    moderate: 1,
+    mild: 2,
+    positive: 3,
+  }
+  const activeStatusEffects = getBodyStatusEffects(
+    gameState.survival,
+    currentWeather,
+    gameState.isResting,
+    shelter?.level ?? 0,
+    gameState.ailments ?? [],
+  )
+    .filter((effect) => effect.severity !== 'positive')
+    .sort((left, right) => severityOrder[left.severity] - severityOrder[right.severity])
   const currentWeatherId = currentIsland && gameState.weather?.locationId === currentIsland.id
     ? gameState.weather.weatherId
     : undefined
@@ -248,6 +260,7 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
         ) : (
           <>
             <section className="gathering-map-stage" aria-label="Bản đồ các điểm thu hoạch">
+
               {gatheringResult && (
                 <section className="gathering-reward-card" aria-label="Kết quả thu hoạch" aria-live="polite">
                   <button
@@ -295,7 +308,10 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                   <img className="gathering-island-art" src={currentIsland?.artwork ?? '/assets/gathering/island-map.png'} alt="" />
                   <div className="gathering-map-marker-list">
                     {islandResourceNodes.map((node) => {
-                      const position = gatheringMapMarkers[node.id] ?? { left: '50%', top: '50%', icon: '◆' }
+                      const position = currentMapLayout?.nodes[node.id]
+                      if (!position) {
+                        throw new Error(`Missing gathering map position for ${currentIsland?.id ?? 'unknown island'}: ${node.id}`)
+                      }
                       const nodeState = gameState.resourceNodes.find((entry) => entry.nodeId === node.id)
                       const isSelected = selectedNodeId === node.id
                       const lockReason = getNodeUnlockIssue(gameState, node.id)
@@ -304,7 +320,7 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                           className={`gathering-map-marker${isSelected ? ' is-selected' : ''}${lockReason ? ' is-locked' : ''}`}
                           key={node.id}
                           type="button"
-                          style={{ left: position.left, top: position.top }}
+                          style={{ left: `${position.x}%`, top: `${position.y}%` }}
                           aria-pressed={isSelected}
                           aria-label={`${node.name}${lockReason ? `, chưa mở khóa: ${lockReason}` : ''}`}
                           onClick={() => {
@@ -320,10 +336,10 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                         </button>
                       )
                     })}
-                    <button
+                    {currentMapLayout && <button
                       className="gathering-map-fishing-marker"
                       type="button"
-                      style={{ left: '18%', top: '87%' }}
+                      style={{ left: `${currentMapLayout.fishing.x}%`, top: `${currentMapLayout.fishing.y}%` }}
                       aria-label={`Câu cá tại ${islandFishingZone?.name ?? 'vùng biển hiện tại'}`}
                       aria-pressed={isFishingLocationSelected}
                       onClick={() => {
@@ -336,34 +352,94 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                         <strong>Điểm câu cá</strong>
                         <small>{islandFishingZone?.name ?? 'Vùng biển hiện tại'}</small>
                       </span>
-                    </button>
+                    </button>}
                   </div>
                 </div>
               </div>
 
               <aside className="gathering-map-location-card">
-                <span className="gathering-map-kicker">ĐẢO HIỆN TẠI</span>
-                <h1>{currentIsland?.name ?? 'Vùng đất chưa xác định'}</h1>
-                <p>{currentIsland?.description ?? 'Khám phá các điểm tài nguyên quanh đảo.'}</p>
-                <div className="gathering-map-player">
-                  <span className="gathering-map-player-icon" aria-hidden="true">♙</span>
-                  <span>
-                    <strong>{gameState.character.name}</strong>
-                    <small>ϟ {gameState.survival.stamina.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}% thể lực</small>
+                <div className="gathering-map-location-heading">
+                  <div>
+                    <span className="gathering-map-kicker">
+                      {gameState.character.currentLocationId === gameState.character.homeIslandId ? 'ĐẢO NHÀ' : 'VỊ TRÍ HIỆN TẠI'}
+                    </span>
+                    <h1>{currentIsland?.name ?? 'Vùng đất chưa xác định'}</h1>
+                  </div>
+                  <span className="gathering-map-current-position" title={currentPositionName}>
+                    <span aria-hidden="true">⌖</span>
+                    <strong>{currentPositionName}</strong>
                   </span>
                 </div>
-                <FishingBetaRoadmap />
+                <div className="gathering-map-player-line">
+                  <strong>{gameState.character.name}</strong>
+                  <span>Cấp {gameState.character.level}</span>
+                  {gameState.isResting && <span className="gathering-map-resting-indicator">Đang nghỉ tại {shelterLabel}</span>}
+                </div>
+                <div className="gathering-map-survival-stats" aria-label="Thông số sinh tồn hiện tại">
+                  {([
+                    ['hunger', 'Đói', '◒'],
+                    ['thirst', 'Khát', '≈'],
+                    ['stamina', 'Thể lực', 'ϟ'],
+                    ['health', 'Sức khỏe', '♥'],
+                  ] as const).map(([key, label, icon]) => {
+                    const value = gameState.survival[key]
+                    return (
+                      <div className={`gathering-map-stat gathering-map-stat-${key}`} key={key} aria-label={`${label}: ${Math.round(value)}%`}>
+                        <div>
+                          <span aria-hidden="true">{icon}</span>
+                          <strong>{Math.round(value)}%</strong>
+                        </div>
+                        <small>{label}</small>
+                        <i><b style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></i>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="gathering-map-active-effects" aria-label="Hiệu ứng bất lợi đang mắc">
+                  <strong>ĐANG BỊ</strong>
+                  {activeStatusEffects.length > 0
+                    ? (
+                      <>
+                        {activeStatusEffects.slice(0, 3).map((effect) => (
+                          <span
+                            className={`gathering-map-effect gathering-map-effect-${effect.severity}`}
+                            key={effect.id}
+                            title={`${effect.name}: ${effect.impact}`}
+                          >
+                            <span aria-hidden="true">{effect.icon}</span>
+                            {effect.name}
+                          </span>
+                        ))}
+                        {activeStatusEffects.length > 3 && (
+                          <span className="gathering-map-effect-overflow">+{activeStatusEffects.length - 3}</span>
+                        )}
+                      </>
+                    )
+                    : <span className="gathering-map-effects-clear">Ổn định</span>}
+                </div>
               </aside>
-              <div className="gathering-map-compass" aria-hidden="true">
-                <span>BẮC</span>
-                <strong>↑</strong>
-              </div>
-              <div className="gathering-map-zoom-controls" aria-label="Điều khiển thu phóng bản đồ">
-                <button type="button" aria-label="Thu nhỏ bản đồ" disabled={mapZoom <= 1} onClick={() => changeMapZoom(-0.25)}>−</button>
-                <span aria-live="polite">{Math.round(mapZoom * 100)}%</span>
-                <button type="button" aria-label="Phóng to bản đồ" disabled={mapZoom >= 3.5} onClick={() => changeMapZoom(0.25)}>+</button>
-                <button type="button" aria-label="Đưa bản đồ về giữa" onClick={resetMapView}>⌖</button>
-              </div>
+              {!selectedNodeId && !isFishingLocationSelected && !active && (
+                <div className="gathering-map-home-actions" aria-label="Thao tác căn cứ">
+                  {gameState.character.currentLocationId === gameState.character.homeIslandId && (
+                    <button type="button" aria-label="Chăm lửa trại và nướng thức ăn" onClick={() => onOpenPanel?.('/campfire', 'Lửa trại')}>
+                      <span aria-hidden="true">🔥</span>
+                      <span><strong>Lửa trại</strong></span>
+                    </button>
+                  )}
+                  <button type="button" aria-label="Mở bàn chế tạo" onClick={() => onOpenPanel?.('/crafting', 'Bàn chế tạo')}>
+                    <span aria-hidden="true">⚒</span>
+                    <span><strong>Chế tạo</strong></span>
+                  </button>
+                  <button type="button" aria-label="Quản lý công trình" onClick={() => onOpenPanel?.('/building', 'Công trình trên đảo')}>
+                    <span aria-hidden="true">⌂</span>
+                    <span><strong>Xây dựng</strong></span>
+                  </button>
+                  <button type="button" aria-label={gameState.isResting ? 'Mở bảng để dừng nghỉ' : shelterActionLabel} onClick={() => onOpenPanel?.('/survival', gameState.isResting ? `Đang nghỉ tại ${shelterLabel}` : shelterActionLabel)}>
+                    <span aria-hidden="true">⛺</span>
+                    <span><strong>{gameState.isResting ? 'Đang nghỉ' : shelterActionLabel}</strong></span>
+                  </button>
+                </div>
+              )}
             </section>
 
             {(selectedNodeId !== null || isFishingLocationSelected || active) && (
@@ -388,33 +464,33 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                     : selectedResource && <img src={selectedResource.image} alt="" aria-hidden="true" />}
                   <div>
                     <span className="gathering-map-kicker">
-                      {isFishingLocationSelected ? 'ĐIỂM CÂU CÁ' : 'ĐIỂM THU HOẠCH'}
+                      {isFishingLocationSelected ? 'ĐIỂM CÂU CÁ' : 'THU HOẠCH'}
                     </span>
                     <h2>{isFishingLocationSelected ? 'Điểm đánh bắt' : selectedNode.name}</h2>
                     {isFishingLocationSelected
                       ? <p>{islandFishingZone?.name ?? 'Vùng biển hiện tại'}</p>
-                      : (
-                        <>
-                          <small>
-                            {getNodeUnlockIssue(gameState, selectedNode.id)
-                              ? 'Địa điểm chưa mở khóa'
-                              : selectedNodeState?.available
-                                ? `${selectedNodeState.available} tài nguyên có sẵn`
-                                : `Tài nguyên hồi lại sau ${selectedNodeRespawn} giây`}
-                          </small>
-                          {selectedGatheringActivity && (
-                            <small className="gathering-map-loot">
-                              Có thể tìm: {[
-                                selectedResource?.name,
-                                ...selectedGatheringActivity.ordinaryByproducts.map((drop) => itemDefinitions[drop.itemId].name),
-                                itemDefinitions[selectedGatheringActivity.luckyDrop.itemId].name,
-                              ].filter((name): name is string => Boolean(name)).filter((name, index, list) => list.indexOf(name) === index).join(' · ')}
-                            </small>
-                          )}
-                        </>
-                      )}
+                      : <small>
+                        {getNodeUnlockIssue(gameState, selectedNode.id)
+                          ? 'Chưa mở khóa'
+                          : selectedNodeState?.available
+                            ? `${selectedNodeState.available} còn lại`
+                            : `Hồi sau ${selectedNodeRespawn} giây`}
+                      </small>}
                   </div>
                 </div>
+                {!isFishingLocationSelected && selectedGatheringActivity && (
+                  <small className="gathering-map-loot">
+                    Nhặt được: {[
+                      selectedResource?.name,
+                      ...selectedGatheringActivity.ordinaryByproducts.map((drop) => itemDefinitions[drop.itemId].name),
+                      itemDefinitions[selectedGatheringActivity.luckyDrop.itemId].name,
+                    ]
+                      .filter((name): name is string => Boolean(name))
+                      .filter((name, index, list) => list.indexOf(name) === index)
+                      .slice(0, 3)
+                      .join(' · ')}
+                  </small>
+                )}
 
                 <div className="gathering-map-actions">
                   {active && activeActivity && (
@@ -464,7 +540,7 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
                         <span aria-hidden="true">✦</span>
                         {active?.activityId === selectedGatheringActivity?.id
                           ? 'Đang thu hoạch…'
-                          : `Thu hoạch ${selectedResource?.name ?? 'tại đây'}`}
+                          : 'Thu hoạch'}
                       </button>
                     )}
                   </div>
@@ -513,8 +589,6 @@ export function GatheringPage({ asPanel = false }: { asPanel?: boolean }) {
         </div>
         <div className="stamina-chip">ϟ <strong>{gameState.survival.stamina.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%</strong> thể lực</div>
       </div>
-      <FishingBetaRoadmap />
-
       {isFishingActive && active && (
         <FishingMinigame
           key={active.startedAt}

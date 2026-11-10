@@ -6,7 +6,10 @@ import {
   discardItems,
   equipBackpack,
   equipWeapon,
+  getCarriedWeight,
+  getCarriedWeightLimit,
   initializeFoodFreshness,
+  isInventoryOverloaded,
   spoilExpiredFood,
   transferItems,
   repairItem,
@@ -37,6 +40,23 @@ function createRepairState(itemId: ItemId, materials: readonly ItemQuantity[], e
 }
 
 describe('inventoryService', () => {
+  it('calculates carried weight and enforces the capacity from available bag slots', () => {
+    const nearlyFullBag = {
+      ...newPlayerGameState.inventory,
+      slots: [{ itemId: 'item_wood' as const, quantity: 59 }],
+    }
+    const overloadedBag = {
+      ...nearlyFullBag,
+      slots: [{ itemId: 'item_wood' as const, quantity: 60 }],
+    }
+
+    expect(getCarriedWeight(initialGameState.inventory)).toBe(15)
+    expect(getCarriedWeightLimit(newPlayerGameState.inventory)).toBe(30)
+    expect(isInventoryOverloaded(nearlyFullBag)).toBe(false)
+    expect(isInventoryOverloaded(overloadedBag)).toBe(true)
+    expect(getCarriedWeightLimit(initialGameState.inventory)).toBe(60)
+  })
+
   it('moves an item stack between containers without mutating the inputs', () => {
     const result = transferItems(
       initialGameState.inventory,

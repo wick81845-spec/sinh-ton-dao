@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useGame } from '../../../app/providers/useGame'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import type { ItemContainer, ItemId } from '../../../shared/types/game'
+import { carriedWeightPerSlotKg, getCarriedWeight } from '../services/inventoryService'
 import { survivalConfig } from '../../survival/data/survivalConfig'
 import { SurvivalMeter, type SurvivalStatName } from '../../survival/components/SurvivalMeter'
 import { BodyExposureMeters } from '../../survival/components/BodyExposureMeters'
@@ -54,10 +55,11 @@ function ContainerPanel({
   const [transferAmounts, setTransferAmounts] = useState<Record<string, number>>({})
   const occupiedSlots = container.slots.length
   const capacity = Math.max(1, container.maxSlots)
-  const totalWeight = container.slots.reduce(
-    (total, slot) => total + itemDefinitions[slot.itemId].weight * slot.quantity,
-    0,
-  )
+  const totalWeight = getCarriedWeight(container)
+  const weightLimit = capacity * carriedWeightPerSlotKg
+  const weightRatio = totalWeight / weightLimit
+  const isOverloaded = kind === 'bag' && weightRatio >= 1
+  const isEncumbered = kind === 'bag' && weightRatio >= 0.75
   const slots = Array.from({ length: container.maxSlots }, (_, index) => container.slots[index])
 
   return (
@@ -76,6 +78,27 @@ function ContainerPanel({
       <div className="container-capacity inventory-capacity-bar">
         <span><i style={{ width: `${Math.min(100, occupiedSlots / capacity * 100)}%` }} /></span>
       </div>
+      {kind === 'bag' && (
+        <>
+          <div className="container-capacity-copy inventory-weight-copy">
+            <span>Tải trọng</span>
+            <strong>{totalWeight.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} / {weightLimit.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} kg</strong>
+            <em className={isOverloaded ? 'is-overloaded' : isEncumbered ? 'is-encumbered' : ''}>
+              {isOverloaded ? 'Quá tải · không thể làm việc' : isEncumbered ? 'Nặng người' : 'Ổn định'}
+            </em>
+          </div>
+          <div
+            className={`container-capacity inventory-weight-bar${isOverloaded ? ' is-overloaded' : isEncumbered ? ' is-encumbered' : ''}`}
+            role="progressbar"
+            aria-label="Khối lượng hành trang"
+            aria-valuemin={0}
+            aria-valuemax={weightLimit}
+            aria-valuenow={Math.min(totalWeight, weightLimit)}
+          >
+            <span><i style={{ width: `${Math.min(100, weightRatio * 100)}%` }} /></span>
+          </div>
+        </>
+      )}
       <div className={`inventory-slot-grid${kind === 'storage' ? ' inventory-storage-grid' : ''}`} aria-label={title}>
         {slots.map((slot, index) => {
           if (!slot) {
@@ -97,6 +120,17 @@ function ContainerPanel({
             >
               <span className="inventory-slot-index">{String(index + 1).padStart(2, '0')}</span>
               <span className="inventory-slot-count">×{slot.quantity}</span>
+              {kind === 'bag' && onDiscard && (
+                <button
+                  className="inventory-slot-discard"
+                  type="button"
+                  aria-label={`Vứt ${item.name}`}
+                  title={`Vứt tất cả ${item.name}`}
+                  onClick={() => onDiscard(slot.itemId, slot.quantity)}
+                >
+                  <span aria-hidden="true">🗑</span>
+                </button>
+              )}
               <div className="inventory-slot-art">
                 <img className={`resource-icon ${item.tone}`} src={item.image} alt="" aria-hidden="true" />
               </div>
@@ -112,17 +146,27 @@ function ContainerPanel({
               )}
               <div className="inventory-slot-actions">
                 {kind === 'bag' && item.usable && onUse && (
-                  <button className="inventory-slot-primary" type="button" onClick={() => onUse(slot.itemId)}>Dùng 1</button>
+                  <button
+                    className="inventory-slot-primary"
+                    type="button"
+                    aria-label={`Dùng ${item.name}`}
+                    title={`Dùng 1 ${item.name}`}
+                    onClick={() => onUse(slot.itemId)}
+                  >
+                    Dùng
+                  </button>
                 )}
                 <button
                   className={kind === 'bag' && item.usable && onUse ? 'inventory-slot-secondary' : 'inventory-slot-primary'}
                   type="button"
+                  aria-label={`${kind === 'bag' ? 'Cất tất cả' : 'Lấy tất cả'} ${item.name}`}
+                  title={`${kind === 'bag' ? 'Cất tất cả' : 'Lấy tất cả'} ${item.name}`}
                   onClick={() => onTransfer(slot.itemId, slot.quantity)}
                 >
-                  {kind === 'bag' ? 'Cất tất cả' : 'Lấy tất cả'}
+                  {kind === 'bag' ? 'Cất' : 'Lấy'}
                 </button>
                 <details className="inventory-slot-more">
-                  <summary>Thao tác khác</summary>
+                  <summary aria-label="Thao tác khác" title="Thao tác khác">Khác</summary>
                   <div className="inventory-slot-more-panel">
                     {kind === 'bag' && slot.itemId === 'item_backpack' && onEquipBackpack && (
                       <button className="small-action" type="button" onClick={onEquipBackpack}>Trang bị ba lô</button>
