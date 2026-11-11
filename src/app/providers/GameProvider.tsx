@@ -1004,6 +1004,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         randomWorldEventSeed: restoredBase.randomWorldEventSeed
           ?? (playerId ? `account:${playerId}` : `local:${restoredBase.character.id}`),
         tutorialIntroCompleted: !shouldShowTutorialIntro(restoredBase, Boolean(save)),
+        resourceNodes: refreshResourceNodes(restoredBase.resourceNodes, now),
         isResting: false,
         weather: restoredWeatherState,
         character: {

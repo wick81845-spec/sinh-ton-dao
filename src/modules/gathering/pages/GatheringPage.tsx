@@ -41,6 +41,12 @@ import * as collectBurst from 'pixelfx/fx/pickups/collect-burst'
 
 const secondsFormatter = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 })
 
+function formatRespawnCountdown(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
 function getMapFitZoom(): number {
   return window.matchMedia('(max-width: 760px)').matches ? 1.25 : 1
 }
@@ -233,9 +239,11 @@ export function GatheringPage({
   const selectedGatheringActivity = gatheringActivities.find((activity) => activity.nodeId === selectedNode.id)
   const selectedResource = getResourceDefinition(selectedNode.resourceId)
   const selectedNodeState = gameState.resourceNodes.find((entry) => entry.nodeId === selectedNode.id)
-  const selectedNodeRespawn = selectedNodeState?.respawnAt
-    ? Math.max(0, Math.ceil((selectedNodeState.respawnAt - now) / 1000))
-    : selectedNode.respawnSeconds
+  const selectedNodeRespawn = selectedNodeState && selectedNodeState.available < selectedNode.capacity
+    ? selectedNodeState.respawnAt !== null
+      ? Math.max(0, Math.ceil((selectedNodeState.respawnAt - now) / 1000))
+      : selectedNode.respawnSeconds
+    : null
   const activeActivity = active?.activityId === randomGatheringActivityId
     ? { name: 'Thu thập quanh đây' }
     : active && gatheringActivities.find((activity) => activity.id === active.activityId)
@@ -491,9 +499,9 @@ export function GatheringPage({
                       : <small>
                         {getNodeUnlockIssue(gameState, selectedNode.id)
                           ? 'Chưa mở khóa'
-                          : selectedNodeState?.available
-                            ? `${selectedNodeState.available} còn lại`
-                            : `Hồi sau ${selectedNodeRespawn} giây`}
+                            : selectedNodeState?.available
+                              ? `${selectedNodeState.available} còn lại${selectedNodeRespawn === null ? '' : ` · +1 sau ${formatRespawnCountdown(selectedNodeRespawn)}`}`
+                              : `+1 tài nguyên sau ${formatRespawnCountdown(selectedNodeRespawn ?? selectedNode.respawnSeconds)}`}
                       </small>}
                   </div>
                 </div>
@@ -687,8 +695,10 @@ export function GatheringPage({
         {resourceNodeDefinitions.map((node) => {
           const currentNode = gameState.resourceNodes.find((entry) => entry.nodeId === node.id)
           const available = currentNode?.available ?? 0
-          const respawnSeconds = currentNode?.respawnAt
-            ? Math.max(0, Math.ceil((currentNode.respawnAt - now) / 1000))
+          const respawnSeconds = available < node.capacity
+            ? currentNode?.respawnAt !== null && currentNode?.respawnAt !== undefined
+              ? Math.max(0, Math.ceil((currentNode.respawnAt - now) / 1000))
+              : node.respawnSeconds
             : null
           return (
             <article className={`resource-node-card${getNodeUnlockIssue(gameState, node.id) ? ' is-locked' : ''}`} key={node.id}>
@@ -705,7 +715,9 @@ export function GatheringPage({
               <span className={`node-availability${available === 0 ? ' depleted' : ''}`}>
                 {getNodeUnlockIssue(gameState, node.id)
                   ? 'Chưa mở khóa'
-                  : available > 0 ? `${available} còn lại` : `Hồi sau ${respawnSeconds ?? node.respawnSeconds}s`}
+                  : available > 0
+                    ? `${available} còn lại${respawnSeconds === null ? '' : ` · +1 sau ${formatRespawnCountdown(respawnSeconds)}`}`
+                    : `+1 tài nguyên sau ${formatRespawnCountdown(respawnSeconds ?? node.respawnSeconds)}`}
               </span>
               {getNodeUnlockIssue(gameState, node.id) && (
                 <small className="activity-blocked">{getNodeUnlockIssue(gameState, node.id)}</small>

@@ -10818,6 +10818,10 @@ body {
 .gathering-page .node-availability {
   padding: 4px 7px;
   font-size: 10px;
+  max-width: 46%;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
 }
 
 .gathering-page .gathering-section-heading {
@@ -11365,6 +11369,205 @@ body {
   background: color-mix(in srgb, var(--sea-soft) 26%, var(--paper));
 }
 
+.admin-console-world,
+.admin-player-control {
+  padding: 18px;
+  border-radius: 15px;
+}
+
+.admin-panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 3px;
+}
+
+.admin-panel-heading > span {
+  display: grid;
+  flex: 0 0 36px;
+  width: 36px;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--sea-dark) 12%, var(--paper));
+  color: var(--sea-dark);
+  font-size: 17px;
+}
+
+.admin-panel-heading h3 {
+  margin: 0 0 3px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.admin-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-action-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--paper);
+}
+
+.admin-action-card > label,
+.admin-inline-fields label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.admin-action-card select,
+.admin-action-card input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.admin-inline-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(90px, .7fr);
+  gap: 9px;
+}
+
+.admin-item-availability {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.admin-primary-action {
+  border-color: color-mix(in srgb, var(--sea-dark) 30%, var(--line));
+  background: var(--sea-dark);
+  color: white;
+  font-weight: 750;
+}
+
+.admin-primary-action:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.admin-primary-action:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+.admin-player-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.admin-player-location > span {
+  color: var(--sea-dark);
+  font-size: 16px;
+}
+
+.admin-player-location strong {
+  color: var(--ink);
+}
+
+.admin-item-stores {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-item-store {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--sea-soft) 18%, var(--paper));
+}
+
+.admin-item-store > strong {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 10px;
+}
+
+.admin-item-store > strong span,
+.admin-item-store > small {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.admin-item-store ul {
+  display: grid;
+  gap: 5px;
+  max-height: 150px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-item-store li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.admin-item-store li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-item-store li b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-power-actions {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, #9b75c6 25%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, #9b75c6 7%, var(--paper));
+}
+
+.admin-power-button {
+  border-color: color-mix(in srgb, #8b5db9 38%, var(--line));
+  color: color-mix(in srgb, #70469a 82%, var(--ink));
+  font-weight: 750;
+}
+
+.admin-power-actions small {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.admin-advanced-heading {
+  margin-top: 6px;
+}
+
 .admin-player-current-stats {
   display: grid;
   gap: 10px;
@@ -11512,6 +11715,20 @@ body {
 }
 
 @media (max-width: 650px) {
+  .admin-console-heading {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .admin-console-badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .admin-action-grid,
+  .admin-item-stores {
+    grid-template-columns: 1fr;
+  }
+
   .body-exposure-meters {
     grid-template-columns: 1fr;
   }
