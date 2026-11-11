@@ -19,8 +19,8 @@ describe('tutorialSteps', () => {
       'build-leaf-shelter',
       'explore-nearby-island',
       'research-basic-tools',
-      'build-workbench',
       'research-island-settlement',
+      'build-workbench',
     ])
     expect(tutorialSteps.every((step) => step.destination.startsWith('/'))).toBe(true)
     expect(getNextTutorialStep([])?.id).toBe('gather-resources')
@@ -75,7 +75,7 @@ describe('tutorialSteps', () => {
     expect(inferTutorialProgress({
       ...newPlayerGameState,
       discoveredIslandIds: ['island_001', 'island_002'],
-    })).toEqual(tutorialSteps.map((step) => step.id))
+    })).toEqual(tutorialSteps.slice(0, 5).map((step) => step.id))
   })
 
   it('does not infer unfinished missions from XP earned during the new tutorial', () => {
@@ -85,7 +85,7 @@ describe('tutorialSteps', () => {
     })).toEqual([])
   })
 
-  it('does not insert an extra level task and infers completed settlement objectives', () => {
+  it('does not insert an extra level task and keeps workbench pending after settlement research', () => {
     const levelTwoState = {
       ...newPlayerGameState,
       character: { ...newPlayerGameState.character, level: 2 },
@@ -98,8 +98,42 @@ describe('tutorialSteps', () => {
         ...levelTwoState.character,
         researchedTechnologyIds: ['tech_basic_tools', 'tech_island_settlement'],
       },
+      discoveredIslandIds: ['island_001', 'island_002'],
+      buildings: [
+        {
+          id: 'campfire-1',
+          definitionId: 'building_campfire',
+          islandId: newPlayerGameState.character.homeIslandId,
+          level: 1,
+          health: 80,
+          status: 'completed' as const,
+        },
+        {
+          id: 'shelter-1',
+          definitionId: 'building_shelter',
+          islandId: newPlayerGameState.character.homeIslandId,
+          level: 1,
+          health: 180,
+          status: 'completed' as const,
+        },
+      ],
     }
-    expect(inferTutorialProgress(researchedSettlementState)).toEqual(tutorialSteps.map((step) => step.id))
+    const inferredProgress = inferTutorialProgress(researchedSettlementState)
+    expect(inferredProgress).not.toContain('build-workbench')
+    expect(getNextTutorialStep(inferredProgress)?.id).toBe('build-workbench')
+
+    const builtWorkbenchState = {
+      ...researchedSettlementState,
+      buildings: [{
+        id: 'workbench-1',
+        definitionId: 'building_workbench',
+        islandId: newPlayerGameState.character.homeIslandId,
+        level: 1,
+        health: 100,
+        status: 'completed' as const,
+      }],
+    }
+    expect(inferTutorialProgress(builtWorkbenchState)).toEqual(tutorialSteps.map((step) => step.id))
   })
 
   it('shows the plane intro to new players but skips it for returning saves', () => {

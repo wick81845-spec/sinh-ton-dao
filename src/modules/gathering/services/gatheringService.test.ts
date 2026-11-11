@@ -163,14 +163,11 @@ describe('gatheringService', () => {
   it('gates gathering locations by starter, exploration, and tool milestones', () => {
     expect(resourceNodeDefinitions).toHaveLength(17)
     expect(resourceNodeDefinitions.filter((node) => node.unlockStage === 'starter').map((node) => node.id))
-      .toEqual(['shoreline', 'sea-water', 'wild-grove', 'palm-grove'])
+      .toEqual(['shoreline', 'sea-water', 'wild-grove', 'palm-grove', 'freshwater-stream', 'tidal-rocks'])
     expect(resourceNodeDefinitions.filter((node) => node.unlockStage === 'exploration').map((node) => node.id))
-      .toEqual(['forest-edge', 'rocky-outcrop', 'riverbank-clay', 'resin-tree', 'bee-hive'])
+      .toEqual(['forest-edge', 'rocky-outcrop', 'fallen-tree', 'riverbank-clay', 'resin-tree', 'bee-hive'])
     expect(resourceNodeDefinitions.filter((node) => node.unlockStage === 'tool').map((node) => node.id))
       .toEqual([
-        'fallen-tree',
-        'freshwater-stream',
-        'tidal-rocks',
         'iron-deposit',
         'copper-deposit',
         'tin-deposit',
@@ -179,10 +176,11 @@ describe('gatheringService', () => {
       ])
     expect(getGatheringAvailability(initialGameState, 'collect-stones', 1000))
       .toContain('thám hiểm')
-    expect(getGatheringAvailability(initialGameState, 'collect-stream-water', 1000))
-      .toContain('Rìu gỗ')
+    expect(getGatheringAvailability(initialGameState, 'collect-stream-water', 1000)).toBeNull()
+    expect(getGatheringAvailability(initialGameState, 'collect-tidal-rocks', 1000)).toBeNull()
+    expect(getGatheringAvailability(exploredState, 'collect-fallen-tree', 1000)).toBeNull()
     expect(getGatheringAvailability(exploredState, 'chop-forest-wood', 1000))
-      .toContain('Rìu gỗ trong túi')
+      .toContain('Rìu gỗ trong túi hoặc ô trang bị')
     expect(getGatheringAvailability(stateWithAxe, 'collect-stream-water', 1000)).toBeNull()
     expect(getGatheringAvailability(initialGameState, 'collect-driftwood', 1000)).toBeNull()
     expect(getGatheringAvailability(initialGameState, 'pick-wild-fruit', 1000)).toBeNull()
@@ -190,6 +188,8 @@ describe('gatheringService', () => {
   })
 
   it('lets players mine and process island minerals with a stone pickaxe', () => {
+    expect(getGatheringAvailability(stateWithAxe, 'mine-iron-ore', 1000))
+      .toContain('Cuốc chim đá')
     const mineState = {
       ...stateWithAxe,
       character: { ...stateWithAxe.character, currentLocationId: 'island_004' },

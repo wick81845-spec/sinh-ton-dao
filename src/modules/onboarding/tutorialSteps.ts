@@ -65,19 +65,19 @@ export const tutorialSteps: readonly TutorialStep[] = [
     experienceReward: 0,
   },
   {
-    id: 'build-workbench',
-    title: 'Dựng bàn chế tạo',
-    description: 'Xây bàn chế tạo tại đảo nhà để mở rộng khả năng sản xuất.',
-    destination: '/building',
-    actionLabel: 'Mở xây dựng',
+    id: 'research-island-settlement',
+    title: 'Nghiên cứu định cư trên đảo',
+    description: 'Bạn đã đạt cấp 2. Nghiên cứu công nghệ định cư bằng vật liệu thô để mở khóa bàn chế tạo và công trình mới.',
+    destination: '/progression',
+    actionLabel: 'Mở tiến trình',
     experienceReward: 0,
   },
   {
-    id: 'research-island-settlement',
-    title: 'Nghiên cứu định cư trên đảo',
-    description: 'Bạn đã đạt cấp 2. Nghiên cứu công nghệ định cư để mở thêm công trình và hướng sinh tồn mới.',
-    destination: '/progression',
-    actionLabel: 'Mở tiến trình',
+    id: 'build-workbench',
+    title: 'Dựng bàn chế tạo',
+    description: 'Dùng gỗ, cành cây và dây bện để xây bàn chế tạo đã được mở khóa.',
+    destination: '/building',
+    actionLabel: 'Mở xây dựng',
     experienceReward: 0,
   },
 ]
@@ -124,9 +124,14 @@ export function inferTutorialProgress(state: GameSnapshot): string[] {
   const hasExplored = state.discoveredIslandIds.includes('island_002')
     || state.explorationLog.some((entry) => entry.taskId === 'survey-nearby-island')
 
-  if (hasExplored || researchedSettlement) return tutorialSteps.map((step) => step.id)
-
   const completed = new Set<string>()
+  if (researchedSettlement && hasCompletedWorkbench) {
+    return tutorialSteps.map((step) => step.id)
+  }
+  if (hasExplored) {
+    tutorialSteps.slice(0, 5).forEach((step) => completed.add(step.id))
+  }
+
   const hasUntrackedGameplayProgress = state.tutorialCompletedStepIds === undefined
     && (state.character.level > 1 || state.character.experience > 0)
   if (hasAxe || hasCampfire || hasShelter || researchedTools || hasCompletedWorkbench || hasUntrackedGameplayProgress) {

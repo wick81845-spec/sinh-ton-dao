@@ -1239,19 +1239,25 @@ export function GameProvider({ children }: { children: ReactNode }) {
         hasRestingCampfire,
       )
       const survival = ailmentAdvance.state.survival
+      const resourceNodes = refreshResourceNodes(stateAfterFood.resourceNodes, now)
+      const resourceNodesChanged = resourceNodes.some((node, index) => (
+        node.available !== stateAfterFood.resourceNodes[index]?.available
+        || node.respawnAt !== stateAfterFood.resourceNodes[index]?.respawnAt
+      ))
       let nextState: GameSnapshot = {
         ...ailmentAdvance.state,
         survival,
         character: stateAfterFood.character.status === 'alive' && survival.health === 0
           ? { ...stateAfterFood.character, status: 'dead' }
           : stateAfterFood.character,
-        resourceNodes: refreshResourceNodes(stateAfterFood.resourceNodes, now),
+        resourceNodes,
       }
       if (stateAfterFood.character.status === 'alive' && survival.health === 0) {
         setNotice('Bạn đã gục ngã do sức khỏe cạn kiệt.')
         gameEventBus.emit('character:died', { characterId: currentState.character.id })
       }
-      let shouldPersist = freshness.changed
+      let shouldPersist = resourceNodesChanged
+        || freshness.changed
         || spoilage.changed
         || fireAdvance.extinguishedBuildingIds.length > 0
         || ailmentAdvance.changed

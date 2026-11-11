@@ -4,9 +4,10 @@ import { addItems } from '../../inventory/services/inventoryService'
 import { buildingDefinitions } from '../data/buildingDefinitions'
 import { completeConstructions, getShelterRestBonusMultiplier, getUpgradeAvailability, startConstruction, upgradeBuilding } from './buildingService'
 
-function stateWithWorkbenchMaterials() {
+function stateWithWorkbenchMaterials(researchedTechnologyIds = ['tech_island_settlement']) {
   return {
     ...initialGameState,
+    character: { ...initialGameState.character, researchedTechnologyIds },
     inventory: {
       ...initialGameState.inventory,
       slots: [
@@ -21,6 +22,14 @@ function stateWithWorkbenchMaterials() {
 }
 
 describe('buildingService', () => {
+  it('requires island settlement research before building the workbench', () => {
+    expect(startConstruction(stateWithWorkbenchMaterials([]), 'building_workbench', 1_000))
+      .toMatchObject({
+        ok: false,
+        message: 'Cần nghiên cứu công nghệ mở khóa công trình này.',
+      })
+  })
+
   it('consumes construction materials once and completes the building after its timer', () => {
     const started = startConstruction(stateWithWorkbenchMaterials(), 'building_workbench', 1_000)
     if (!started.ok) throw new Error(started.message)
@@ -127,9 +136,10 @@ describe('buildingService', () => {
   })
 
   it('builds on the island the survivor is currently visiting', () => {
+    const readyState = stateWithWorkbenchMaterials()
     const state = {
-      ...stateWithWorkbenchMaterials(),
-      character: { ...initialGameState.character, currentLocationId: 'island_002' },
+      ...readyState,
+      character: { ...readyState.character, currentLocationId: 'island_002' },
     }
 
     expect(startConstruction(state, 'building_workbench', 1_000)).toMatchObject({

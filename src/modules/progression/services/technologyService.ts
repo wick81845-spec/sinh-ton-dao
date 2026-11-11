@@ -42,7 +42,7 @@ export function getTechnologyResearchAvailability(state: GameSnapshot, technolog
   const missingCost = technology.researchCost.find((cost) => (
     countItem(state.inventory, cost.itemId) + countItem(state.storage, cost.itemId) < cost.quantity
   ))
-  if (missingCost) return 'Không đủ tài nguyên trong túi đồ để nghiên cứu.'
+  if (missingCost) return 'Không đủ tài nguyên trong hành trang hoặc rương đảo nhà để nghiên cứu.'
   return null
 }
 
@@ -71,6 +71,8 @@ export function researchTechnology(state: GameSnapshot, technologyId: string): T
 
   const character = awardExperience(state.character, technology.skillId, 20)
   const researchedTechnologyIds = [...(character.researchedTechnologyIds ?? []), technology.id]
+  const skillExperienceEarned = (character.skillExperience?.[technology.skillId] ?? 0)
+    - (state.character.skillExperience?.[technology.skillId] ?? 0)
   return {
     ok: true,
     state: {
@@ -79,6 +81,6 @@ export function researchTechnology(state: GameSnapshot, technologyId: string): T
       storage,
       character: { ...character, researchedTechnologyIds },
     },
-    message: `Đã nghiên cứu ${technology.name}; nhận 20 XP chuyên môn.`,
+    message: `Đã nghiên cứu ${technology.name}; nhận ${skillExperienceEarned} XP chuyên môn.`,
   }
 }

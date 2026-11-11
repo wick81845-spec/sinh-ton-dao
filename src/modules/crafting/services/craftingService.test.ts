@@ -15,27 +15,30 @@ import { itemDefinitions } from '../../../data/items/itemDefinitions'
 function gameWithWorkbench() {
   const preparedState = {
     ...initialGameState,
+    character: { ...initialGameState.character, level: 2, experience: 100 },
     inventory: {
       ...initialGameState.inventory,
       slots: [
         ...initialGameState.inventory.slots.filter((slot) => slot.itemId !== 'item_wood' && slot.itemId !== 'item_stone'),
-        { itemId: 'item_wood' as const, quantity: 12 },
+        { itemId: 'item_wood' as const, quantity: 17 },
         { itemId: 'item_stone' as const, quantity: 8 },
         { itemId: 'item_branch' as const, quantity: 5 },
         { itemId: 'item_rope' as const, quantity: 2 },
       ],
     },
   }
-  const construction = startConstruction(preparedState, 'building_workbench', 1_000)
+  const toolsResearch = researchTechnology(preparedState, 'tech_basic_tools')
+  if (!toolsResearch.ok) throw new Error(toolsResearch.message)
+  const settlementResearch = researchTechnology(toolsResearch.state, 'tech_island_settlement')
+  if (!settlementResearch.ok) throw new Error(settlementResearch.message)
+  const construction = startConstruction(settlementResearch.state, 'building_workbench', 1_000)
   if (!construction.ok) throw new Error(construction.message)
   const completed = completeConstructions(construction.state, 7_000).state
-  const research = researchTechnology(completed, 'tech_basic_tools')
-  if (!research.ok) throw new Error(research.message)
   return {
-    ...research.state,
+    ...completed,
     inventory: {
-      ...research.state.inventory,
-      slots: research.state.inventory.slots.map((slot) => slot.itemId === 'item_wood'
+      ...completed.inventory,
+      slots: completed.inventory.slots.map((slot) => slot.itemId === 'item_wood'
         ? { ...slot, quantity: slot.quantity + 3 }
         : slot),
     },
@@ -666,7 +669,7 @@ describe('craftingService', () => {
     if (!queued.ok) throw new Error(queued.message)
 
     expect(queued.state.inventory.slots).toContainEqual({ itemId: 'item_wood', quantity: 1 })
-    expect(queued.state.inventory.slots).toContainEqual({ itemId: 'item_stone', quantity: 4 })
+    expect(queued.state.inventory.slots).toContainEqual({ itemId: 'item_stone', quantity: 1 })
     expect(completeCrafting(queued.state, 15_999).status).toBe('pending')
 
     const completed = completeCrafting(queued.state, 16_000)

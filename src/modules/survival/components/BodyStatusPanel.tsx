@@ -79,15 +79,14 @@ export function BodyStatusPanel({ stats, characterName, appearance, weather, isR
                     <strong>{effect.name}</strong>
                     <span>{severityLabels[effect.severity]}</span>
                   </div>
-                  <p>{effect.appearance}</p>
-                  <small className="body-effect-cause">Nguyên nhân: {effect.cause}</small>
-                  <small>{effect.impact}</small>
+                  <small><strong>Nguyên nhân:</strong> {effect.cause}</small>
+                  <small><strong>Ảnh hưởng:</strong> {effect.impact}</small>
+                  <small className="body-effect-resolution"><strong>Cách xử lý:</strong> {effect.resolution}</small>
                 </div>
               </article>
             ))}
         </div>
       </div>
-      <p className="body-status-footnote">Mưa và nhiệt độ tác động tích lũy lên thân nhiệt, độ ướt và các tình trạng cơ thể; nơi trú và vật phẩm điều trị giúp giảm nguy cơ.</p>
     </section>
   )
 }

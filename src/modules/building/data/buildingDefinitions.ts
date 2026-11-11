@@ -39,6 +39,7 @@ export const buildingDefinitions: readonly BuildingDefinition[] = [
       2: [{ itemId: 'item_wood', quantity: 4 }, { itemId: 'item_stone', quantity: 2 }],
     },
     upgradeDurationSeconds: { 2: 8 },
+    technologyId: 'tech_island_settlement',
   },
   {
     id: 'building_kiln',

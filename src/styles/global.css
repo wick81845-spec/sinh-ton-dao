@@ -10527,7 +10527,7 @@ body {
   color: color-mix(in srgb, var(--muted) 86%, var(--ink));
 }
 
-.body-effect-copy .body-effect-cause {
+.body-effect-copy .body-effect-resolution {
   color: var(--ink);
   font-weight: 650;
 }

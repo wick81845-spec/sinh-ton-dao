@@ -91,6 +91,36 @@ describe('bodyStatusService', () => {
     expect(ill.find((effect) => effect.id === 'hypothermia')?.name).toBe('Hạ thân nhiệt')
   })
 
+  it('explains sprain cause, stat impact, and treatment concisely', () => {
+    const sprain = getBodyStatusEffects(initialGameState.survival, undefined, true, 0, [
+      { id: 'sprain', elapsedMs: 0 },
+    ]).find((effect) => effect.id === 'sprain')
+
+    expect(sprain).toMatchObject({
+      cause: 'Di chuyển quá sức hoặc địa hình hiểm trở',
+      impact: 'Giảm sức khỏe và thể lực theo thời gian; mức độ nặng làm hao hụt nhanh hơn.',
+      resolution: 'Dùng Thuốc đắp thảo mộc.',
+    })
+  })
+
+  it('provides a resolution for every displayed body status', () => {
+    const effects = getBodyStatusEffects({
+      ...initialGameState.survival,
+      hunger: 0,
+      thirst: 0,
+      stamina: 0,
+      bodyTemperature: 34,
+      wetness: 80,
+    }, undefined, false, 0, [
+      { id: 'bleeding', elapsedMs: 0 },
+      { id: 'fracture', elapsedMs: 0 },
+      { id: 'poisoning', elapsedMs: 0 },
+    ])
+
+    expect(effects.length).toBeGreaterThan(0)
+    expect(effects.every((effect) => effect.resolution.length > 0)).toBe(true)
+  })
+
   it('shows accumulated wetness and body-temperature effects', () => {
     const effects = getBodyStatusEffects({
       ...initialGameState.survival,

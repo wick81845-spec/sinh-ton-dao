@@ -7,6 +7,7 @@ import {
   resourceNodeDefinitions,
 } from '../data/gatheringConfig'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
+import { getResourceDefinition } from '../../../data/resources/resourceDefinitions'
 import { addItems, degradeItemDurability, hasItemOrEquipped } from '../../inventory/services/inventoryService'
 import type { GameSnapshot, ItemId, ItemQuantity, ResourceNodeState } from '../../../shared/types/game'
 import { awardExperience } from '../../progression/services/progressionService'
@@ -92,9 +93,9 @@ export function getNodeUnlockIssue(state: GameSnapshot, nodeId: string): string 
   if (node.unlockStage === 'exploration' && state.explorationLog.length === 0) {
     return 'Hãy hoàn thành một lần thám hiểm để mở khóa địa điểm này.'
   }
-  if (node.unlockStage === 'tool'
-    && !hasItemOrEquipped(state, 'item_wooden_axe')) {
-    return 'Cần có Rìu gỗ để mở khóa các địa điểm sâu hơn.'
+  const toolItemId = getResourceDefinition(node.resourceId)?.harvesting.toolItemId
+  if (toolItemId && !hasItemOrEquipped(state, toolItemId)) {
+    return `Cần có ${itemDefinitions[toolItemId].name} trong túi hoặc ô trang bị.`
   }
   return null
 }

@@ -111,7 +111,7 @@ export const resourceNodeDefinitions: readonly ResourceNodeDefinition[] = [
     capacity: 22,
     respawnSeconds: 240,
     resourceId: 'rotten_wood',
-    unlockStage: 'tool',
+    unlockStage: 'exploration',
   },
   {
     id: 'freshwater-stream',
@@ -121,7 +121,7 @@ export const resourceNodeDefinitions: readonly ResourceNodeDefinition[] = [
     capacity: 24,
     respawnSeconds: 150,
     resourceId: 'fresh_water',
-    unlockStage: 'tool',
+    unlockStage: 'starter',
   },
   {
     id: 'tidal-rocks',
@@ -131,7 +131,7 @@ export const resourceNodeDefinitions: readonly ResourceNodeDefinition[] = [
     capacity: 18,
     respawnSeconds: 180,
     resourceId: 'crab',
-    unlockStage: 'tool',
+    unlockStage: 'starter',
   },
   {
     id: 'iron-deposit',

@@ -12,12 +12,13 @@ export interface BodyStatusEffect {
   appearance: string
   cause: string
   impact: string
+  resolution: string
   icon: string
 }
 
-const ailmentDetails: Readonly<Record<string, Omit<BodyStatusEffect, 'severity'>>> = {
+const ailmentDetails: Readonly<Record<string, Omit<BodyStatusEffect, 'severity' | 'resolution'>>> = {
   sunburn: { id: 'sunburn', name: 'Cháy nắng', appearance: 'Da đỏ rát sau thời gian dài dưới nắng', cause: 'Phơi nắng lâu ngoài trời', impact: 'Gây khó chịu và làm cơ thể suy yếu.', icon: '☀' },
-  sprain: { id: 'sprain', name: 'Bong gân', appearance: 'Cử động khó khăn, khớp đau nhức', cause: 'Di chuyển quá sức hoặc địa hình hiểm trở', impact: 'Làm giảm sức lực khi hoạt động.', icon: '⌁' },
+  sprain: { id: 'sprain', name: 'Bong gân', appearance: 'Cử động khó khăn, khớp đau nhức', cause: 'Di chuyển quá sức hoặc địa hình hiểm trở', impact: 'Giảm sức khỏe và thể lực theo thời gian; mức độ nặng làm hao hụt nhanh hơn.', icon: '⌁' },
   fracture: { id: 'fracture', name: 'Gãy xương', appearance: 'Đau nhức, hạn chế vận động', cause: 'Chấn thương nặng', impact: 'Gây mất sức khỏe và giảm sức lực khi vận động.', icon: '✚' },
   blisters: { id: 'blisters', name: 'Phồng rộp', appearance: 'Da phồng rộp do cọ xát', cause: 'Di chuyển kéo dài', impact: 'Làm giảm sức lực khi tiếp tục hoạt động.', icon: '◌' },
   insectBites: { id: 'insectBites', name: 'Côn trùng cắn', appearance: 'Các vết cắn gây ngứa và sưng', cause: 'Côn trùng ngoài tự nhiên', impact: 'Có thể dẫn đến sốt nhiệt đới nếu không được chăm sóc.', icon: '✣' },
@@ -33,6 +34,55 @@ const ailmentDetails: Readonly<Record<string, Omit<BodyStatusEffect, 'severity'>
   exhaustion: { id: 'exhaustion', name: 'Kiệt sức', appearance: 'Thở dốc, cơ thể rã rời', cause: 'Trạng thái kiệt sức cũ', impact: 'Mức thể lực hiện tại thể hiện trực tiếp tình trạng mệt mỏi.', icon: 'ϟ' },
 }
 
+const statusResolutions: Readonly<Record<string, string>> = {
+  sunburn: 'Tránh nắng, vào chỗ râm và uống nước đã đun sôi.',
+  sprain: 'Dùng Thuốc đắp thảo mộc.',
+  fracture: 'Dùng Thuốc đắp thảo mộc và nghỉ ngơi.',
+  blisters: 'Dùng Thuốc đắp thảo mộc, hạn chế di chuyển.',
+  insectBites: 'Dùng Thuốc đắp thảo mộc.',
+  tropicalFever: 'Dùng Thuốc giải độc.',
+  diarrhea: 'Dùng Thuốc giải độc và uống nước an toàn.',
+  allergy: 'Dùng Thuốc giải độc.',
+  smoke: 'Rời khỏi khu vực khói và dùng Thuốc giải độc.',
+  marineSting: 'Dùng Thuốc đắp thảo mộc.',
+  dehydration: 'Uống Nước đã đun sôi; hồi chỉ số khát lên ít nhất 50.',
+  burns: 'Dùng Thuốc đắp thảo mộc.',
+  frostbite: 'Giữ cơ thể khô, đến gần lửa trại hoặc uống Trà thảo mộc nóng.',
+  animalBite: 'Dùng Thuốc đắp thảo mộc.',
+  bleeding: 'Dùng Thuốc đắp thảo mộc ngay để tránh nhiễm trùng.',
+  infection: 'Dùng Thuốc đắp thảo mộc.',
+  poisoning: 'Dùng Thuốc giải độc.',
+  heatstroke: 'Rời nắng nóng, trú mát và uống Nước đã đun sôi.',
+  hypothermia: 'Trú ấm, đến gần lửa trại hoặc uống Trà thảo mộc nóng.',
+  'body-temperature': 'Khi nóng hãy trú mát; khi lạnh hãy giữ ấm và làm khô người.',
+  'wet-clothes': 'Tránh mưa và ở nơi khô ráo để quần áo khô dần.',
+  'hunger-rising': 'Ăn thức ăn.',
+  hungry: 'Ăn thức ăn.',
+  malnutrition: 'Ăn thức ăn và nghỉ ngơi.',
+  'hunger-critical': 'Ăn ngay và nghỉ ngơi.',
+  starving: 'Ăn ngay; nghỉ ngơi để hồi phục.',
+  'well-fed': 'Không cần xử lý; duy trì ăn uống đầy đủ.',
+  'thirst-rising': 'Uống nước an toàn.',
+  thirsty: 'Uống nước an toàn.',
+  'thirst-danger': 'Uống nước an toàn và nghỉ ngơi.',
+  'thirst-critical': 'Uống nước an toàn ngay.',
+  dehydrated: 'Uống Nước đã đun sôi ngay.',
+  hydrated: 'Không cần xử lý; tiếp tục uống nước an toàn khi khát.',
+  'slightly-tired': 'Nghỉ ngơi.',
+  tired: 'Dừng hoạt động và nghỉ ngơi.',
+  exhausted: 'Dừng hoạt động, ăn uống và nghỉ ngơi.',
+  'severely-exhausted': 'Dừng hoạt động, ăn uống và nghỉ ngơi.',
+  'stamina-depleted': 'Nghỉ ngơi; vẫn có thể ăn uống và dùng vật phẩm.',
+  'critical-health': 'Dùng Thuốc đắp thảo mộc, ăn uống và nghỉ ngơi.',
+  healthy: 'Không cần xử lý.',
+  recovering: 'Tiếp tục nghỉ ngơi và giữ no bụng, đủ nước.',
+  sheltered: 'Ở trong lều khi cần tránh thời tiết.',
+  overheated: 'Vào nơi râm mát hoặc lều, uống Nước đã đun sôi.',
+  'cold-weather': 'Vào lều hoặc gần lửa trại, giữ quần áo khô và uống trà nóng.',
+  'rain-wet': 'Tìm nơi trú và chờ quần áo khô.',
+  vigorous: 'Không cần xử lý; thể trạng đang tốt.',
+}
+
 export function getBodyStatusEffects(
   stats: SurvivalStats,
   weather?: WeatherDefinition,
@@ -40,7 +90,7 @@ export function getBodyStatusEffects(
   shelterLevel = 0,
   ailments: SurvivalAilment[] = [],
 ): BodyStatusEffect[] {
-  const effects: BodyStatusEffect[] = []
+  const effects: Omit<BodyStatusEffect, 'resolution'>[] = []
 
   for (const ailment of ailments) {
     if (ailment.id === 'exhaustion') continue
@@ -321,5 +371,8 @@ export function getBodyStatusEffects(
     })
   }
 
-  return effects
+  return effects.map((effect) => ({
+    ...effect,
+    resolution: statusResolutions[effect.id] ?? 'Không cần xử lý.',
+  }))
 }
