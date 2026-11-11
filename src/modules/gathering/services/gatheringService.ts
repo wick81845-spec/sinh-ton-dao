@@ -185,6 +185,15 @@ export function refreshResourceNodes(nodes: ResourceNodeState[], now: number): R
   })
 }
 
+export function ensureResourceNodeStates(nodes: ResourceNodeState[] | undefined): ResourceNodeState[] {
+  const existingNodes = nodes ?? []
+  const existingNodeIds = new Set(existingNodes.map((node) => node.nodeId))
+  const missingNodes = initialResourceNodes.filter((node) => !existingNodeIds.has(node.nodeId))
+  return missingNodes.length === 0
+    ? existingNodes
+    : [...existingNodes, ...missingNodes.map((node) => ({ ...node }))]
+}
+
 export function startGathering(state: GameSnapshot, activityId: string, now: number): GatheringActionResult {
   const issue = getGatheringAvailability(state, activityId, now)
   if (issue) return { ok: false, message: issue }

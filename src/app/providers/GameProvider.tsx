@@ -20,7 +20,7 @@ import { attackCombat as resolveCombatTurn, retreatCombat as retreatFromCombat, 
 import { completeCrafting, queueRecipe } from '../../modules/crafting/services/craftingService'
 import type { FishProcessingItemId } from '../../modules/crafting/services/craftingService'
 import { completeExploration, startExploration } from '../../modules/exploration/services/explorationService'
-import { cancelGathering, completeGathering, failFishing as failFishingGathering, refreshResourceNodes, startGathering } from '../../modules/gathering/services/gatheringService'
+import { cancelGathering, completeGathering, ensureResourceNodeStates, failFishing as failFishingGathering, refreshResourceNodes, startGathering } from '../../modules/gathering/services/gatheringService'
 import { isFishingActivityId } from '../../modules/gathering/data/fishingConfig'
 import {
   consumeItem,
@@ -1004,7 +1004,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         randomWorldEventSeed: restoredBase.randomWorldEventSeed
           ?? (playerId ? `account:${playerId}` : `local:${restoredBase.character.id}`),
         tutorialIntroCompleted: !shouldShowTutorialIntro(restoredBase, Boolean(save)),
-        resourceNodes: refreshResourceNodes(restoredBase.resourceNodes, now),
+        resourceNodes: refreshResourceNodes(ensureResourceNodeStates(restoredBase.resourceNodes), now),
         isResting: false,
         weather: restoredWeatherState,
         character: {

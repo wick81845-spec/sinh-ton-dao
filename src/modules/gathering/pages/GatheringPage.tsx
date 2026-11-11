@@ -240,9 +240,8 @@ export function GatheringPage({
   const selectedResource = getResourceDefinition(selectedNode.resourceId)
   const selectedNodeState = gameState.resourceNodes.find((entry) => entry.nodeId === selectedNode.id)
   const selectedNodeRespawn = selectedNodeState && selectedNodeState.available < selectedNode.capacity
-    ? selectedNodeState.respawnAt !== null
-      ? Math.max(0, Math.ceil((selectedNodeState.respawnAt - now) / 1000))
-      : selectedNode.respawnSeconds
+    && selectedNodeState.respawnAt !== null
+    ? Math.max(0, Math.ceil((selectedNodeState.respawnAt - now) / 1000))
     : null
   const activeActivity = active?.activityId === randomGatheringActivityId
     ? { name: 'Thu thập quanh đây' }
@@ -499,9 +498,13 @@ export function GatheringPage({
                       : <small>
                         {getNodeUnlockIssue(gameState, selectedNode.id)
                           ? 'Chưa mở khóa'
-                            : selectedNodeState?.available
+                          : selectedNodeState
+                            ? selectedNodeState.available > 0
                               ? `${selectedNodeState.available} còn lại${selectedNodeRespawn === null ? '' : ` · +1 sau ${formatRespawnCountdown(selectedNodeRespawn)}`}`
-                              : `+1 tài nguyên sau ${formatRespawnCountdown(selectedNodeRespawn ?? selectedNode.respawnSeconds)}`}
+                              : selectedNodeRespawn === null
+                                ? 'Đang khởi tạo hồi tài nguyên…'
+                                : `+1 tài nguyên sau ${formatRespawnCountdown(selectedNodeRespawn)}`
+                            : 'Đang đồng bộ điểm tài nguyên…'}
                       </small>}
                   </div>
                 </div>
@@ -694,11 +697,10 @@ export function GatheringPage({
       <section className="resource-node-grid" aria-label="Điểm tài nguyên">
         {resourceNodeDefinitions.map((node) => {
           const currentNode = gameState.resourceNodes.find((entry) => entry.nodeId === node.id)
-          const available = currentNode?.available ?? 0
-          const respawnSeconds = available < node.capacity
-            ? currentNode?.respawnAt !== null && currentNode?.respawnAt !== undefined
-              ? Math.max(0, Math.ceil((currentNode.respawnAt - now) / 1000))
-              : node.respawnSeconds
+          const available = currentNode?.available
+          const respawnSeconds = currentNode && available !== undefined && available < node.capacity
+            && currentNode.respawnAt !== null
+            ? Math.max(0, Math.ceil((currentNode.respawnAt - now) / 1000))
             : null
           return (
             <article className={`resource-node-card${getNodeUnlockIssue(gameState, node.id) ? ' is-locked' : ''}`} key={node.id}>
@@ -715,9 +717,13 @@ export function GatheringPage({
               <span className={`node-availability${available === 0 ? ' depleted' : ''}`}>
                 {getNodeUnlockIssue(gameState, node.id)
                   ? 'Chưa mở khóa'
-                  : available > 0
+                  : currentNode
+                    ? available !== undefined && available > 0
                     ? `${available} còn lại${respawnSeconds === null ? '' : ` · +1 sau ${formatRespawnCountdown(respawnSeconds)}`}`
-                    : `+1 tài nguyên sau ${formatRespawnCountdown(respawnSeconds ?? node.respawnSeconds)}`}
+                    : respawnSeconds === null
+                      ? 'Đang khởi tạo hồi tài nguyên…'
+                      : `+1 tài nguyên sau ${formatRespawnCountdown(respawnSeconds)}`
+                    : 'Đang đồng bộ điểm tài nguyên…'}
               </span>
               {getNodeUnlockIssue(gameState, node.id) && (
                 <small className="activity-blocked">{getNodeUnlockIssue(gameState, node.id)}</small>

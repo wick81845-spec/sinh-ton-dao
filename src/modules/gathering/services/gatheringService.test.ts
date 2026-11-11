@@ -8,6 +8,7 @@ import {
 } from '../data/fishingConfig'
 import {
   completeGathering,
+  ensureResourceNodeStates,
   failFishing,
   getGatheringAvailability,
   refreshResourceNodes,
@@ -334,6 +335,14 @@ describe('gatheringService', () => {
 
     expect(refreshResourceNodes(legacyNodes, 50_000)
       .find((node) => node.nodeId === 'shoreline')).toMatchObject({ available: 10, respawnAt: 170_000 })
+  })
+
+  it('restores resource nodes missing from older remote saves', () => {
+    const savedNodes = initialGameState.resourceNodes.filter((node) => node.nodeId !== 'sea-water')
+
+    expect(ensureResourceNodeStates(savedNodes).find((node) => node.nodeId === 'sea-water'))
+      .toEqual({ nodeId: 'sea-water', available: 24, respawnAt: null })
+    expect(ensureResourceNodeStates(undefined)).toHaveLength(initialGameState.resourceNodes.length)
   })
 
   it('uses the selected island-appropriate activity for a random harvest', () => {
