@@ -355,7 +355,8 @@ export function completeGathering(
     if (!itemId) {
       return { status: 'failed', state: { ...state, activeGathering: null }, message: 'Không tìm được chỗ trống trong túi cho vật phẩm vừa câu.' }
     }
-    const isFishReward = fishAtLocation.some((fish) => fish.itemId === itemId)
+    const fishReward = fishAtLocation.find((fish) => fish.itemId === itemId)
+    const isFishReward = fishReward !== undefined
     const inventoryResult = addItems(state.inventory, itemId, fishingActivity.baseYield, now)
     if (!inventoryResult.ok) {
       return { status: 'failed', state: { ...state, activeGathering: null }, message: inventoryResult.message }
@@ -386,6 +387,12 @@ export function completeGathering(
         inventory: toolUse.state.inventory,
         itemDurability: toolUse.state.itemDurability,
         activeGathering: null,
+        fishingJournal: fishReward
+          ? {
+              ...state.fishingJournal,
+              [fishReward.itemId]: (state.fishingJournal?.[fishReward.itemId] ?? 0) + fishingActivity.baseYield,
+            }
+          : state.fishingJournal,
         survival: {
           ...state.survival,
           stamina: Math.max(0, state.survival.stamina - fishingActivity.staminaCost),

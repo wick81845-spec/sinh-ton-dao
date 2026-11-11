@@ -17,21 +17,26 @@ import {
 } from './fishingConfig'
 
 describe('fishingConfig', () => {
-  it('defines exactly 89 unique fish across every rarity tier', () => {
-    expect(fishCatalog).toHaveLength(89)
-    expect(new Set(fishCatalog.map((fish) => fish.itemId)).size).toBe(89)
+  it('defines exactly 90 unique fish across every rarity tier', () => {
+    expect(fishCatalog).toHaveLength(90)
+    expect(new Set(fishCatalog.map((fish) => fish.itemId)).size).toBe(90)
     for (const rarity of ['common', 'uncommon', 'unusual', 'rare', 'very_rare', 'epic', 'legendary']) {
       expect(fishCatalog.some((fish) => fish.rarity === rarity)).toBe(true)
     }
-    expect(fishItemIds).toHaveLength(89)
+    expect(fishItemIds).toHaveLength(90)
   })
 
-  it('uses the shared fish placeholder and keeps legendary species collectible only', () => {
+  it('uses supplied fish illustrations and keeps legendary species collectible only', () => {
     for (const fish of fishCatalog) {
-      expect(itemDefinitions[fish.itemId].image).toBe('/assets/resources/fresh-fish.svg')
+      expect(itemDefinitions[fish.itemId].image).toBe(fish.image ?? '/assets/resources/fresh-fish.svg')
       expect(itemDefinitions[fish.itemId].tradable).toBe(fish.rarity !== 'legendary')
       if (fish.rarity === 'legendary') expect(itemDefinitions[fish.itemId].usable).toBe(false)
     }
+    expect(itemDefinitions.item_clownfish.image).toBe('/assets/fish/collection/clownfish.png')
+    expect(itemDefinitions.item_seahorse.image).toBe('/assets/fish/collection/seahorse.png')
+    expect(itemDefinitions.item_pacific_salmon.image).toBe('/assets/foods/salmon.png')
+    expect(fishCatalog.find((fish) => fish.itemId === 'item_pacific_salmon')?.catchable).toBe(true)
+    expect(itemDefinitions.item_seahorse.usable).toBe(false)
     for (const fish of fishCatalog.filter((entry) => entry.rarity === 'legendary')) {
       for (const islandId of ['island_001', 'island_002', 'island_003']) {
         expect(getMarketListing(fish.itemId, islandId)).toBeUndefined()

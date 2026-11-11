@@ -141,6 +141,8 @@ describe('craftingService', () => {
           { itemId: 'item_honey' as const, quantity: 1 },
           { itemId: 'item_wild_mushroom' as const, quantity: 2 },
           { itemId: 'item_clean_water' as const, quantity: 1 },
+          { itemId: 'item_pacific_salmon' as const, quantity: 1 },
+          { itemId: 'item_seaweed' as const, quantity: 1 },
         ],
       },
       buildings: [{
@@ -161,8 +163,14 @@ describe('craftingService', () => {
 
     const soup = queueRecipe(jamReady.state, 'recipe_mushroom_soup', 21_000)
     if (!soup.ok) throw new Error(soup.message)
-    expect(completeCrafting(soup.state, 33_000))
-      .toMatchObject({ status: 'completed', itemId: 'item_mushroom_soup', quantity: 1 })
+    const soupReady = completeCrafting(soup.state, 33_000)
+    expect(soupReady).toMatchObject({ status: 'completed', itemId: 'item_mushroom_soup', quantity: 1 })
+    if (soupReady.status !== 'completed') throw new Error('Mushroom soup should be cooked.')
+
+    const sushi = queueRecipe(soupReady.state, 'recipe_fish_sushi', 33_000)
+    if (!sushi.ok) throw new Error(sushi.message)
+    expect(completeCrafting(sushi.state, 51_000))
+      .toMatchObject({ status: 'completed', itemId: 'item_fish_sushi', quantity: 1 })
 
     const rawWaterOnly = {
       ...state,

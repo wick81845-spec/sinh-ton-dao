@@ -88,6 +88,7 @@ export const fishItemIds = [
   'item_mullet',
   'item_sand_whiting',
   'item_tilapia',
+  'item_seahorse',
 ] as const
 
 export type FishItemId = typeof fishItemIds[number]

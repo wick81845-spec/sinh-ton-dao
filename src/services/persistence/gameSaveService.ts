@@ -790,12 +790,22 @@ function isGameSnapshot(value: unknown): value is GameSnapshot {
   const playerInventories = value.socialPlayerInventories
   if (!Array.isArray(playerInventories) || !playerInventories.every(isSocialPlayerInventory)) return false
   const playerInventoryIds = playerInventories.map((entry) => entry.playerId)
+  const fishingJournal = value.fishingJournal
   const campfireFuel = value.campfireFuel
   const clothesDrying = value.clothesDrying
   const equippedWeaponId = value.equippedWeaponId
   const equippedAccessoryId = value.equippedAccessoryId
   const equippedClothing = value.equippedClothing
   return Array.isArray(value.friendIds)
+    && (fishingJournal === undefined || (
+      isRecord(fishingJournal)
+      && Object.entries(fishingJournal).every(([fishId, count]) => (
+        currentFishItemIds.has(fishId)
+        && isFiniteNumber(count)
+        && Number.isInteger(count)
+        && count > 0
+      ))
+    ))
     && (equippedWeaponId === undefined
       || (isItemId(equippedWeaponId)
         && itemDefinitions[equippedWeaponId].category === 'tool'

@@ -61,6 +61,7 @@ export function GatheringPage({
   onClosePanel?: () => void
 }) {
   const { gameState, isLoading, error, startGathering, cancelGathering, finishFishing, failFishing } = useGame()
+  const caughtFishSpecies = fishCatalog.filter((fish) => (gameState?.fishingJournal?.[fish.itemId] ?? 0) > 0).length
   const [now, setNow] = useState(gameClock.now())
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [isFishingLocationSelected, setIsFishingLocationSelected] = useState(false)
@@ -819,11 +820,11 @@ export function GatheringPage({
         <summary>
           <span>
             <strong>Sổ tay {fishCatalog.length} loài cá</strong>
-            <small>Phân bố theo vùng nước và quần xã</small>
+            <small>Đã câu {caughtFishSpecies}/{fishCatalog.length} loài · Phân bố theo vùng nước và quần xã</small>
           </span>
           <span className="fish-guide-toggle" aria-hidden="true">⌄</span>
         </summary>
-        <p className="fish-guide-note">Danh mục gồm cá biển và cá nước ngọt. Những loài chưa có cách đánh bắt phù hợp được ghi chú để cập nhật ở phần sau.</p>
+        <p className="fish-guide-note">Danh mục gồm cá biển và cá nước ngọt. Số lần câu được lưu trong nhật ký; loài chưa có cách đánh bắt phù hợp sẽ được ghi chú.</p>
         <div className="fish-zone-grid">
           {fishingZoneDefinitions.map((zone) => {
             const zoneFish = fishCatalog.filter((fish) => fish.oceanZones.includes(zone.id))
@@ -843,7 +844,10 @@ export function GatheringPage({
                       <img src={itemDefinitions[fish.itemId].image} alt="" aria-hidden="true" />
                       <div>
                         <strong>{fish.name}</strong>
-                        <small>{fishRarityNames[fish.rarity]} · {fish.catchable ? 'Có thể đánh bắt' : 'Chưa mở cách đánh bắt'}</small>
+                        <small>
+                          {fishRarityNames[fish.rarity]} · {fish.catchable ? 'Có thể đánh bắt' : 'Chưa mở cách đánh bắt'}
+                          {' · Đã câu '}{gameState?.fishingJournal?.[fish.itemId] ?? 0}{' lần'}
+                        </small>
                         <span>{fish.biomes.map((biomeId) => biomeDefinitionsById[biomeId].name).join(' · ')}</span>
                       </div>
                     </article>

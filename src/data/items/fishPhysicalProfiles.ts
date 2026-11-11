@@ -71,6 +71,7 @@ export const fishPhysicalProfiles = {
   item_stingray: { lengthRangeCm: [20, 600], averageWeightKg: 80 },
   item_european_seabass: { lengthRangeCm: [20, 100], averageWeightKg: 4 },
   item_alaska_pollock: { lengthRangeCm: [20, 100], averageWeightKg: 5 },
+  item_seahorse: { lengthRangeCm: [5, 30], averageWeightKg: 0.1 },
   item_mahi_mahi: { lengthRangeCm: [30, 200], averageWeightKg: 10 },
   item_swordfish: { lengthRangeCm: [100, 450], averageWeightKg: 150 },
   item_blue_marlin: { lengthRangeCm: [100, 500], averageWeightKg: 250 },

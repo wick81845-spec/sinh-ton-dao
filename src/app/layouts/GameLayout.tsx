@@ -29,7 +29,7 @@ import { gameClock } from '../../services/clock/gameClock'
 import { isUsernameAuthEmail } from '../../services/auth/usernameAuth'
 import { getIslandDefinition } from '../../modules/world/data/worldDefinitions'
 import { localStorageAdapter } from '../../services/storage/localStorageAdapter'
-import { avatarOptions, isGameBackground } from '../../modules/settings/settingsPreferences'
+import { avatarOptions, isAvatarPortrait, isGameBackground } from '../../modules/settings/settingsPreferences'
 import { applyGameBackground, isStoredImage, prepareImageUpload } from '../../modules/settings/imagePreferences'
 import { getCurrentWeather } from '../../modules/world/services/weatherService'
 import { weatherSeverityLabels } from '../../modules/world/data/weatherDefinitions'
@@ -474,7 +474,9 @@ export function GameLayout() {
             <span className="avatar">
               {avatarImage
                 ? <img src={avatarImage} alt="" />
-                : avatar}
+                : isAvatarPortrait(avatar)
+                  ? <img src={avatar} alt="" />
+                  : avatar}
             </span>
             <span className="profile-copy">
               <strong>{accountLabel}</strong>

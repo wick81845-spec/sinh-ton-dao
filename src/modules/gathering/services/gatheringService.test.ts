@@ -384,6 +384,7 @@ describe('gatheringService', () => {
     expect(caught.status).toBe('completed')
     if (caught.status !== 'completed') throw new Error('Fishing should complete.')
     expect(caught.itemId).toBe('item_sardine')
+    expect(caught.state.fishingJournal).toEqual({ item_sardine: 1 })
 
     const wrongZone = completeGathering(started.state, 2000, 60, 'item_conger_eel')
     expect(wrongZone.status).toBe('failed')

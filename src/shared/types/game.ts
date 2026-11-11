@@ -172,6 +172,11 @@ export type ItemId =
   | 'item_roasted_crab'
   | 'item_roasted_shrimp'
   | 'item_mushroom_soup'
+  | 'item_salmon_plate'
+  | 'item_fish_sushi'
+  | 'item_fish_ramen'
+  | 'item_fish_curry'
+  | 'item_fruit_pie'
   | 'item_poisonous_mushroom'
   | 'item_herbal_antidote'
   | 'item_warm_tea'
@@ -425,6 +430,7 @@ export interface GameSnapshot {
   nextRandomWorldEventAt?: number
   randomWorldEventScheduleVersion?: number
   randomWorldEventSeed?: string
+  fishingJournal?: Partial<Record<FishItemId, number>>
   ships: PlayerShip[]
   shipConstruction: ShipConstructionJob | null
   voyages: Voyage[]

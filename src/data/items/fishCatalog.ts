@@ -18,6 +18,7 @@ export type FishHabitat = 'freshwater' | 'coastal' | 'offshore' | 'deep_sea'
 export interface FishCatalogEntry {
   itemId: FishItemId
   name: string
+  image?: string
   description: string
   rarity: FishRarity
   catchWeight: number
@@ -61,6 +62,12 @@ const offshoreAndWreck = ['open_ocean', 'shipwreck_zone']
 const catchable = true
 const protectedOrSpecial = false
 const requiresPreparationFishIds = new Set<FishItemId>(['item_lionfish', 'item_pufferfish'])
+const nonEdibleFishIds = new Set<FishItemId>(['item_seahorse'])
+const fishArtworkById: Partial<Record<FishItemId, string>> = {
+  item_clownfish: '/assets/fish/collection/clownfish.png',
+  item_seahorse: '/assets/fish/collection/seahorse.png',
+  item_pacific_salmon: '/assets/foods/salmon.png',
+}
 
 const rarityStats: Readonly<Record<FishRarity, { weight: number; hungerRestore: number }>> = {
   common: { weight: 10, hungerRestore: 14 },
@@ -92,6 +99,7 @@ function makeTier(seeds: readonly FishSeed[]): FishCatalogEntry[] {
     return {
       itemId,
       name,
+      ...(fishArtworkById[itemId] ? { image: fishArtworkById[itemId] } : {}),
       description: `${name} ${habitatDescriptions[habitat]}.`,
       rarity,
       catchWeight: stats.weight,
@@ -101,6 +109,7 @@ function makeTier(seeds: readonly FishSeed[]): FishCatalogEntry[] {
       habitat,
       catchable: canCatch,
       ...(requiresPreparationFishIds.has(itemId) ? { requiresPreparation: true } : {}),
+      ...(nonEdibleFishIds.has(itemId) ? { usable: false } : {}),
       ...(weatherIds ? { weatherIds } : {}),
       hungerRestore: stats.hungerRestore,
     }
@@ -156,7 +165,7 @@ export const fishCatalog: readonly FishCatalogEntry[] = [
     ['item_grouper', 'Cá mú', 'unusual', reefs, coastal],
     ['item_milkfish', 'Cá măng', 'unusual', tropical, coastAndOffshore],
     ['item_barracuda', 'Cá nhồng', 'unusual', tropical, coastAndOffshore],
-    ['item_pacific_salmon', 'Cá hồi Thái Bình Dương', 'unusual', cold, freshwater, false],
+    ['item_pacific_salmon', 'Cá hồi Thái Bình Dương', 'unusual', cold, coastal],
     ['item_atlantic_salmon', 'Cá hồi Đại Tây Dương', 'unusual', ['temperate_island', 'coniferous_island'], freshwater, false],
     ['item_brown_trout', 'Cá trout nâu', 'unusual', temperate, freshwater, false],
     ['item_grayling', 'Cá grayling', 'unusual', cold, freshwater, false],
@@ -168,6 +177,7 @@ export const fishCatalog: readonly FishCatalogEntry[] = [
   ]),
   ...makeTier([
     ['item_red_snapper', 'Cá hồng', 'rare', reefs, coastal],
+    ['item_seahorse', 'Cá ngựa rạn', 'rare', reefs, coastal],
     ['item_bonito', 'Cá ngừ sọc dưa', 'rare', tropical, coastAndOffshore],
     ['item_skipjack_tuna', 'Cá ngừ vằn', 'rare', tropical, offshore, catchable, ['sunny', 'calm_sea', 'light_wind']],
     ['item_yellowfin_tuna', 'Cá ngừ vây vàng', 'rare', tropical, offshore, catchable, ['sunny', 'calm_sea', 'light_wind']],

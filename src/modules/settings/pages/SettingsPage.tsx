@@ -3,7 +3,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../app/providers/useAuth'
 import { useThemePreference } from '../../../app/providers/useThemePreference'
 import { localStorageAdapter } from '../../../services/storage/localStorageAdapter'
-import { avatarOptions, backgroundOptions, isGameBackground, type GameBackground } from '../settingsPreferences'
+import {
+  avatarOptions,
+  backgroundOptions,
+  getAvatarOptionLabel,
+  isAvatarPortrait,
+  isGameBackground,
+  type GameBackground,
+} from '../settingsPreferences'
 import { applyGameBackground, isStoredImage, prepareImageUpload } from '../imagePreferences'
 
 export function SettingsPage() {
@@ -221,9 +228,9 @@ export function SettingsPage() {
           <section className="settings-card">
             <div className="settings-section-heading">
               <span className="settings-section-icon" aria-hidden="true">☻</span>
-              <div><h2>Hồ sơ người chơi</h2><p>Chọn biểu tượng hoặc tải ảnh đại diện của riêng bạn.</p></div>
+              <div><h2>Hồ sơ người chơi</h2><p>Chọn chân dung sinh tồn, biểu tượng hoặc tải ảnh đại diện của riêng bạn.</p></div>
             </div>
-            <div className="settings-avatar-options" role="group" aria-label="Biểu tượng hồ sơ">
+            <div className="settings-avatar-options" role="group" aria-label="Ảnh đại diện hồ sơ">
               <button
                 className="settings-avatar-upload"
                 type="button"
@@ -237,11 +244,11 @@ export function SettingsPage() {
                 <button
                   type="button"
                   key={option}
-                  aria-label={`Chọn biểu tượng ${option}`}
+                  aria-label={`Chọn ${isAvatarPortrait(option) ? getAvatarOptionLabel(option) : `biểu tượng ${option}`}`}
                   aria-pressed={!avatarImage && avatar === option}
                   onClick={() => void updateAvatar(option)}
                 >
-                  {option}
+                  {isAvatarPortrait(option) ? <img src={option} alt="" /> : option}
                 </button>
               ))}
             </div>
@@ -253,7 +260,7 @@ export function SettingsPage() {
               aria-label="Chọn ảnh đại diện"
               onChange={(event) => void handleAvatarUpload(event)}
             />
-            <p className="settings-note">Ảnh đại diện sẽ được cắt vuông, thu nhỏ và chỉ lưu trên thiết bị này.</p>
+            <p className="settings-note">Chân dung là ảnh đại diện hồ sơ, không phải sprite toàn thân trong cảnh chơi. Ảnh tải lên được cắt vuông và lưu trên thiết bị này.</p>
           </section>
 
           {session && isAdminLoading && <p className="account-state">Đang xác minh quyền quản trị…</p>}

@@ -98,6 +98,9 @@ describe('gameSaveService', () => {
         feet: 'item_hiking_boots' as const,
       },
     })).toBe(true)
+    expect(isValidGameSnapshot({ ...state, fishingJournal: { item_sardine: 3 } })).toBe(true)
+    expect(isValidGameSnapshot({ ...state, fishingJournal: { item_wood: 3 } })).toBe(false)
+    expect(isValidGameSnapshot({ ...state, fishingJournal: { item_sardine: -1 } })).toBe(false)
     expect(isValidGameSnapshot({
       ...state,
       inventory: {
