@@ -22,7 +22,6 @@ import { AdminPage } from '../../modules/settings/pages/AdminPage'
 import { ProgressionPage } from '../../modules/progression/pages/ProgressionPage'
 import { MarketPage } from '../../modules/economy/pages/MarketPage'
 import { UpdatesPage } from '../../modules/updates/pages/UpdatesPage'
-import { useThemePreference } from '../providers/useThemePreference'
 import { useAuth } from '../providers/useAuth'
 import { useGame } from '../providers/useGame'
 import { useWorldPresence } from '../providers/useWorldPresence'
@@ -67,9 +66,7 @@ const activityPanelLinks = [
   { path: '/crafting', label: 'Chế tạo', icon: '⚒', group: 'Sinh tồn' },
   { path: '/building', label: 'Xây dựng', icon: '⌂', group: 'Sinh tồn' },
   { path: '/survival', label: 'Thể trạng', icon: '♥', group: 'Sinh tồn' },
-  { path: '/combat', label: 'Chiến đấu', icon: '⚔', group: 'Hoạt động', requiredLevel: 2 },
   { path: '/market', label: 'Chợ đảo', icon: '◉', group: 'Hoạt động' },
-  { path: '/social', label: 'Cộng đồng', icon: '♧', group: 'Hoạt động' },
   { path: '/progression', label: 'Tiến trình', icon: '↗', group: 'Khác' },
   { path: '/settings', label: 'Cài đặt', icon: '⚙', group: 'Khác' },
   { path: '/overview', label: 'Tổng quan hành trình', icon: '⌂', group: 'Khác' },
@@ -80,6 +77,7 @@ const sidePanelNavigation = activityPanelLinks.filter((item) => (
   && item.path !== '/settings'
   && item.path !== '/crafting'
   && item.path !== '/building'
+  && item.path !== '/survival'
 ))
 
 const panelContentByPath: Record<string, () => ReactNode> = {
@@ -111,7 +109,6 @@ export function GameLayout() {
   const { gameState, error, notice, clearNotice } = useGame()
   const { configured, session, isAdmin } = useAuth()
   const { status: worldPresenceStatus, players, maxPlayers } = useWorldPresence()
-  const { theme, themeReady, toggleTheme } = useThemePreference()
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [avatar, setAvatar] = useState<string>('⚓')
   const [avatarImage, setAvatarImage] = useState<string | null>(null)
@@ -138,6 +135,7 @@ export function GameLayout() {
     : undefined
   const currentWeather = gameState ? getCurrentWeather(gameState) : undefined
   const worldClock = getWorldClock(worldTimeNow)
+  const worldPresenceConnected = worldPresenceStatus === 'online' || worldPresenceStatus === 'full'
   const weatherAtGameTime = currentWeather
     ? getWorldWeatherAtTime(currentWeather, worldTimeNow)
     : undefined
@@ -232,6 +230,15 @@ export function GameLayout() {
     }
     if (activePanel.path === '/campfire') return <CampfirePage />
     if (activePanel.path === '/cooking-stove') return <CookingStovePage />
+    if (activePanel.path === '/gathering') {
+      return (
+        <GatheringPage
+          asPanel
+          onOpenPanel={(path, title) => setActivePanel({ path, title })}
+          onClosePanel={() => setActivePanel(null)}
+        />
+      )
+    }
     if (activePanel.path !== '/activities') return panelContentByPath[activePanel.path]?.() ?? null
     return renderActivityHub()
   }
@@ -442,6 +449,18 @@ export function GameLayout() {
             <span aria-hidden="true">{worldClock.season.icon}</span>
             <small>{worldClock.season.name} · {worldClock.season.day}/7</small>
           </div>
+          <div
+            className={`world-population-pill world-population-${worldPresenceStatus}`}
+            title={worldPresenceConnected
+              ? `${players.length} người đang online · sức chứa máy chủ ${maxPlayers}`
+              : 'Chưa kết nối máy chủ thế giới'}
+            aria-label={worldPresenceConnected
+              ? `${players.length} người online trên sức chứa ${maxPlayers}`
+              : 'Chưa kết nối máy chủ thế giới'}
+          >
+            <span aria-hidden="true">♙</span>
+            <strong>{worldPresenceConnected ? players.length : '—'}/{maxPlayers}</strong>
+          </div>
         </div>
 
         <div className="sidebar-bottom">
@@ -490,28 +509,6 @@ export function GameLayout() {
                 <strong>{gameState.character.name}</strong>
               </span>
             )}
-            <span className={`world-status world-status-${worldPresenceStatus}`}>
-              <span className="status-dot" />
-              {worldPresenceStatus === 'online'
-                ? `Thế giới chung · ${players.length}/${maxPlayers}`
-                : worldPresenceStatus === 'connecting'
-                  ? 'Đang kết nối thế giới'
-                  : worldPresenceStatus === 'full'
-                    ? 'Thế giới đã đủ người'
-                    : session
-                      ? 'Thế giới chưa kết nối'
-                      : 'Chơi đơn'}
-            </span>
-            <button
-              className="icon-button theme-toggle"
-              type="button"
-              aria-label={theme === 'dark' ? 'Bật giao diện sáng' : 'Bật giao diện tối'}
-              aria-pressed={theme === 'dark'}
-              disabled={!themeReady}
-              onClick={toggleTheme}
-            >
-              <span aria-hidden="true">{theme === 'dark' ? '☼' : '☾'}</span>
-            </button>
             <div
               className={`world-clock-pill world-clock-${worldClock.phaseId}`}
               title={`Chu kỳ toàn cục · đổi giai đoạn trong khoảng ${Math.ceil(worldClock.minutesUntilNextPhase)} phút`}
@@ -534,39 +531,8 @@ export function GameLayout() {
             </div>
           </div>
         </header>
-        {ongoingActivities.length > 0 && (
-          <aside className="ongoing-activities-widget" aria-label="Các hoạt động đang thực hiện">
-            <div className="ongoing-activities-heading">
-              <span className="ongoing-activities-indicator" aria-hidden="true" />
-              <strong>ĐANG LÀM</strong>
-              <span>{ongoingActivities.length}</span>
-            </div>
-            <ul>
-              {ongoingActivities.map((activity) => (
-                <li key={activity.id}>
-                  <Link to={activity.path} title={`Mở ${activity.label}`}>
-                    <span className="ongoing-activity-icon" aria-hidden="true">{activity.icon}</span>
-                    <span className="ongoing-activity-copy">
-                      <strong>{activity.label}</strong>
-                      {activity.completesAt !== undefined && activity.completesAt !== null && (
-                        <small>{formatActivityTime(activity.completesAt, worldTimeNow)}</small>
-                      )}
-                    </span>
-                    <span className="ongoing-activity-arrow" aria-hidden="true">›</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </aside>
-        )}
         {avatarUploadError && <div className="game-error" role="alert"><strong>Có lỗi:</strong> {avatarUploadError}</div>}
         {error && <div className="game-error" role="alert"><strong>Không thể lưu trò chơi:</strong> {error}</div>}
-        {notice && (
-          <div className="game-toast" role="status" aria-live="polite">
-            <span>{notice}</span>
-            <button type="button" aria-label="Đóng thông báo" onClick={clearNotice}>×</button>
-          </div>
-        )}
         <main className="page-content">
           <GatheringPage onOpenPanel={(path, title) => setActivePanel({ path, title })} />
         </main>
@@ -625,17 +591,6 @@ export function GameLayout() {
           </button>
         )}
         <button
-          className="game-side-rail-button game-side-rail-theme"
-          type="button"
-          aria-label={theme === 'dark' ? 'Bật giao diện sáng' : 'Bật giao diện tối'}
-          aria-pressed={theme === 'dark'}
-          title={theme === 'dark' ? 'Bật giao diện sáng' : 'Bật giao diện tối'}
-          disabled={!themeReady}
-          onClick={toggleTheme}
-        >
-          <span aria-hidden="true">{theme === 'dark' ? '☼' : '☾'}</span>
-        </button>
-        <button
           className={`game-side-rail-button game-side-rail-settings${activePanel?.path === '/settings' ? ' is-open' : ''}`}
           type="button"
           aria-label="Cài đặt"
@@ -646,6 +601,40 @@ export function GameLayout() {
           <span aria-hidden="true">⚙</span>
         </button>
       </nav>
+      <div className="game-hud-stack" aria-label="Thông tin hành trình">
+        <RandomWorldEventWidget />
+        {notice && (
+          <div className="game-toast" role="status" aria-live="polite">
+            <span>{notice}</span>
+            <button type="button" aria-label="Đóng thông báo" onClick={clearNotice}>×</button>
+          </div>
+        )}
+        {ongoingActivities.length > 0 && (
+          <aside className="ongoing-activities-widget" aria-label="Các hoạt động đang thực hiện">
+            <div className="ongoing-activities-heading">
+              <span className="ongoing-activities-indicator" aria-hidden="true" />
+              <strong>ĐANG LÀM</strong>
+              <span>{ongoingActivities.length}</span>
+            </div>
+            <ul>
+              {ongoingActivities.map((activity) => (
+                <li key={activity.id}>
+                  <Link to={activity.path} title={`Mở ${activity.label}`}>
+                    <span className="ongoing-activity-icon" aria-hidden="true">{activity.icon}</span>
+                    <span className="ongoing-activity-copy">
+                      <strong>{activity.label}</strong>
+                      {activity.completesAt !== undefined && activity.completesAt !== null && (
+                        <small>{formatActivityTime(activity.completesAt, worldTimeNow)}</small>
+                      )}
+                    </span>
+                    <span className="ongoing-activity-arrow" aria-hidden="true">›</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </aside>
+        )}
+      </div>
       {activePanel && (
         <div
           className="game-module-overlay"
@@ -682,7 +671,6 @@ export function GameLayout() {
         </div>
       )}
       <TutorialGuide />
-      <RandomWorldEventWidget />
       <WorldChatWidget />
     </div>
   )

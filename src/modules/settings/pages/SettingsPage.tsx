@@ -156,6 +156,7 @@ export function SettingsPage() {
             </div>
             <div className="settings-shortcut-links">
               <Link className="small-action" to="/activities">Hoạt động</Link>
+              <Link className="small-action" to="/social">Cộng đồng</Link>
               <Link className="small-action" to="/updates">Cập nhật</Link>
             </div>
           </section>

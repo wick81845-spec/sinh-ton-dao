@@ -54,9 +54,11 @@ function getMapFitZoom(): number {
 export function GatheringPage({
   asPanel = false,
   onOpenPanel,
+  onClosePanel,
 }: {
   asPanel?: boolean
   onOpenPanel?: (path: string, title: string) => void
+  onClosePanel?: () => void
 }) {
   const { gameState, isLoading, error, startGathering, cancelGathering, finishFishing, failFishing } = useGame()
   const [now, setNow] = useState(gameClock.now())
@@ -140,8 +142,14 @@ export function GatheringPage({
   }, [])
   const startActivity = useCallback((activityId: string) => {
     if (isFishingActivityId(activityId)) setFishingOutcome(null)
-    startGathering(activityId)
-  }, [startGathering])
+    const result = startGathering(activityId)
+    if (result.ok) {
+      setSelectedNodeId(null)
+      setIsFishingLocationSelected(false)
+      onClosePanel?.()
+    }
+    return result
+  }, [onClosePanel, startGathering])
 
   const active = gameState?.activeGathering
   const isFishingActive = active ? isFishingActivityId(active.activityId) : false
@@ -564,7 +572,7 @@ export function GatheringPage({
                         type="button"
                         disabled={!selectedGatheringActivity || Boolean(selectedGatheringIssue)}
                         onClick={() => {
-                          if (selectedGatheringActivity) startGathering(selectedGatheringActivity.id)
+                          if (selectedGatheringActivity) startActivity(selectedGatheringActivity.id)
                         }}
                       >
                         <span aria-hidden="true">✦</span>
@@ -756,7 +764,7 @@ export function GatheringPage({
               className="gather-button"
               type="button"
               disabled={Boolean(randomGatheringIssue) || Boolean(active)}
-              onClick={() => startGathering(randomGatheringActivityId)}
+              onClick={() => startActivity(randomGatheringActivityId)}
             >
               Thu thập
             </button>

@@ -23,7 +23,8 @@
 
 .gathering-navigation-preview .map-world-info .world-clock-pill,
 .gathering-navigation-preview .map-world-info .weather-pill,
-.gathering-navigation-preview .map-world-info .world-season-pill {
+.gathering-navigation-preview .map-world-info .world-season-pill,
+.gathering-navigation-preview .map-world-info .world-population-pill {
   color: #e7efd9;
 }
 
@@ -36,6 +37,11 @@
 .gathering-navigation-preview .map-world-info .weather-pill small,
 .gathering-navigation-preview .map-world-info .world-season-pill small {
   color: #bdcfb8;
+}
+
+.gathering-navigation-preview .map-world-info .world-population-pill {
+  border-color: rgb(215 237 205 / 24%);
+  background: rgb(255 255 255 / 5%);
 }
 
 .gathering-navigation-preview .app-footer {
@@ -2681,7 +2687,8 @@
 
   .gathering-navigation-preview .map-world-info .world-clock-pill,
   .gathering-navigation-preview .map-world-info .weather-pill,
-  .gathering-navigation-preview .map-world-info .world-season-pill {
+  .gathering-navigation-preview .map-world-info .world-season-pill,
+  .gathering-navigation-preview .map-world-info .world-population-pill {
     gap: 4px;
     padding: 4px 7px;
     font-size: 10px;
@@ -2690,7 +2697,7 @@
   .gathering-navigation-preview .map-world-info .world-clock-pill small,
   .gathering-navigation-preview .map-world-info .weather-pill small,
   .gathering-navigation-preview .map-world-info .world-season-pill small {
-    font-size: 8px;
+    font-size: 9px;
   }
 
   .gathering-navigation-preview .sidebar {
@@ -2825,5 +2832,147 @@
     top: auto;
     right: 48px;
     bottom: 72px;
+  }
+}
+
+.game-hud-stack {
+  position: fixed;
+  z-index: 46;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: max(calc(var(--sidebar-width, 0px) + 16px), env(safe-area-inset-left));
+  display: flex;
+  width: min(360px, calc(100vw - var(--sidebar-width, 0px) - 74px));
+  max-height: min(78dvh, 660px);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  overflow-y: auto;
+  pointer-events: none;
+  scrollbar-width: thin;
+}
+
+.game-hud-stack > * {
+  flex: 0 0 auto;
+  pointer-events: auto;
+  z-index: auto;
+}
+
+.game-hud-stack .random-world-event-widget {
+  position: static;
+  inset: auto;
+  width: 100%;
+  max-height: min(32dvh, 300px);
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgb(6 32 35 / 24%);
+}
+
+.game-hud-stack .random-world-event-card,
+.game-hud-stack .random-world-event-card.is-result {
+  padding: 10px;
+}
+
+.game-hud-stack .random-world-event-heading {
+  gap: 8px;
+}
+
+.game-hud-stack .random-world-event-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 17px;
+}
+
+.game-hud-stack .random-world-event-heading .section-kicker {
+  font-size: 10px;
+}
+
+.game-hud-stack .random-world-event-heading h2 {
+  font-size: 15px;
+}
+
+.game-hud-stack .random-world-event-description,
+.game-hud-stack .random-world-event-card.is-result > p {
+  margin: 8px 0;
+  font-size: 12px;
+}
+
+.game-hud-stack .random-world-event-mystery,
+.game-hud-stack .random-world-event-note,
+.game-hud-stack .random-world-event-issue {
+  font-size: 11px;
+}
+
+.game-hud-stack .random-world-event-choices {
+  gap: 6px;
+}
+
+.game-hud-stack .random-world-event-choice {
+  gap: 7px;
+  padding: 7px;
+  border-radius: 9px;
+}
+
+.game-hud-stack .random-world-event-choice-copy > strong {
+  font-size: 12px;
+}
+
+.game-hud-stack .random-world-event-choice-copy > p,
+.game-hud-stack .random-world-event-item-list small {
+  font-size: 11px;
+}
+
+.game-hud-stack .random-world-event-select {
+  min-width: 52px;
+  min-height: 32px;
+  font-size: 12px;
+}
+
+.game-hud-stack .game-toast {
+  position: static;
+  inset: auto;
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.game-hud-stack .ongoing-activities-widget {
+  position: static;
+  inset: auto;
+  width: 100%;
+  border-radius: 11px;
+}
+
+.game-hud-stack .ongoing-activities-heading {
+  padding: 9px 11px 7px;
+  font-size: 10px;
+}
+
+.game-hud-stack .ongoing-activities-widget ul {
+  max-height: min(24dvh, 210px);
+}
+
+.game-hud-stack .ongoing-activity-copy strong {
+  font-size: 12px;
+}
+
+.game-hud-stack .ongoing-activity-copy small {
+  font-size: 10px;
+}
+
+@media (max-width: 760px) {
+  .game-hud-stack {
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: max(48px, calc(env(safe-area-inset-left) + 44px));
+    width: min(330px, calc(100vw - 106px));
+    max-height: min(76dvh, 620px);
+    gap: 6px;
+  }
+
+  .game-hud-stack .random-world-event-widget {
+    max-height: min(30dvh, 230px);
+  }
+
+  .game-hud-stack .ongoing-activities-widget ul {
+    max-height: min(22dvh, 180px);
   }
 }
