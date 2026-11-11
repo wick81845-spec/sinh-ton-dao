@@ -1,4 +1,4 @@
-import { itemDefinitions } from '../../../data/items/itemDefinitions'
+import { isAccessoryItem, itemDefinitions } from '../../../data/items/itemDefinitions'
 import { survivalConfig } from '../../survival/data/survivalConfig'
 import { inflictPoisoning } from '../../survival/services/ailmentService'
 import { getSurvivalConditions } from '../../survival/utils/survivalCalculator'
@@ -221,18 +221,25 @@ export function degradeItemDurability(state: GameSnapshot, itemId: ItemId): Item
 export function equipWeapon(state: GameSnapshot, itemId: ItemId): InventoryActionResult {
   if (state.character.status !== 'alive') return { ok: false, message: 'Bạn cần hồi sinh trước khi trang bị vũ khí.' }
   if (state.activeCombat) return { ok: false, message: 'Không thể đổi vũ khí trong khi chiến đấu.' }
-  if (state.equippedWeaponId) return { ok: false, message: 'Hãy cất vũ khí đang trang bị trước.' }
+  if (state.equippedWeaponId === itemId) return { ok: false, message: 'Dụng cụ này đã được trang bị.' }
   if (itemDefinitions[itemId].category !== 'tool' || itemId === 'item_backpack') {
     return { ok: false, message: 'Chỉ có thể trang bị vũ khí hoặc dụng cụ vào ô này.' }
   }
   const removed = removeItems(state.inventory, itemId, 1)
   if (!removed.ok) return { ok: false, message: 'Dụng cụ không có trong hành trang.' }
+  const returned = state.equippedWeaponId
+    ? addItems(removed.container, state.equippedWeaponId, 1)
+    : { ok: true as const, container: removed.container }
+  if (!returned.ok) return { ok: false, message: 'Không thể cất dụng cụ đang trang bị vào hành trang.' }
   const maxDurability = itemDefinitions[itemId].maxDurability
+  const previousName = state.equippedWeaponId
+    ? itemDefinitions[state.equippedWeaponId].name
+    : undefined
   return {
     ok: true,
     state: {
       ...state,
-      inventory: removed.container,
+      inventory: returned.container,
       equippedWeaponId: itemId,
       ...(maxDurability
         ? {
@@ -243,7 +250,9 @@ export function equipWeapon(state: GameSnapshot, itemId: ItemId): InventoryActio
         }
         : {}),
     },
-    message: `Đã đưa ${itemDefinitions[itemId].name} vào ô vũ khí / dụng cụ.`,
+    message: previousName
+      ? `Đã thay ${previousName} bằng ${itemDefinitions[itemId].name}.`
+      : `Đã đưa ${itemDefinitions[itemId].name} vào ô vũ khí / dụng cụ.`,
   }
 }
 
@@ -256,6 +265,32 @@ export function unequipWeapon(state: GameSnapshot): InventoryActionResult {
     ok: true,
     state: { ...state, inventory: added.container, equippedWeaponId: undefined },
     message: `Đã cất ${itemDefinitions[itemId].name} vào hành trang.`,
+  }
+}
+
+export function equipAccessory(state: GameSnapshot, itemId: ItemId): InventoryActionResult {
+  if (state.character.status !== 'alive') return { ok: false, message: 'Bạn cần hồi sinh trước khi chọn phụ kiện.' }
+  const definition = itemDefinitions[itemId]
+  if (!isAccessoryItem(itemId)) return { ok: false, message: 'Chỉ có thể chọn thức ăn, nước uống hoặc vật phẩm hồi phục.' }
+  if (!state.inventory.slots.some((slot) => slot.itemId === itemId)) {
+    return { ok: false, message: 'Vật phẩm này không có trong hành trang.' }
+  }
+  if (state.equippedAccessoryId === itemId) {
+    return { ok: false, message: `${definition.name} đã nằm trong ô phụ kiện.` }
+  }
+  return {
+    ok: true,
+    state: { ...state, equippedAccessoryId: itemId },
+    message: `Đã chọn ${definition.name} vào ô phụ kiện.`,
+  }
+}
+
+export function unequipAccessory(state: GameSnapshot): InventoryActionResult {
+  if (!state.equippedAccessoryId) return { ok: false, message: 'Ô phụ kiện đang trống.' }
+  return {
+    ok: true,
+    state: { ...state, equippedAccessoryId: undefined },
+    message: `Đã bỏ ${itemDefinitions[state.equippedAccessoryId].name} khỏi ô phụ kiện.`,
   }
 }
 

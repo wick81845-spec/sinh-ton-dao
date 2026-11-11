@@ -66,7 +66,6 @@ export function BodyStatusPanel({ stats, characterName, appearance, weather, isR
             alt=""
             aria-hidden="true"
           />
-          <span className="body-status-name">{characterName}</span>
         </div>
         <div className="body-status-effects">
           {effects.length === 0

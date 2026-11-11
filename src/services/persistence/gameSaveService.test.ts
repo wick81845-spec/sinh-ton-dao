@@ -80,6 +80,18 @@ describe('gameSaveService', () => {
       equippedWeaponId: 'item_fishing_rod' as const,
       itemDurability: { item_fishing_rod: 12 },
     })).toBe(true)
+    expect(isValidGameSnapshot({
+      ...state,
+      equippedAccessoryId: 'item_fresh_water' as const,
+      inventory: {
+        ...state.inventory,
+        slots: [
+          ...state.inventory.slots.filter((slot) => slot.itemId !== 'item_fresh_water'),
+          { itemId: 'item_fresh_water' as const, quantity: 1 },
+        ],
+      },
+    })).toBe(true)
+    expect(isValidGameSnapshot({ ...state, equippedAccessoryId: 'item_wood' as const })).toBe(false)
     expect(isValidGameSnapshot({ ...state, equippedWeaponId: 'item_rope' as const })).toBe(false)
     expect(isValidGameSnapshot({ ...state, clothesDrying: { buildingId: 'missing', startedAt: 1_000, completesAt: 181_000 } })).toBe(false)
     expect(isValidGameSnapshot({ ...state, campfireFuel: { missing: { remainingMs: 1, lastUpdatedAt: 1 } } })).toBe(false)

@@ -4,6 +4,7 @@ import {
   addItems,
   consumeItem,
   discardItems,
+  equipAccessory,
   equipBackpack,
   equipWeapon,
   getCarriedWeight,
@@ -13,6 +14,7 @@ import {
   spoilExpiredFood,
   transferItems,
   repairItem,
+  unequipAccessory,
   unequipBackpack,
   unequipWeapon,
 } from './inventoryService'
@@ -365,6 +367,38 @@ describe('inventoryService', () => {
       ...rodState,
       inventory: { ...rodState.inventory, slots: [{ itemId: 'item_backpack', quantity: 1 }] },
     }, 'item_backpack')).toMatchObject({ ok: false })
+  })
+
+  it('replaces an equipped tool and lets consumables be selected in the accessory slot', () => {
+    const state = {
+      ...initialGameState,
+      equippedWeaponId: 'item_wooden_axe' as const,
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [
+          { itemId: 'item_stone_pickaxe' as const, quantity: 1 },
+          { itemId: 'item_fresh_water' as const, quantity: 2 },
+        ],
+      },
+    }
+
+    const replaced = equipWeapon(state, 'item_stone_pickaxe')
+    expect(replaced.ok).toBe(true)
+    if (!replaced.ok) throw new Error(replaced.message)
+    expect(replaced.state.equippedWeaponId).toBe('item_stone_pickaxe')
+    expect(replaced.state.inventory.slots).toContainEqual({ itemId: 'item_wooden_axe', quantity: 1 })
+
+    const selected = equipAccessory(replaced.state, 'item_fresh_water')
+    expect(selected.ok).toBe(true)
+    if (!selected.ok) throw new Error(selected.message)
+    expect(selected.state.equippedAccessoryId).toBe('item_fresh_water')
+    expect(selected.state.inventory.slots).toContainEqual({ itemId: 'item_fresh_water', quantity: 2 })
+    expect(equipAccessory(selected.state, 'item_wood')).toMatchObject({ ok: false })
+
+    const cleared = unequipAccessory(selected.state)
+    expect(cleared.ok).toBe(true)
+    if (!cleared.ok) throw new Error(cleared.message)
+    expect(cleared.state.equippedAccessoryId).toBeUndefined()
   })
 
   it.each([

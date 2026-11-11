@@ -476,7 +476,7 @@ export function GatheringPage({
               )}
             </section>
 
-            {(selectedNodeId !== null || isFishingLocationSelected || active) && (
+            {(selectedNodeId !== null || isFishingLocationSelected) && (
               <section
                 className={`gathering-map-dock${isFishingLocationSelected ? ' is-fishing' : ''}`}
                 aria-label={isFishingLocationSelected ? 'Điểm câu cá' : 'Điểm thu hoạch'}

@@ -396,6 +396,7 @@ export interface GameSnapshot {
   isWarmingAtCampfire?: boolean
   backpackEquipped?: boolean
   equippedWeaponId?: ItemId
+  equippedAccessoryId?: ItemId
   campfireFuel?: Record<string, CampfireFuelState>
   clothesDrying?: ClothesDryingState | null
   weather?: WeatherState

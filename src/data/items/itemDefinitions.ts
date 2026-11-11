@@ -1064,3 +1064,13 @@ export const itemDefinitions: Record<ItemId, ItemDefinition> = {
   ...fishingRodItemDefinitions,
   ...fishingLootItemDefinitions,
 }
+
+export function isAccessoryItem(itemId: ItemId): boolean {
+  const item = itemDefinitions[itemId]
+  return item.usable && (
+    item.hungerRestore !== undefined
+    || item.thirstRestore !== undefined
+    || item.healthRestore !== undefined
+    || (item.curesAilments?.length ?? 0) > 0
+  )
+}

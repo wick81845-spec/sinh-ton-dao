@@ -1,6 +1,6 @@
 import { initialGameState } from '../../data/mockGameState'
 import { fishCatalog } from '../../data/items/fishCatalog'
-import { itemDefinitions } from '../../data/items/itemDefinitions'
+import { isAccessoryItem, itemDefinitions } from '../../data/items/itemDefinitions'
 import { buildingDefinitions, constructionQueueLimit } from '../../modules/building/data/buildingDefinitions'
 import { isBuildingDefinitionId } from '../../modules/building/data/buildingDefinitions'
 import { gatheringActivities, randomGatheringActivityId } from '../../modules/gathering/data/gatheringConfig'
@@ -788,12 +788,17 @@ function isGameSnapshot(value: unknown): value is GameSnapshot {
   const campfireFuel = value.campfireFuel
   const clothesDrying = value.clothesDrying
   const equippedWeaponId = value.equippedWeaponId
+  const equippedAccessoryId = value.equippedAccessoryId
   return Array.isArray(value.friendIds)
     && (equippedWeaponId === undefined
       || (isItemId(equippedWeaponId)
         && itemDefinitions[equippedWeaponId].category === 'tool'
         && equippedWeaponId !== 'item_backpack'
         && !value.inventory.slots.some((slot) => slot.itemId === equippedWeaponId)))
+    && (equippedAccessoryId === undefined
+      || (isItemId(equippedAccessoryId)
+        && isAccessoryItem(equippedAccessoryId)
+        && value.inventory.slots.some((slot) => slot.itemId === equippedAccessoryId)))
     && (campfireFuel === undefined || (isRecord(campfireFuel)
       && Object.entries(campfireFuel).every(([buildingId, fuel]) => (
         typeof buildingId === 'string'

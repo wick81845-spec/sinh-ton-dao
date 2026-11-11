@@ -49,6 +49,8 @@ export interface GameContextValue {
   unequipBackpack(): GameActionResult
   equipWeapon(itemId: ItemId): GameActionResult
   unequipWeapon(): GameActionResult
+  equipAccessory(itemId: ItemId): GameActionResult
+  unequipAccessory(): GameActionResult
   queueRecipe(recipeId: string, fishItemId?: FishProcessingItemId): GameActionResult
   researchTechnology(technologyId: string): GameActionResult
   startBuilding(definitionId: string): GameActionResult

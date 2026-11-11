@@ -239,6 +239,15 @@
   padding: 18px;
 }
 
+.game-module-panel:has(.crafting-page) {
+  width: min(94vw, 980px);
+  max-height: min(86dvh, 780px);
+}
+
+.game-module-panel-content:has(.crafting-page) {
+  padding: 12px;
+}
+
 .game-module-panel:has(.inventory-page) {
   width: min(100%, 980px);
   max-height: min(80dvh, 740px);
@@ -2127,6 +2136,10 @@
     border-radius: 14px;
   }
 
+  .game-module-panel:has(.crafting-page) {
+    max-height: 86dvh;
+  }
+
   .game-module-panel:has(.inventory-page) {
     max-height: 86dvh;
   }
@@ -2962,8 +2975,8 @@
 @media (max-width: 760px) {
   .game-hud-stack {
     bottom: max(12px, env(safe-area-inset-bottom));
-    left: max(48px, calc(env(safe-area-inset-left) + 44px));
-    width: min(330px, calc(100vw - 106px));
+    left: max(42px, calc(env(safe-area-inset-left) + 38px));
+    width: min(250px, calc(100vw - 96px));
     max-height: min(76dvh, 620px);
     gap: 6px;
   }

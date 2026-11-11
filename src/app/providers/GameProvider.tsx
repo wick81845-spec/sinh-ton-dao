@@ -25,6 +25,7 @@ import { isFishingActivityId } from '../../modules/gathering/data/fishingConfig'
 import {
   consumeItem,
   discardItems,
+  equipAccessory,
   equipBackpack,
   equipWeapon,
   isInventoryOverloaded,
@@ -33,6 +34,7 @@ import {
   repairItem,
   spoilExpiredFood,
   transferItems,
+  unequipAccessory,
   unequipBackpack,
   unequipWeapon,
 } from '../../modules/inventory/services/inventoryService'
@@ -82,6 +84,12 @@ import { useAuth } from './useAuth'
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : 'Đã xảy ra lỗi không xác định.'
+}
+
+function clearUncarriedAccessory(state: GameSnapshot): GameSnapshot {
+  const accessoryId = state.equippedAccessoryId
+  if (!accessoryId || state.inventory.slots.some((slot) => slot.itemId === accessoryId)) return state
+  return { ...state, equippedAccessoryId: undefined }
 }
 
 function emitSurvivalChanges(previous: GameSnapshot, next: GameSnapshot): void {
@@ -179,15 +187,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const commitState = useCallback((nextState: GameSnapshot, message: string) => {
     const currentState = stateRef.current
+    const stateWithAccessory = clearUncarriedAccessory(nextState)
     const leftShelter = Boolean(currentState?.isResting && !message.startsWith('Bạn đã rời lều'))
     const stateToCommit = currentState && (
-      isSurvivorBusy(nextState)
-      || currentState.character.currentLocationId !== nextState.character.currentLocationId
-      || nextState.character.status !== 'alive'
+      isSurvivorBusy(stateWithAccessory)
+      || currentState.character.currentLocationId !== stateWithAccessory.character.currentLocationId
+      || stateWithAccessory.character.status !== 'alive'
       || leftShelter
     )
-      ? { ...nextState, isResting: false }
-      : nextState
+      ? { ...stateWithAccessory, isResting: false }
+      : stateWithAccessory
     stateRef.current = stateToCommit
     setGameState(stateToCommit)
     setNotice(leftShelter
@@ -576,6 +585,28 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const currentState = stateRef.current
     if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
     const result = unequipWeapon(currentState)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const equipAccessoryAction = useCallback((itemId: ItemId): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = equipAccessory(currentState, itemId)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const unequipAccessoryAction = useCallback((): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = unequipAccessory(currentState)
     if (!result.ok) {
       setNotice(result.message)
       return result
@@ -1162,7 +1193,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const restBonusMultiplier = 1 + (shelterMultiplier - 1) + (campfireMultiplier - 1)
       const freshness = initializeFoodFreshness(stateAfterFire, now)
       const spoilage = spoilExpiredFood(freshness.state, now)
-      const stateAfterFood = spoilage.state
+      const stateAfterFood = clearUncarriedAccessory(spoilage.state)
       const survivalWeather = getWorldWeatherAtTime(
         stateAfterFood.weather ? getWeatherDefinition(stateAfterFood.weather.weatherId) : undefined,
         now,
@@ -1405,6 +1436,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       unequipBackpack: unequipBackpackAction,
       equipWeapon: equipWeaponAction,
       unequipWeapon: unequipWeaponAction,
+      equipAccessory: equipAccessoryAction,
+      unequipAccessory: unequipAccessoryAction,
       queueRecipe: queueRecipeAction,
       researchTechnology: researchTechnologyAction,
       startBuilding: startBuildingAction,
