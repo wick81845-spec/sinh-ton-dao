@@ -21,6 +21,7 @@ import type {
   CombatLogEntry,
   CombatSession,
   Character,
+  ClothingSlot,
   ConstructionJob,
   CraftingJob,
   ExplorationLogEntry,
@@ -697,6 +698,10 @@ function isSurvivalAilmentId(value: unknown): value is SurvivalAilmentId {
   return typeof value === 'string' && survivalAilmentIds.includes(value)
 }
 
+function isClothingSlot(value: string): value is ClothingSlot {
+  return value === 'head' || value === 'body' || value === 'hands' || value === 'legs' || value === 'feet'
+}
+
 function isSurvivalAilment(value: unknown): value is SurvivalAilment {
   if (!isRecord(value)
     || !isSurvivalAilmentId(value.id)
@@ -789,6 +794,7 @@ function isGameSnapshot(value: unknown): value is GameSnapshot {
   const clothesDrying = value.clothesDrying
   const equippedWeaponId = value.equippedWeaponId
   const equippedAccessoryId = value.equippedAccessoryId
+  const equippedClothing = value.equippedClothing
   return Array.isArray(value.friendIds)
     && (equippedWeaponId === undefined
       || (isItemId(equippedWeaponId)
@@ -799,6 +805,14 @@ function isGameSnapshot(value: unknown): value is GameSnapshot {
       || (isItemId(equippedAccessoryId)
         && isAccessoryItem(equippedAccessoryId)
         && value.inventory.slots.some((slot) => slot.itemId === equippedAccessoryId)))
+    && (equippedClothing === undefined || (
+      isRecord(equippedClothing)
+      && Object.entries(equippedClothing).every(([slot, itemId]) => (
+        isClothingSlot(slot)
+        && isItemId(itemId)
+        && itemDefinitions[itemId].clothingSlot === slot
+      ))
+    ))
     && (campfireFuel === undefined || (isRecord(campfireFuel)
       && Object.entries(campfireFuel).every(([buildingId, fuel]) => (
         typeof buildingId === 'string'

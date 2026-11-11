@@ -1,4 +1,5 @@
-import type { GameSnapshot } from '../../../shared/types/game'
+import { itemDefinitions } from '../../../data/items/itemDefinitions'
+import type { GameSnapshot, ItemId } from '../../../shared/types/game'
 import type { WeatherDefinition } from '../../world/data/weatherDefinitions'
 import { getSurvivalConditions } from '../utils/survivalCalculator'
 
@@ -37,7 +38,18 @@ export function advanceBodyExposure(
 
   const previousWetness = state.survival.wetness ?? 0
   const previousBodyTemperature = state.survival.bodyTemperature ?? 37
-  const rainRate = weather ? rainRatesPerMinute[weather.id] ?? 0 : 0
+  const clothing = Object.values(state.equippedClothing ?? {})
+    .filter((itemId): itemId is ItemId => itemId !== undefined)
+    .map((itemId) => itemDefinitions[itemId])
+  const coldProtection = Math.min(0.75, clothing.reduce(
+    (total, item) => total + (item.coldProtection ?? 0),
+    0,
+  ))
+  const rainProtection = Math.min(0.7, clothing.reduce(
+    (total, item) => total + (item.rainProtection ?? 0),
+    0,
+  ))
+  const rainRate = (weather ? rainRatesPerMinute[weather.id] ?? 0 : 0) * (1 - rainProtection)
   const shelterRainMultiplier = isSheltered ? 0.08 : 1
   const dryingRate = weather && weather.temperatureDelta >= 2 ? 0.2 : 0.08
   const wetness = round(clamp(
@@ -54,7 +66,10 @@ export function advanceBodyExposure(
     ? temperatureDelta * 0.008
     : temperatureDelta <= -7 ? temperatureDelta * 0.004 : 0
   const coldOrWindy = temperatureDelta <= -7 || (weather?.wind ?? 0) >= 5
-  const wetColdShiftPerMinute = coldOrWindy ? (wetness / 100) * 0.03 : 0
+  const protectedAmbientShiftPerMinute = ambientShiftPerMinute < 0
+    ? ambientShiftPerMinute * (1 - coldProtection)
+    : ambientShiftPerMinute
+  const wetColdShiftPerMinute = coldOrWindy ? (wetness / 100) * 0.03 * (1 - coldProtection) : 0
   const campfireWarmth = isNearCampfire
     ? Math.min(
       Math.max(0, 37 - previousBodyTemperature),
@@ -63,7 +78,7 @@ export function advanceBodyExposure(
     : 0
   const bodyTemperature = round(clamp(
     previousBodyTemperature
-      + (ambientShiftPerMinute - wetColdShiftPerMinute)
+      + (protectedAmbientShiftPerMinute - wetColdShiftPerMinute)
         * shelterTemperatureMultiplier
         * elapsedMinutes
       + campfireWarmth,

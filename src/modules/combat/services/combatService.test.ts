@@ -91,6 +91,19 @@ describe('combatService', () => {
     expect(result.state.equippedWeaponId).toBe('item_wooden_spear')
   })
 
+  it('reduces incoming combat damage while reinforced armor is equipped', () => {
+    const state = {
+      ...initialGameState,
+      equippedClothing: { body: 'item_reinforced_armor' as const },
+    }
+    const started = startCombat(state, 'encounter_pirate_patrol', 1_000)
+    if (!started.ok) throw new Error(started.message)
+    const result = attackCombat(started.state, 2_000)
+    if (!result.ok) throw new Error(result.message)
+
+    expect(result.state.survival.health).toBe(91)
+  })
+
   it('does not use or wear an equipped tool as a combat weapon', () => {
     const state = {
       ...initialGameState,

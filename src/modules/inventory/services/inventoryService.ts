@@ -8,6 +8,7 @@ import type {
   ItemContainer,
   ItemId,
   ItemQuantity,
+  ClothingSlot,
   SurvivalAilmentId,
 } from '../../../shared/types/game'
 
@@ -291,6 +292,56 @@ export function unequipAccessory(state: GameSnapshot): InventoryActionResult {
     ok: true,
     state: { ...state, equippedAccessoryId: undefined },
     message: `Đã bỏ ${itemDefinitions[state.equippedAccessoryId].name} khỏi ô phụ kiện.`,
+  }
+}
+
+export function equipClothing(state: GameSnapshot, slot: ClothingSlot, itemId: ItemId): InventoryActionResult {
+  if (state.character.status !== 'alive') return { ok: false, message: 'Bạn cần hồi sinh trước khi thay quần áo.' }
+  const definition = itemDefinitions[itemId]
+  if (definition.clothingSlot !== slot) {
+    return { ok: false, message: 'Món đồ này không phù hợp với ô trang bị đã chọn.' }
+  }
+  if (!state.inventory.slots.some((entry) => entry.itemId === itemId)) {
+    return { ok: false, message: 'Món đồ này không có trong hành trang.' }
+  }
+  if (state.equippedClothing?.[slot] === itemId) {
+    return { ok: false, message: `${definition.name} đã được trang bị.` }
+  }
+
+  const removed = removeItems(state.inventory, itemId, 1)
+  if (!removed.ok) return removed
+
+  const previousItemId = state.equippedClothing?.[slot]
+  const returned = previousItemId ? addItems(removed.container, previousItemId, 1) : removed
+  if (!returned.ok) return { ok: false, message: `Không thể cất ${previousItemId ? itemDefinitions[previousItemId].name : 'trang bị cũ'} vào hành trang: ${returned.message}` }
+
+  return {
+    ok: true,
+    state: {
+      ...state,
+      inventory: returned.container,
+      equippedClothing: { ...state.equippedClothing, [slot]: itemId },
+    },
+    message: `Đã trang bị ${definition.name}. ${previousItemId ? `Đã cất ${itemDefinitions[previousItemId].name} vào hành trang.` : ''}`.trim(),
+  }
+}
+
+export function unequipClothing(state: GameSnapshot, slot: ClothingSlot): InventoryActionResult {
+  const itemId = state.equippedClothing?.[slot]
+  if (!itemId) return { ok: false, message: 'Ô quần áo này đang trống.' }
+  const inventory = addItems(state.inventory, itemId, 1)
+  if (!inventory.ok) return { ok: false, message: `Không thể tháo ${itemDefinitions[itemId].name}: ${inventory.message}` }
+
+  const equippedClothing = { ...state.equippedClothing }
+  delete equippedClothing[slot]
+  return {
+    ok: true,
+    state: {
+      ...state,
+      inventory: inventory.container,
+      equippedClothing: Object.keys(equippedClothing).length > 0 ? equippedClothing : undefined,
+    },
+    message: `Đã tháo ${itemDefinitions[itemId].name} về hành trang.`,
   }
 }
 

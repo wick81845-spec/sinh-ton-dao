@@ -2,12 +2,30 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useGame } from '../../../app/providers/useGame'
 import { isAccessoryItem, itemDefinitions } from '../../../data/items/itemDefinitions'
-import type { ItemId } from '../../../shared/types/game'
+import type { ClothingSlot, ItemId } from '../../../shared/types/game'
 import { characterLevelTitle } from '../../progression/data/progressionDefinitions'
 import { BodyStatusPanel } from '../../survival/components/BodyStatusPanel'
 import { getCurrentWeather } from '../../world/services/weatherService'
 
-type EquipmentPicker = 'tool' | 'backpack' | 'accessory'
+type EquipmentPicker = 'tool' | 'backpack' | 'accessory' | `clothing-${ClothingSlot}`
+
+const clothingSlotLabels: Record<ClothingSlot, string> = {
+  head: 'Đầu',
+  body: 'Thân',
+  hands: 'Tay',
+  legs: 'Chân',
+  feet: 'Giày',
+}
+
+function getClothingEffectLabel(itemId: ItemId): string {
+  const item = itemDefinitions[itemId]
+  const effects = [
+    item.coldProtection ? `Giữ ấm ${Math.round(item.coldProtection * 100)}%` : '',
+    item.rainProtection ? `Chống mưa ${Math.round(item.rainProtection * 100)}%` : '',
+    item.damageReduction ? `Giảm sát thương ${Math.round(item.damageReduction * 100)}%` : '',
+  ].filter(Boolean)
+  return effects.join(' · ')
+}
 
 function groupInventoryItems(slots: { itemId: ItemId; quantity: number }[]) {
   const quantities = new Map<ItemId, number>()
@@ -24,9 +42,11 @@ export function CharacterPage() {
     error,
     equipAccessory,
     equipBackpack,
+    equipClothing,
     equipWeapon,
     unequipAccessory,
     unequipBackpack,
+    unequipClothing,
     unequipWeapon,
   } = useGame()
   const [openPicker, setOpenPicker] = useState<EquipmentPicker | null>(null)
@@ -44,15 +64,32 @@ export function CharacterPage() {
     itemId !== 'item_backpack' && itemDefinitions[itemId].category === 'tool'
   )))
   const accessoryItems = groupInventoryItems(gameState.inventory.slots.filter(({ itemId }) => isAccessoryItem(itemId)))
+  const openClothingSlot = (['head', 'body', 'hands', 'legs', 'feet'] as const)
+    .find((slot) => openPicker === `clothing-${slot}`)
   const equipmentSlots: {
     id: string
     label: string
     itemId?: ItemId
     emptyLabel: string
     picker?: EquipmentPicker
+    clothingSlot?: ClothingSlot
   }[] = [
-    { id: 'head', label: 'Đầu', emptyLabel: 'Sắp mở' },
-    { id: 'body', label: 'Thân', emptyLabel: 'Sắp mở' },
+    {
+      id: 'head',
+      label: clothingSlotLabels.head,
+      itemId: gameState.equippedClothing?.head,
+      emptyLabel: 'Chọn mũ',
+      picker: 'clothing-head',
+      clothingSlot: 'head',
+    },
+    {
+      id: 'body',
+      label: clothingSlotLabels.body,
+      itemId: gameState.equippedClothing?.body,
+      emptyLabel: 'Chọn áo',
+      picker: 'clothing-body',
+      clothingSlot: 'body',
+    },
     {
       id: 'accessory',
       label: 'Phụ kiện',
@@ -67,9 +104,30 @@ export function CharacterPage() {
       emptyLabel: 'Chọn dụng cụ',
       picker: 'tool',
     },
-    { id: 'hands', label: 'Tay', emptyLabel: 'Sắp mở' },
-    { id: 'legs', label: 'Chân', emptyLabel: 'Sắp mở' },
-    { id: 'feet', label: 'Giày', emptyLabel: 'Sắp mở' },
+    {
+      id: 'hands',
+      label: clothingSlotLabels.hands,
+      itemId: gameState.equippedClothing?.hands,
+      emptyLabel: 'Chọn găng tay',
+      picker: 'clothing-hands',
+      clothingSlot: 'hands',
+    },
+    {
+      id: 'legs',
+      label: clothingSlotLabels.legs,
+      itemId: gameState.equippedClothing?.legs,
+      emptyLabel: 'Chọn quần',
+      picker: 'clothing-legs',
+      clothingSlot: 'legs',
+    },
+    {
+      id: 'feet',
+      label: clothingSlotLabels.feet,
+      itemId: gameState.equippedClothing?.feet,
+      emptyLabel: 'Chọn giày',
+      picker: 'clothing-feet',
+      clothingSlot: 'feet',
+    },
     {
       id: 'backpack',
       label: 'Ba lô',
@@ -84,6 +142,9 @@ export function CharacterPage() {
   }
   const handleEquipAccessory = (itemId: ItemId) => {
     if (equipAccessory(itemId).ok) setOpenPicker(null)
+  }
+  const handleEquipClothing = (slot: ClothingSlot, itemId: ItemId) => {
+    if (equipClothing(slot, itemId).ok) setOpenPicker(null)
   }
   const handleBackpack = () => {
     const result = gameState.backpackEquipped ? unequipBackpack() : equipBackpack()
@@ -123,6 +184,9 @@ export function CharacterPage() {
                       : <span aria-hidden="true">{slot.id === 'head' ? '◇' : slot.id === 'body' ? '♧' : '＋'}</span>}
                   </span>
                   <strong>{item?.name ?? slot.emptyLabel}</strong>
+                  {slot.clothingSlot && slot.itemId && (
+                    <small className="character-equipment-effect">{getClothingEffectLabel(slot.itemId)}</small>
+                  )}
                   {item?.maxDurability && (
                     <small>Độ bền {durability ?? item.maxDurability}/{item.maxDurability}</small>
                   )}
@@ -159,18 +223,65 @@ export function CharacterPage() {
               )
             })}
           </div>
-          <p className="character-equipment-note">Vật phẩm phụ kiện đã chọn vẫn nằm trong hành trang.</p>
+          <p className="character-equipment-note">Quần áo rời hành trang khi mặc; giữ ấm, chống mưa và giáp được áp dụng tự động. Vật phẩm ở ô phụ kiện vẫn nằm trong túi.</p>
 
           {openPicker && (
             <section
               className="equipment-picker"
               id={`equipment-picker-${openPicker}`}
-              aria-label={`Chọn ${openPicker === 'tool' ? 'vũ khí hoặc dụng cụ' : openPicker === 'backpack' ? 'ba lô' : 'đồ ăn hoặc thức uống'}`}
+              aria-label={`Chọn ${openClothingSlot ? clothingSlotLabels[openClothingSlot].toLocaleLowerCase('vi-VN') : openPicker === 'tool' ? 'vũ khí hoặc dụng cụ' : openPicker === 'backpack' ? 'ba lô' : 'đồ ăn hoặc thức uống'}`}
             >
               <div className="equipment-picker-heading">
-                <h4>{openPicker === 'tool' ? 'Vũ khí / dụng cụ đang có' : openPicker === 'backpack' ? 'Ba lô' : 'Đồ ăn và thức uống'}</h4>
+                <h4>{openClothingSlot
+                  ? `Quần áo ${clothingSlotLabels[openClothingSlot].toLocaleLowerCase('vi-VN')} đang có`
+                  : openPicker === 'tool' ? 'Vũ khí / dụng cụ đang có' : openPicker === 'backpack' ? 'Ba lô' : 'Đồ ăn và thức uống'}</h4>
                 <button type="button" aria-label="Đóng danh sách trang bị" onClick={() => setOpenPicker(null)}>×</button>
               </div>
+
+              {openClothingSlot && (() => {
+                const clothingItems = groupInventoryItems(gameState.inventory.slots.filter(
+                  ({ itemId }) => itemDefinitions[itemId].clothingSlot === openClothingSlot,
+                ))
+                const equippedItemId = gameState.equippedClothing?.[openClothingSlot]
+                return (
+                  <>
+                    {clothingItems.length > 0 ? (
+                      <div className="equipment-picker-list">
+                        {clothingItems.map(({ itemId, quantity }) => {
+                          const option = itemDefinitions[itemId]
+                          const isSelected = equippedItemId === itemId
+                          return (
+                            <button
+                              type="button"
+                              className={`equipment-picker-option${isSelected ? ' is-selected' : ''}`}
+                              key={itemId}
+                              aria-pressed={isSelected}
+                              onClick={() => handleEquipClothing(openClothingSlot, itemId)}
+                            >
+                              <img src={option.image} alt="" aria-hidden="true" />
+                              <span>
+                                <strong>{option.name}</strong>
+                                <small>{getClothingEffectLabel(itemId)}{isSelected ? ' · Đang mặc' : ` · Trong túi: ${quantity}`}</small>
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : <p className="equipment-picker-empty">Chưa có quần áo phù hợp trong hành trang. Hãy chế tạo tại bàn dệt hoặc bàn chế tạo.</p>}
+                    {equippedItemId && (
+                      <button
+                        type="button"
+                        className="equipment-picker-remove"
+                        onClick={() => {
+                          if (unequipClothing(openClothingSlot).ok) setOpenPicker(null)
+                        }}
+                      >
+                        Tháo {itemDefinitions[equippedItemId].name}
+                      </button>
+                    )}
+                  </>
+                )
+              })()}
 
               {openPicker === 'tool' && (
                 <>

@@ -30,6 +30,32 @@ describe('bodyExposureService', () => {
     expect(result.state.survival.bodyTemperature).toBeLessThan(37)
   })
 
+  it('uses equipped clothing to reduce rain wetness and cold exposure', () => {
+    const exposed = {
+      ...initialGameState,
+      survival: { ...initialGameState.survival, wetness: 80 },
+    }
+    const dressed = {
+      ...exposed,
+      equippedClothing: {
+        body: 'item_wool_sweater' as const,
+        feet: 'item_hiking_boots' as const,
+      },
+    }
+    const dressedForRain = {
+      ...initialGameState,
+      equippedClothing: dressed.equippedClothing,
+    }
+
+    const rainWithoutClothes = advanceBodyExposure(initialGameState, 10 * 60 * 1000, getWeatherDefinition('heavy_rain'))
+    const rainWithClothes = advanceBodyExposure(dressedForRain, 10 * 60 * 1000, getWeatherDefinition('heavy_rain'))
+    const coldWithoutClothes = advanceBodyExposure(exposed, 10 * 60 * 1000, getWeatherDefinition('blizzard'))
+    const coldWithClothes = advanceBodyExposure(dressed, 10 * 60 * 1000, getWeatherDefinition('blizzard'))
+
+    expect(rainWithClothes.state.survival.wetness).toBeLessThan(rainWithoutClothes.state.survival.wetness ?? 0)
+    expect(coldWithClothes.state.survival.bodyTemperature).toBeGreaterThan(coldWithoutClothes.state.survival.bodyTemperature ?? 0)
+  })
+
   it('reduces rain exposure under shelter and dries clothing in warm weather', () => {
     const sheltered = advanceBodyExposure(
       initialGameState,

@@ -12612,6 +12612,17 @@ body {
   font-size: 8px;
 }
 
+.character-equipment-effect {
+  display: -webkit-box;
+  overflow: hidden;
+  max-width: 100%;
+  color: #d2bd7f !important;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .character-equipment-note {
   margin: 9px 0 0;
   color: #aaa894;
@@ -12718,8 +12729,11 @@ body {
 }
 
 .equipment-picker-option small {
+  display: block;
+  line-height: 1.3;
   color: #b7b19e;
   font-size: 9px;
+  overflow-wrap: anywhere;
 }
 
 .equipment-picker-empty {

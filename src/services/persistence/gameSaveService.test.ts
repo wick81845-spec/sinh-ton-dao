@@ -91,6 +91,25 @@ describe('gameSaveService', () => {
         ],
       },
     })).toBe(true)
+    expect(isValidGameSnapshot({
+      ...state,
+      equippedClothing: {
+        body: 'item_wool_sweater' as const,
+        feet: 'item_hiking_boots' as const,
+      },
+    })).toBe(true)
+    expect(isValidGameSnapshot({
+      ...state,
+      inventory: {
+        ...state.inventory,
+        slots: [...state.inventory.slots, { itemId: 'item_wool_sweater' as const, quantity: 1 }],
+      },
+      equippedClothing: { body: 'item_wool_sweater' as const },
+    })).toBe(true)
+    expect(isValidGameSnapshot({
+      ...state,
+      equippedClothing: { hands: 'item_wool_sweater' as const },
+    })).toBe(false)
     expect(isValidGameSnapshot({ ...state, equippedAccessoryId: 'item_wood' as const })).toBe(false)
     expect(isValidGameSnapshot({ ...state, equippedWeaponId: 'item_rope' as const })).toBe(false)
     expect(isValidGameSnapshot({ ...state, clothesDrying: { buildingId: 'missing', startedAt: 1_000, completesAt: 181_000 } })).toBe(false)

@@ -27,6 +27,7 @@ import {
   discardItems,
   equipAccessory,
   equipBackpack,
+  equipClothing,
   equipWeapon,
   isInventoryOverloaded,
   initializeFoodFreshness,
@@ -36,6 +37,7 @@ import {
   transferItems,
   unequipAccessory,
   unequipBackpack,
+  unequipClothing,
   unequipWeapon,
 } from '../../modules/inventory/services/inventoryService'
 import { openSalvageContainer } from '../../modules/inventory/services/salvageService'
@@ -68,7 +70,7 @@ import {
   completeTutorialStepInState,
   shouldShowTutorialIntro,
 } from '../../modules/onboarding/tutorialSteps'
-import type { CropId, GameSnapshot, ItemId } from '../../shared/types/game'
+import type { ClothingSlot, CropId, GameSnapshot, ItemId } from '../../shared/types/game'
 import { gameClock } from '../../services/clock/gameClock'
 import { gameEventBus } from '../../services/events/gameEvents'
 import { createGameSaveService } from '../../services/persistence/gameSaveService'
@@ -607,6 +609,28 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const currentState = stateRef.current
     if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
     const result = unequipAccessory(currentState)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const equipClothingAction = useCallback((slot: ClothingSlot, itemId: ItemId): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = equipClothing(currentState, slot, itemId)
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitState(result.state, result.message)
+  }, [commitState])
+
+  const unequipClothingAction = useCallback((slot: ClothingSlot): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = unequipClothing(currentState, slot)
     if (!result.ok) {
       setNotice(result.message)
       return result
@@ -1438,6 +1462,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       unequipWeapon: unequipWeaponAction,
       equipAccessory: equipAccessoryAction,
       unequipAccessory: unequipAccessoryAction,
+      equipClothing: equipClothingAction,
+      unequipClothing: unequipClothingAction,
       queueRecipe: queueRecipeAction,
       researchTechnology: researchTechnologyAction,
       startBuilding: startBuildingAction,

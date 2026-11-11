@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { CropId, GameSnapshot, ItemId } from '../../shared/types/game'
+import type { ClothingSlot, CropId, GameSnapshot, ItemId } from '../../shared/types/game'
 import type { FishProcessingItemId } from '../../modules/crafting/services/craftingService'
 import type {
   MessageBottle,
@@ -51,6 +51,8 @@ export interface GameContextValue {
   unequipWeapon(): GameActionResult
   equipAccessory(itemId: ItemId): GameActionResult
   unequipAccessory(): GameActionResult
+  equipClothing(slot: ClothingSlot, itemId: ItemId): GameActionResult
+  unequipClothing(slot: ClothingSlot): GameActionResult
   queueRecipe(recipeId: string, fishItemId?: FishProcessingItemId): GameActionResult
   researchTechnology(technologyId: string): GameActionResult
   startBuilding(definitionId: string): GameActionResult

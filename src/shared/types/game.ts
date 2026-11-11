@@ -118,6 +118,8 @@ export type FishingRodItemId =
   | 'item_fishing_rod_6'
   | 'item_fishing_rod_7'
 
+export type ClothingSlot = 'head' | 'body' | 'hands' | 'legs' | 'feet'
+
 export type ItemId =
   | 'item_wood'
   | 'item_wood_soft'
@@ -193,6 +195,12 @@ export type ItemId =
   | 'item_roasted_egg'
   | 'item_rope'
   | 'item_backpack'
+  | 'item_diving_helmet'
+  | 'item_wool_sweater'
+  | 'item_reinforced_armor'
+  | 'item_gloves'
+  | 'item_padded_trousers'
+  | 'item_hiking_boots'
   | 'item_fresh_fish'
   | 'item_spoiled_food'
   | FishingLootItemId
@@ -397,6 +405,7 @@ export interface GameSnapshot {
   backpackEquipped?: boolean
   equippedWeaponId?: ItemId
   equippedAccessoryId?: ItemId
+  equippedClothing?: Partial<Record<ClothingSlot, ItemId>>
   campfireFuel?: Record<string, CampfireFuelState>
   clothesDrying?: ClothesDryingState | null
   weather?: WeatherState

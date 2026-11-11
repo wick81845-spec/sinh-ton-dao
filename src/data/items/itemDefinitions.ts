@@ -1,4 +1,4 @@
-import type { FishItemId, FishingLootItemId, FishingRodItemId, ItemId, SurvivalAilmentId } from '../../shared/types/game'
+import type { ClothingSlot, FishItemId, FishingLootItemId, FishingRodItemId, ItemId, SurvivalAilmentId } from '../../shared/types/game'
 import { fishCatalog } from './fishCatalog'
 import { fishingLootCatalog } from './fishingLootCatalog'
 import { fishingRodCatalog } from './fishingRodCatalog'
@@ -6,7 +6,7 @@ import { fishingRodCatalog } from './fishingRodCatalog'
 export interface ItemDefinition {
   name: string
   description: string
-  category: 'resource' | 'food' | 'tool'
+  category: 'resource' | 'food' | 'tool' | 'equipment'
   maxStack: number
   weight: number
   icon: string
@@ -22,8 +22,12 @@ export interface ItemDefinition {
   maxDurability?: number
   shelfLifeMs?: number
   equipmentSlot?: 'weapon'
+  clothingSlot?: ClothingSlot
   weaponDamageBonus?: number
+  damageReduction?: number
   curesAilments?: readonly SurvivalAilmentId[]
+  coldProtection?: number
+  rainProtection?: number
 }
 
 type StaticItemId = Exclude<
@@ -976,6 +980,96 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
     tone: 'wood',
     usable: false,
     tradable: true,
+  },
+  item_diving_helmet: {
+    name: 'Mũ lặn kín',
+    description: 'Mũ che kín đầu, hạn chế mưa tạt và thất thoát nhiệt khi gặp thời tiết xấu.',
+    category: 'equipment',
+    maxStack: 1,
+    weight: 1.4,
+    icon: '◉',
+    image: '/assets/crafting/diving-helmet.png',
+    tone: 'stone',
+    usable: false,
+    tradable: true,
+    clothingSlot: 'head',
+    coldProtection: 0.1,
+    rainProtection: 0.12,
+  },
+  item_wool_sweater: {
+    name: 'Áo len sinh tồn',
+    description: 'Lớp áo dệt dày giúp giữ ấm, giảm tác động của lạnh và mưa lên cơ thể.',
+    category: 'equipment',
+    maxStack: 1,
+    weight: 0.9,
+    icon: '▤',
+    image: '/assets/crafting/wool-sweater.png',
+    tone: 'wood',
+    usable: false,
+    tradable: true,
+    clothingSlot: 'body',
+    coldProtection: 0.25,
+    rainProtection: 0.08,
+  },
+  item_reinforced_armor: {
+    name: 'Áo giáp gia cố',
+    description: 'Lớp vải bọc phiến sắt giúp giảm sát thương khi giao tranh, đồng thời chắn bớt gió lạnh.',
+    category: 'equipment',
+    maxStack: 1,
+    weight: 2.2,
+    icon: '⬡',
+    image: '/assets/crafting/reinforced-armor.png',
+    tone: 'stone',
+    usable: false,
+    tradable: true,
+    clothingSlot: 'body',
+    coldProtection: 0.1,
+    rainProtection: 0.04,
+    damageReduction: 0.15,
+  },
+  item_gloves: {
+    name: 'Găng tay dã chiến',
+    description: 'Găng vải giữ ấm đôi tay, giúp giảm mất nhiệt trong gió lạnh.',
+    category: 'equipment',
+    maxStack: 1,
+    weight: 0.2,
+    icon: '▤',
+    image: '/assets/crafting/gloves.png',
+    tone: 'wood',
+    usable: false,
+    tradable: true,
+    clothingSlot: 'hands',
+    coldProtection: 0.1,
+  },
+  item_padded_trousers: {
+    name: 'Quần dã chiến lót đệm',
+    description: 'Quần dã chiến có lớp lót giữ ấm phần thân dưới khi trời lạnh.',
+    category: 'equipment',
+    maxStack: 1,
+    weight: 0.7,
+    icon: '▤',
+    image: '/assets/crafting/padded-trousers.png',
+    tone: 'wood',
+    usable: false,
+    tradable: true,
+    clothingSlot: 'legs',
+    coldProtection: 0.16,
+    rainProtection: 0.04,
+  },
+  item_hiking_boots: {
+    name: 'Giày đi rừng',
+    description: 'Giày kín giữ chân khô và ấm lâu hơn khi mưa hoặc gió lạnh.',
+    category: 'equipment',
+    maxStack: 1,
+    weight: 0.8,
+    icon: '⌑',
+    image: '/assets/crafting/hiking-boots.png',
+    tone: 'wood',
+    usable: false,
+    tradable: true,
+    clothingSlot: 'feet',
+    coldProtection: 0.1,
+    rainProtection: 0.16,
   },
   item_fresh_fish: {
     name: 'Cá tươi',

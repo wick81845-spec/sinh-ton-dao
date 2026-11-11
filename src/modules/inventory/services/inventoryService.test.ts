@@ -6,6 +6,7 @@ import {
   discardItems,
   equipAccessory,
   equipBackpack,
+  equipClothing,
   equipWeapon,
   getCarriedWeight,
   getCarriedWeightLimit,
@@ -16,6 +17,7 @@ import {
   repairItem,
   unequipAccessory,
   unequipBackpack,
+  unequipClothing,
   unequipWeapon,
 } from './inventoryService'
 import type { ItemId, ItemQuantity } from '../../../shared/types/game'
@@ -399,6 +401,42 @@ describe('inventoryService', () => {
     expect(cleared.ok).toBe(true)
     if (!cleared.ok) throw new Error(cleared.message)
     expect(cleared.state.equippedAccessoryId).toBeUndefined()
+  })
+
+  it('equips clothing into its matching slot, replaces it, and returns it to inventory when removed', () => {
+    const state = {
+      ...initialGameState,
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [
+          { itemId: 'item_wool_sweater' as const, quantity: 1 },
+          { itemId: 'item_reinforced_armor' as const, quantity: 1 },
+          { itemId: 'item_diving_helmet' as const, quantity: 1 },
+        ],
+      },
+    }
+
+    const equipped = equipClothing(state, 'body', 'item_wool_sweater')
+    expect(equipped.ok).toBe(true)
+    if (!equipped.ok) throw new Error(equipped.message)
+    expect(equipped.state.equippedClothing).toEqual({ body: 'item_wool_sweater' })
+    expect(equipped.state.inventory.slots).toEqual([
+      { itemId: 'item_reinforced_armor', quantity: 1 },
+      { itemId: 'item_diving_helmet', quantity: 1 },
+    ])
+
+    const replaced = equipClothing(equipped.state, 'body', 'item_reinforced_armor')
+    expect(replaced.ok).toBe(true)
+    if (!replaced.ok) throw new Error(replaced.message)
+    expect(replaced.state.equippedClothing).toEqual({ body: 'item_reinforced_armor' })
+    expect(replaced.state.inventory.slots).toContainEqual({ itemId: 'item_wool_sweater', quantity: 1 })
+
+    expect(equipClothing(replaced.state, 'body', 'item_diving_helmet')).toMatchObject({ ok: false })
+    const removed = unequipClothing(replaced.state, 'body')
+    expect(removed.ok).toBe(true)
+    if (!removed.ok) throw new Error(removed.message)
+    expect(removed.state.equippedClothing).toBeUndefined()
+    expect(removed.state.inventory.slots).toContainEqual({ itemId: 'item_reinforced_armor', quantity: 1 })
   })
 
   it.each([

@@ -84,6 +84,7 @@ describe('craftingService', () => {
         { itemId: 'item_rope', quantity: 1 },
       ],
     })
+
     expect(recipesById.get('recipe_clay_brick')).toMatchObject({
       stationId: 'building_kiln',
       ingredients: [
@@ -101,6 +102,28 @@ describe('craftingService', () => {
       { itemId: 'item_tin_ore', quantity: 1 },
       { itemId: 'item_coal', quantity: 1 },
     ])
+  })
+
+  it('offers craftable clothing for every equipment slot with survival protection', () => {
+    const recipesById = new Map(getCraftingPageRecipes().map((recipe) => [recipe.id, recipe]))
+    const clothingRecipes = [
+      ['recipe_diving_helmet', 'item_diving_helmet', 'head'],
+      ['recipe_wool_sweater', 'item_wool_sweater', 'body'],
+      ['recipe_reinforced_armor', 'item_reinforced_armor', 'body'],
+      ['recipe_gloves', 'item_gloves', 'hands'],
+      ['recipe_padded_trousers', 'item_padded_trousers', 'legs'],
+      ['recipe_hiking_boots', 'item_hiking_boots', 'feet'],
+    ] as const
+
+    clothingRecipes.forEach(([recipeId, itemId, slot]) => {
+      expect(recipesById.get(recipeId)?.output.itemId).toBe(itemId)
+      expect(itemDefinitions[itemId].clothingSlot).toBe(slot)
+      expect(
+        (itemDefinitions[itemId].coldProtection ?? 0)
+          + (itemDefinitions[itemId].rainProtection ?? 0)
+          + (itemDefinitions[itemId].damageReduction ?? 0),
+      ).toBeGreaterThan(0)
+    })
   })
 
   it('uses honey for jam and boiled water for mushroom soup', () => {

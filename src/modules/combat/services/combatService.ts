@@ -173,7 +173,13 @@ export function attackCombat(state: GameSnapshot, now: number): CombatActionResu
   }
 
   const hitState = encounter.attackDamage > 0 ? inflictCombatWound(attackedState) : attackedState
-  const health = Math.max(0, hitState.survival.health - encounter.attackDamage)
+  const damageReduction = Math.min(0.5, Object.values(hitState.equippedClothing ?? {})
+    .filter((itemId) => itemId !== undefined)
+    .reduce((total, itemId) => total + (itemDefinitions[itemId].damageReduction ?? 0), 0))
+  const incomingDamage = encounter.attackDamage > 0
+    ? Math.max(1, Math.round(encounter.attackDamage * (1 - damageReduction)))
+    : 0
+  const health = Math.max(0, hitState.survival.health - incomingDamage)
   if (health === 0) {
     const droppedItems = [
       ...hitState.inventory.slots.map((slot) => ({ itemId: slot.itemId, quantity: slot.quantity })),
