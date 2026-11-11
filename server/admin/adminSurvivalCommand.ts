@@ -1,5 +1,7 @@
 import type { AdminSurvivalCommand } from '../../src/shared/types/admin.js'
-import type { SurvivalAilment, SurvivalAilmentId } from '../../src/shared/types/game.js'
+import type { SurvivalAilment, SurvivalAilmentId, ItemId } from '../../src/shared/types/game.js'
+import { itemDefinitions } from '../../src/data/items/itemDefinitions.js'
+import { islandDefinitions } from '../../src/modules/world/data/worldDefinitions.js'
 
 const ailmentIds: readonly string[] = [
   'bleeding', 'infection', 'heatstroke', 'hypothermia', 'poisoning',
@@ -8,7 +10,8 @@ const ailmentIds: readonly string[] = [
   'frostbite', 'animalBite', 'exhaustion',
 ]
 const editableFields = new Set([
-  'revive', 'health', 'hunger', 'thirst', 'stamina', 'bodyTemperature', 'wetness', 'ailments',
+  'revive', 'restoreAll', 'teleportToIslandId', 'itemTransfers',
+  'health', 'hunger', 'thirst', 'stamina', 'bodyTemperature', 'wetness', 'ailments',
 ])
 
 export function parseAdminSurvivalCommand(value: unknown): AdminSurvivalCommand | null {
@@ -19,6 +22,38 @@ export function parseAdminSurvivalCommand(value: unknown): AdminSurvivalCommand 
   }
 
   const command: AdminSurvivalCommand = {}
+  if ('restoreAll' in value) {
+    if (value.restoreAll !== true) return null
+    command.restoreAll = true
+  }
+  if ('teleportToIslandId' in value) {
+    if (typeof value.teleportToIslandId !== 'string'
+      || !islandDefinitions.some((island) => island.id === value.teleportToIslandId)) return null
+    command.teleportToIslandId = value.teleportToIslandId
+  }
+  if ('itemTransfers' in value) {
+    if (!Array.isArray(value.itemTransfers)
+      || value.itemTransfers.length === 0
+      || value.itemTransfers.length > 10) return null
+    const itemTransfers: NonNullable<AdminSurvivalCommand['itemTransfers']> = []
+    for (const transfer of value.itemTransfers) {
+      if (!isRecord(transfer)
+        || (transfer.action !== 'give' && transfer.action !== 'take')
+        || (transfer.container !== 'inventory' && transfer.container !== 'storage')
+        || !isItemId(transfer.itemId)
+        || typeof transfer.quantity !== 'number'
+        || !Number.isInteger(transfer.quantity)
+        || transfer.quantity < 1
+        || transfer.quantity > 9999) return null
+      itemTransfers.push({
+        action: transfer.action,
+        container: transfer.container,
+        itemId: transfer.itemId,
+        quantity: transfer.quantity,
+      })
+    }
+    command.itemTransfers = itemTransfers
+  }
   for (const [key, min, max] of [
     ['health', 0, 100],
     ['hunger', 0, 100],
@@ -69,6 +104,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isAilmentId(value: unknown): value is SurvivalAilmentId {
   return typeof value === 'string' && ailmentIds.includes(value)
+}
+
+function isItemId(value: unknown): value is ItemId {
+  return typeof value === 'string' && Object.hasOwn(itemDefinitions, value)
 }
 
 function isAilmentSeverity(value: unknown): value is NonNullable<SurvivalAilment['severity']> {

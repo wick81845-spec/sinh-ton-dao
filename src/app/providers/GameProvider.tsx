@@ -45,11 +45,12 @@ import {
 import { buyMarketItem as buyMarket, sellMarketItem as sellMarket } from '../../modules/economy/services/marketService'
 import { addFriend as addSocialFriend, proposeTrade as createTradeOffer, resolveTrade as resolveSocialTrade, returnToHomeIsland, visitPlayerIsland as visitIsland } from '../../modules/social/services/socialService'
 import { completeShipConstruction, startShipConstruction } from '../../modules/ship/services/shipService'
-import { advanceSurvival, getSurvivalConditions, isSurvivorBusy, isSurvivorResting } from '../../modules/survival/utils/survivalCalculator'
+import { advanceSurvival, isSurvivorBusy, isSurvivorResting } from '../../modules/survival/utils/survivalCalculator'
 import { advanceAilments } from '../../modules/survival/services/ailmentService'
 import { advanceBodyExposure } from '../../modules/survival/services/bodyExposureService'
 import { survivalConfig } from '../../modules/survival/data/survivalConfig'
 import { researchTechnology as researchTech } from '../../modules/progression/services/technologyService'
+import { applyAdminCommand } from '../../modules/settings/services/adminCommandService'
 import { advanceWeather, createWeatherState } from '../../modules/world/services/weatherService'
 import { visitIslandAsAdmin as visitIslandForAdmin } from '../../modules/world/services/adminExplorationService'
 import { getWeatherDefinition } from '../../modules/world/data/weatherDefinitions'
@@ -1063,54 +1064,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
             continue
           }
 
-          if (command.revive) {
-            const result = respawn(currentState)
-            const revivedState = result.ok
-              ? {
-                ...result.state,
-                appliedAdminCommandIds: [...(currentState.appliedAdminCommandIds ?? []), id].slice(-100),
-              }
-              : {
-                ...currentState,
-                appliedAdminCommandIds: [...(currentState.appliedAdminCommandIds ?? []), id].slice(-100),
-              }
-            stateRef.current = revivedState
-            setGameState(revivedState)
-            emitSurvivalChanges(currentState, revivedState)
-            if (!await persistCurrentState()) continue
-            await acknowledgeAdminCommand(accessToken, id)
-            setNotice(result.ok
-              ? 'Quản trị viên đã hồi sinh bạn tại đảo nhà.'
-              : 'Lệnh hồi sinh đã được xác nhận; nhân vật của bạn hiện vẫn đang sống.')
-            continue
-          }
-
-          const survival = {
-            ...currentState.survival,
-            ...(command.health !== undefined ? { health: command.health } : {}),
-            ...(command.hunger !== undefined ? { hunger: command.hunger } : {}),
-            ...(command.thirst !== undefined ? { thirst: command.thirst } : {}),
-            ...(command.stamina !== undefined ? { stamina: command.stamina } : {}),
-            ...(command.bodyTemperature !== undefined ? { bodyTemperature: command.bodyTemperature } : {}),
-            ...(command.wetness !== undefined ? { wetness: command.wetness } : {}),
-          }
-          survival.conditions = getSurvivalConditions(survival)
-          const appliedAdminCommandIds = [...(currentState.appliedAdminCommandIds ?? []), id].slice(-100)
-          const nextState: GameSnapshot = {
-            ...currentState,
-            survival,
-            ailments: command.ailments ?? currentState.ailments ?? [],
-            appliedAdminCommandIds,
-            character: command.health === undefined
-              ? currentState.character
-              : { ...currentState.character, status: command.health === 0 ? 'dead' : 'alive' },
-          }
+          const result = applyAdminCommand(currentState, command, id, gameClock.now())
+          const nextState = result.ok
+            ? result.state
+            : {
+              ...currentState,
+              appliedAdminCommandIds: [...(currentState.appliedAdminCommandIds ?? []), id].slice(-100),
+            }
           stateRef.current = nextState
           setGameState(nextState)
           emitSurvivalChanges(currentState, nextState)
           if (!await persistCurrentState()) continue
           await acknowledgeAdminCommand(accessToken, id)
-          setNotice('Quản trị viên đã cập nhật trạng thái sinh tồn của bạn.')
+          setNotice(result.message)
         }
       } catch (commandError: unknown) {
         const message = `Không thể đồng bộ lệnh quản trị: ${describeError(commandError)}`

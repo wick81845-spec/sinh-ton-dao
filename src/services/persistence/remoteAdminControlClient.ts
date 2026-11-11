@@ -6,6 +6,8 @@ import type {
   PendingAdminCommand,
 } from '../../shared/types/admin'
 import type { SurvivalAilmentId } from '../../shared/types/game'
+import { itemDefinitions } from '../../data/items/itemDefinitions'
+import { islandDefinitions } from '../../modules/world/data/worldDefinitions'
 import { weatherDefinitions } from '../../modules/world/data/weatherDefinitions'
 
 const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '')
@@ -136,7 +138,9 @@ function isWithinRange(value: unknown, min: number, max: number): value is numbe
 function isAdminPlayerSurvivalSummary(value: unknown): value is AdminPlayerSurvivalSummary {
   if (!isRecord(value) || !isRecord(value.survival) || !Array.isArray(value.ailments)
     || (value.status !== 'alive' && value.status !== 'dead')
-    || typeof value.currentLocationId !== 'string') return false
+    || typeof value.currentLocationId !== 'string'
+    || !isInventorySummary(value.inventory)
+    || !isInventorySummary(value.storage)) return false
   const survival = value.survival
   return isWithinRange(survival.health, 0, 100)
     && isWithinRange(survival.hunger, 0, 100)
@@ -154,6 +158,19 @@ function isAdminPlayerSurvivalSummary(value: unknown): value is AdminPlayerSurvi
     ))
 }
 
+function isInventorySummary(value: unknown): value is AdminPlayerSurvivalSummary['inventory'] {
+  return Array.isArray(value) && value.every((slot) => (
+    isRecord(slot)
+    && typeof slot.itemId === 'string'
+    && Object.hasOwn(itemDefinitions, slot.itemId)
+    && typeof slot.quantity === 'number'
+    && Number.isInteger(slot.quantity)
+    && slot.quantity > 0
+    && (slot.expiresAt === undefined
+      || (typeof slot.expiresAt === 'number' && Number.isFinite(slot.expiresAt)))
+  ))
+}
+
 const ailmentIds: readonly string[] = [
   'bleeding', 'infection', 'heatstroke', 'hypothermia', 'poisoning',
   'sunburn', 'sprain', 'fracture', 'blisters', 'insectBites', 'tropicalFever',
@@ -168,7 +185,34 @@ function isPendingAdminCommand(value: unknown): value is PendingAdminCommand {
   if (Object.entries(command).some(([key, field]) => (
     numericFields.includes(key) ? typeof field !== 'number' || !Number.isFinite(field)
       : key !== 'ailments'
+        && key !== 'revive'
+        && key !== 'restoreAll'
+        && key !== 'teleportToIslandId'
+        && key !== 'itemTransfers'
   ))) return false
+  if (command.revive !== undefined && command.revive !== true) return false
+  if (command.revive === true && Object.keys(command).length !== 1) return false
+  if (command.restoreAll !== undefined && command.restoreAll !== true) return false
+  if (command.teleportToIslandId !== undefined && (
+    typeof command.teleportToIslandId !== 'string'
+    || !islandDefinitions.some((island) => island.id === command.teleportToIslandId)
+  )) return false
+  if (command.itemTransfers !== undefined && (
+    !Array.isArray(command.itemTransfers)
+    || command.itemTransfers.length === 0
+    || command.itemTransfers.length > 10
+    || !command.itemTransfers.every((transfer) => (
+      isRecord(transfer)
+      && (transfer.action === 'give' || transfer.action === 'take')
+      && (transfer.container === 'inventory' || transfer.container === 'storage')
+      && typeof transfer.itemId === 'string'
+      && Object.hasOwn(itemDefinitions, transfer.itemId)
+      && typeof transfer.quantity === 'number'
+      && Number.isInteger(transfer.quantity)
+      && transfer.quantity >= 1
+      && transfer.quantity <= 9999
+    ))
+  )) return false
   if (command.ailments !== undefined && (!Array.isArray(command.ailments)
     || command.ailments.length > 20
     || !command.ailments.every((ailment) => (

@@ -269,6 +269,8 @@ describe('backend API foundation', () => {
         ailments: [],
         status: 'alive',
         currentLocationId: 'island_001',
+        inventory: initialGameState.inventory.slots,
+        storage: initialGameState.storage.slots,
       }),
       playerExists: vi.fn().mockResolvedValue(true),
       getGlobalSettings: vi.fn().mockResolvedValue({ weatherId: null, updatedAt: null }),
@@ -293,7 +295,13 @@ describe('backend API foundation', () => {
       method: 'POST',
       url: '/api/v1/game/admin/players/9fb61632-9e1f-4380-9a64-05553612b353/survival',
       headers: { authorization: 'Bearer valid-admin-token-1234567890' },
-      payload: { health: 65, wetness: 80, ailments: [{ id: 'hypothermia', elapsedMs: 0, severity: 'moderate' }] },
+      payload: {
+        health: 65,
+        wetness: 80,
+        ailments: [{ id: 'hypothermia', elapsedMs: 0, severity: 'moderate' }],
+        teleportToIslandId: 'island_003',
+        itemTransfers: [{ action: 'give', container: 'inventory', itemId: 'item_rope', quantity: 2 }],
+      },
     })
     const playerStats = await app.inject({
       method: 'GET',
@@ -329,6 +337,8 @@ describe('backend API foundation', () => {
       ailments: [],
       status: 'alive',
       currentLocationId: 'island_001',
+      inventory: initialGameState.inventory.slots,
+      storage: initialGameState.storage.slots,
     })
     expect(revive.statusCode).toBe(202)
     expect(adminControls.createSurvivalCommand).toHaveBeenLastCalledWith(
@@ -339,7 +349,13 @@ describe('backend API foundation', () => {
     expect(adminControls.createSurvivalCommand).toHaveBeenCalledWith(
       '9fb61632-9e1f-4380-9a64-05553612b353',
       profile.id,
-      { health: 65, wetness: 80, ailments: [{ id: 'hypothermia', elapsedMs: 0, severity: 'moderate' }] },
+      {
+        health: 65,
+        wetness: 80,
+        ailments: [{ id: 'hypothermia', elapsedMs: 0, severity: 'moderate' }],
+        teleportToIslandId: 'island_003',
+        itemTransfers: [{ action: 'give', container: 'inventory', itemId: 'item_rope', quantity: 2 }],
+      },
     )
     expect(invalid.statusCode).toBe(400)
     expect(adminControls.createSurvivalCommand).toHaveBeenCalledTimes(2)

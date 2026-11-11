@@ -69,12 +69,14 @@ export function createSupabaseAdminControlService(config: ApiConfig): AdminContr
       if (!state) {
         throw new Error(`Save của người chơi ${playerId} không hợp lệ.`)
       }
-      const { survival, ailments = [], character } = state
+      const { survival, ailments = [], character, inventory, storage } = state
       return {
         survival,
         ailments,
         status: survival.health === 0 ? 'dead' : character.status,
         currentLocationId: character.currentLocationId,
+        inventory: inventory.slots,
+        storage: storage.slots,
       }
     },
 
@@ -148,6 +150,16 @@ export function createSupabaseAdminControlService(config: ApiConfig): AdminContr
 function toJson(command: AdminSurvivalCommand): Json {
   const json: { [key: string]: Json } = {}
   if (command.revive) json.revive = true
+  if (command.restoreAll) json.restoreAll = true
+  if (command.teleportToIslandId) json.teleportToIslandId = command.teleportToIslandId
+  if (command.itemTransfers) {
+    json.itemTransfers = command.itemTransfers.map((transfer) => ({
+      action: transfer.action,
+      container: transfer.container,
+      itemId: transfer.itemId,
+      quantity: transfer.quantity,
+    }))
+  }
   for (const key of ['health', 'hunger', 'thirst', 'stamina', 'bodyTemperature', 'wetness'] as const) {
     const value = command[key]
     if (value !== undefined) json[key] = value

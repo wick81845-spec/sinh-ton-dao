@@ -1,4 +1,4 @@
-import type { SurvivalAilment, SurvivalStats } from './game'
+import type { InventorySlot, ItemId, SurvivalAilment, SurvivalStats } from './game'
 
 export interface AdminPlayerSummary {
   id: string
@@ -11,6 +11,8 @@ export interface AdminPlayerSurvivalSummary {
   ailments: SurvivalAilment[]
   status: 'alive' | 'dead'
   currentLocationId: string
+  inventory: InventorySlot[]
+  storage: InventorySlot[]
 }
 
 export interface GlobalGameSettings {
@@ -20,6 +22,9 @@ export interface GlobalGameSettings {
 
 export interface AdminSurvivalCommand {
   revive?: true
+  restoreAll?: true
+  teleportToIslandId?: string
+  itemTransfers?: AdminItemTransfer[]
   health?: number
   hunger?: number
   thirst?: number
@@ -27,6 +32,13 @@ export interface AdminSurvivalCommand {
   bodyTemperature?: number
   wetness?: number
   ailments?: SurvivalAilment[]
+}
+
+export interface AdminItemTransfer {
+  action: 'give' | 'take'
+  container: 'inventory' | 'storage'
+  itemId: ItemId
+  quantity: number
 }
 
 export interface PendingAdminCommand {
