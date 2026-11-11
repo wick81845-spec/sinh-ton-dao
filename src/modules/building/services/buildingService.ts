@@ -48,9 +48,6 @@ function getBuildingIssue(state: GameSnapshot, definition: BuildingDefinition): 
   if (state.voyages.some((voyage) => voyage.status === 'departed' || voyage.status === 'traveling')) {
     return 'Không thể xây dựng khi đang trên hành trình.'
   }
-  if (state.character.currentLocationId !== state.character.homeIslandId) {
-    return 'Bạn phải ở đảo nhà để xây dựng.'
-  }
   if (state.character.level < (definition.requiredLevel ?? 1)) {
     return `Cần đạt cấp ${definition.requiredLevel} để xây ${definition.name.toLocaleLowerCase('vi-VN')}.`
   }
@@ -129,7 +126,7 @@ export function startConstruction(state: GameSnapshot, definitionId: string, now
   const building: PlayerBuilding = {
     id: buildingId,
     definitionId: definition.id,
-    islandId: state.character.homeIslandId,
+    islandId: state.character.currentLocationId,
     level: 1,
     health: definition.maxHealth,
     status: 'building',

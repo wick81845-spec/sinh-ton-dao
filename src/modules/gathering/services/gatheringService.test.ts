@@ -64,7 +64,7 @@ describe('gatheringService', () => {
       .toMatchObject({ available: 27, respawnAt: 126_000 })
     expect(completed.rewards).toContainEqual({ itemId: 'item_seashell', quantity: 2 })
     expect(completed.state.activeGathering).toBeNull()
-    expect(completed.state.survival.stamina).toBe(83)
+    expect(completed.state.survival.stamina).toBe(87)
   })
 
   it('uses the 75/15/10 ordinary, lucky, and adverse outcome thresholds', () => {
@@ -113,6 +113,36 @@ describe('gatheringService', () => {
     expect(completed.rewards).toContainEqual({ itemId: 'item_plant_fiber', quantity: 2 })
   })
 
+  it('collects seawater at tropical shores for the salt pan', () => {
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.99)
+    const started = startGathering(initialGameState, 'collect-seawater', 1_000)
+    if (!started.ok) throw new Error(started.message)
+    const completed = completeGathering(started.state, started.state.activeGathering?.completesAt ?? 9_000)
+    random.mockRestore()
+
+    expect(completed.status).toBe('completed')
+    if (completed.status !== 'completed') throw new Error('Seawater collection should complete.')
+    expect(completed.itemId).toBe('item_seawater')
+    expect(completed.quantity).toBeGreaterThan(0)
+  })
+
+  it('allows harvesting honey at an explored forest hive', () => {
+    const honeyState = {
+      ...exploredState,
+      character: { ...exploredState.character, currentLocationId: 'island_002' },
+    }
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.99)
+    const started = startGathering(honeyState, 'collect-honey', 1_000)
+    if (!started.ok) throw new Error(started.message)
+    const completed = completeGathering(started.state, started.state.activeGathering?.completesAt ?? 9_000)
+    random.mockRestore()
+
+    expect(completed.status).toBe('completed')
+    if (completed.status !== 'completed') throw new Error('Honey gathering should complete.')
+    expect(completed.itemId).toBe('item_honey')
+    expect(completed.quantity).toBeGreaterThan(0)
+  })
+
   it('adds a real delay and a small health penalty for adverse outcomes', () => {
     const random = vi.spyOn(Math, 'random')
       .mockReturnValueOnce(0.05)
@@ -131,11 +161,11 @@ describe('gatheringService', () => {
   })
 
   it('gates gathering locations by starter, exploration, and tool milestones', () => {
-    expect(resourceNodeDefinitions).toHaveLength(14)
+    expect(resourceNodeDefinitions).toHaveLength(17)
     expect(resourceNodeDefinitions.filter((node) => node.unlockStage === 'starter').map((node) => node.id))
-      .toEqual(['shoreline', 'wild-grove', 'palm-grove'])
+      .toEqual(['shoreline', 'sea-water', 'wild-grove', 'palm-grove'])
     expect(resourceNodeDefinitions.filter((node) => node.unlockStage === 'exploration').map((node) => node.id))
-      .toEqual(['forest-edge', 'rocky-outcrop', 'riverbank-clay'])
+      .toEqual(['forest-edge', 'rocky-outcrop', 'riverbank-clay', 'resin-tree', 'bee-hive'])
     expect(resourceNodeDefinitions.filter((node) => node.unlockStage === 'tool').map((node) => node.id))
       .toEqual([
         'fallen-tree',
@@ -235,6 +265,25 @@ describe('gatheringService', () => {
       },
     }
     expect(getGatheringAvailability(withIronAxe, 'chop-hardwood', 1000)).toBeNull()
+  })
+
+  it('taps tree resin on the rainforest island without felling the tree', () => {
+    const rainforestState = {
+      ...stateWithAxe,
+      character: { ...stateWithAxe.character, currentLocationId: 'island_002' },
+    }
+    const random = vi.spyOn(Math, 'random')
+      .mockReturnValueOnce(0.5)
+      .mockReturnValueOnce(0.1)
+      .mockReturnValue(0.99)
+    const started = startGathering(rainforestState, 'tap-tree-resin', 1_000)
+    if (!started.ok) throw new Error(started.message)
+    const completed = completeGathering(started.state, started.state.activeGathering?.completesAt ?? 13_000)
+    random.mockRestore()
+
+    expect(completed.status).toBe('completed')
+    if (completed.status !== 'completed') throw new Error('Tree resin tapping should complete.')
+    expect(completed.rewards).toContainEqual({ itemId: 'item_tree_resin', quantity: 1 })
   })
 
   it('regenerates one resource at a time after depletion', () => {
@@ -401,7 +450,7 @@ describe('gatheringService', () => {
     expect(completed.rewards).toEqual([{ itemId: 'item_anchovy', quantity: 1 }])
     expect(completed.state.inventory.slots.find((slot) => slot.itemId === 'item_anchovy'))
       .toMatchObject({ itemId: 'item_anchovy', quantity: 1, expiresAt: expect.any(Number) })
-    expect(completed.state.survival.stamina).toBe(79)
+    expect(completed.state.survival.stamina).toBe(85)
     expect(completed.state.resourceNodes).toEqual(initialGameState.resourceNodes)
   })
 
@@ -507,6 +556,9 @@ describe('gatheringService', () => {
       ...initialGameState,
       inventory: {
         ...stateWithFishingRod.inventory,
+        slots: stateWithFishingRod.inventory.slots.map((slot) => (
+          slot.itemId === 'item_wood' ? { ...slot, quantity: 99 } : slot
+        )),
         maxSlots: stateWithFishingRod.inventory.slots.length,
       },
     }

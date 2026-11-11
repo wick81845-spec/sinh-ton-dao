@@ -45,9 +45,13 @@ describe('fishingConfig', () => {
 
     expect(new Set(loot.map((item) => item.itemId)).size).toBe(16)
     for (const item of loot) {
-      expect(itemDefinitions[item.itemId].image).toBe(item.image)
+      if (item.itemId !== 'item_wood') {
+        expect(itemDefinitions[item.itemId].image).toBe(item.image)
+      }
       expect(item.image).toMatch(/^\/assets\/fishing\/loot\/(trash|treasure)\/.+\.png$/)
     }
+    expect(itemDefinitions.item_wood.name).toBe('Gỗ trôi dạt')
+    expect(Object.keys(itemDefinitions)).not.toContain('item_driftwood')
   })
 
   it('registers only the new fish species as individual inventory items', () => {
@@ -102,13 +106,13 @@ describe('fishingConfig', () => {
     expect(rollFishCatch(testFish, 0.9998, 100)).toBe(testFish[1].itemId)
   })
 
-  it('rolls fish length and weight within rarity-based bounds', () => {
-    const commonFish = fishCatalog.find((fish) => fish.rarity === 'common')!
-    const legendaryFish = fishCatalog.find((fish) => fish.rarity === 'legendary')!
+  it('rolls species-specific fish measurements within realistic weight ranges', () => {
+    const anchovy = fishCatalog.find((fish) => fish.itemId === 'item_anchovy')!
+    const bluefinTuna = fishCatalog.find((fish) => fish.itemId === 'item_bluefin_tuna')!
 
-    expect(rollFishMeasurement(commonFish, 0, 0)).toEqual({ lengthCm: 8, weightKg: 0.01 })
-    expect(rollFishMeasurement(legendaryFish, 1, 0.5)).toEqual({ lengthCm: 1_200, weightKg: 25_920 })
-    expect(rollFishMeasurement(commonFish, -1, 2).lengthCm).toBe(8)
+    expect(rollFishMeasurement(anchovy, 0, 0)).toEqual({ lengthCm: 5, weightKg: 0.01 })
+    expect(rollFishMeasurement(bluefinTuna, 1, 0.5)).toEqual({ lengthCm: 450, weightKg: 500 })
+    expect(rollFishMeasurement(anchovy, -1, 2).lengthCm).toBe(5)
   })
 
   it('uses the 75/18/7 fish, trash, and treasure outcome ranges', () => {

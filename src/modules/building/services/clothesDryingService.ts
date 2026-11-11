@@ -20,9 +20,6 @@ export function startClothesDrying(
 ): ClothesDryingResult {
   if (state.character.status !== 'alive') return { ok: false, message: 'Bạn cần hồi sinh trước khi phơi quần áo.' }
   if (state.activeCombat) return { ok: false, message: 'Không thể phơi quần áo khi đang chiến đấu.' }
-  if (state.character.currentLocationId !== state.character.homeIslandId) {
-    return { ok: false, message: 'Chỉ có thể phơi quần áo cạnh lửa trại tại đảo nhà.' }
-  }
   if (state.survival.wetness === undefined || state.survival.wetness <= 0) {
     return { ok: false, message: 'Quần áo đã khô, chưa cần phơi.' }
   }

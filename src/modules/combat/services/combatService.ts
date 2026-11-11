@@ -23,6 +23,7 @@ export function getCombatAvailability(state: GameSnapshot, encounterId: string):
   const encounter = getEncounter(encounterId)
   if (!encounter) return 'Trận chiến không tồn tại.'
   if (state.character.status !== 'alive' || state.survival.health <= 0) return 'Bạn cần hồi sinh trước khi chiến đấu.'
+  if (state.survival.stamina <= 0) return 'Bạn đã cạn thể lực; hãy nghỉ ngơi trước khi chiến đấu.'
   if (state.activeCombat) return 'Đang có một trận chiến.'
   if (state.character.currentLocationId !== encounter.locationId) return 'Bạn không ở đúng địa điểm của trận chiến.'
   if (state.activeGathering || state.activeExploration || state.craftingQueue.length > 0
@@ -130,6 +131,9 @@ export function attackCombat(state: GameSnapshot, now: number): CombatActionResu
   if (!active) return { ok: false, message: 'Không có trận chiến đang diễn ra.' }
   if (state.character.status !== 'alive' || state.survival.health <= 0) {
     return { ok: false, message: 'Nhân vật không thể tiếp tục chiến đấu.' }
+  }
+  if (state.survival.stamina <= 0) {
+    return { ok: false, message: 'Bạn đã cạn thể lực; hãy rút lui và nghỉ ngơi.' }
   }
   const encounter = getEncounter(active.encounterId)
   if (!encounter) return { ok: false, message: 'Không tìm thấy đối thủ.' }

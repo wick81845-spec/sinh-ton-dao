@@ -1,5 +1,6 @@
-import type { FishItemId } from '../../shared/types/game'
+import type { FishItemId } from '../../shared/types/fish'
 import type { BiomeId } from '../../modules/world/data/biomeDefinitions'
+import { fishPhysicalProfiles } from './fishPhysicalProfiles'
 
 export const fishRarities = [
   'common',
@@ -19,7 +20,9 @@ export interface FishCatalogEntry {
   name: string
   description: string
   rarity: FishRarity
-  weight: number
+  catchWeight: number
+  lengthRangeCm: readonly [number, number]
+  averageWeightKg: number
   biomes: readonly BiomeId[]
   oceanZones: readonly string[]
   habitat: FishHabitat
@@ -27,6 +30,7 @@ export interface FishCatalogEntry {
   weatherIds?: readonly string[]
   hungerRestore: number
   usable?: boolean
+  requiresPreparation?: boolean
 }
 
 type FishSeed = readonly [
@@ -56,6 +60,7 @@ const offshore = ['open_ocean']
 const offshoreAndWreck = ['open_ocean', 'shipwreck_zone']
 const catchable = true
 const protectedOrSpecial = false
+const requiresPreparationFishIds = new Set<FishItemId>(['item_lionfish', 'item_pufferfish'])
 
 const rarityStats: Readonly<Record<FishRarity, { weight: number; hungerRestore: number }>> = {
   common: { weight: 10, hungerRestore: 14 },
@@ -89,11 +94,13 @@ function makeTier(seeds: readonly FishSeed[]): FishCatalogEntry[] {
       name,
       description: `${name} ${habitatDescriptions[habitat]}.`,
       rarity,
-      weight: stats.weight,
+      catchWeight: stats.weight,
+      ...fishPhysicalProfiles[itemId],
       biomes,
       oceanZones,
       habitat,
       catchable: canCatch,
+      ...(requiresPreparationFishIds.has(itemId) ? { requiresPreparation: true } : {}),
       ...(weatherIds ? { weatherIds } : {}),
       hungerRestore: stats.hungerRestore,
     }

@@ -4,8 +4,13 @@ import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import { gameClock } from '../../../services/clock/gameClock'
 import { ItemStack } from '../../../shared/components/ItemArtwork'
 import { CampfireClothesDryingControl } from '../components/CampfireClothesDryingControl'
-import { recipes } from '../../crafting/data/recipes'
-import { getRecipeAvailability } from '../../crafting/services/craftingService'
+import {
+  getRecipeAvailability,
+  getRecipesForStation,
+  getRecipeOutputQuantity,
+  type FishProcessingItemId,
+} from '../../crafting/services/craftingService'
+import { FishProcessingSelector } from '../../crafting/components/FishProcessingSelector'
 import { buildingDefinitions } from '../data/buildingDefinitions'
 import {
   campfireFuelOptions,
@@ -14,11 +19,10 @@ import {
 } from '../services/campfireService'
 import { getConstructionAvailability } from '../services/buildingService'
 
-const campfireFoodRecipeIds = ['recipe_roast_fish', 'recipe_roast_crab', 'recipe_roast_shrimp']
-
 export function CampfirePage() {
   const { gameState, isLoading, error, startBuilding, fuelCampfire, setCampfireWarming, queueRecipe } = useGame()
   const [now, setNow] = useState(gameClock.now())
+  const [fishItemId, setFishItemId] = useState<FishProcessingItemId>()
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(gameClock.now()), 250)
@@ -41,12 +45,11 @@ export function CampfirePage() {
     && building.islandId === gameState.character.currentLocationId
     && building.status !== 'completed'
   ))
-  const isHomeIsland = gameState.character.currentLocationId === gameState.character.homeIslandId
   const fuelRemaining = campfire ? getCampfireRemainingMs(gameState, campfire.id, now) : 0
   const isLit = campfire ? isCampfireLitAt(gameState, campfire.id, now) : false
   const bodyTemperature = gameState.survival.bodyTemperature ?? 37
   const isWarming = gameState.isWarmingAtCampfire === true
-  const foodRecipes = recipes.filter((recipe) => campfireFoodRecipeIds.includes(recipe.id))
+  const campfireRecipes = getRecipesForStation(campfireDefinition.id)
   const constructionIssue = getConstructionAvailability(gameState, campfireDefinition.id)
 
   return (
@@ -56,13 +59,9 @@ export function CampfirePage() {
         <div>
           <span className="section-kicker">GÓC BẾP NGOÀI TRỜI</span>
           <h2>Lửa trại</h2>
-          <p>Giữ lửa cháy để nướng thức ăn.</p>
+          <p>Giữ lửa cháy để nấu thức ăn và đun nước.</p>
         </div>
       </header>
-
-      {!isHomeIsland && (
-        <p className="activity-blocked" role="status">Lửa trại và nhiên liệu chỉ dùng được tại đảo nhà.</p>
-      )}
 
       {!campfire && (
         <section className="campfire-quick-section">
@@ -75,7 +74,7 @@ export function CampfirePage() {
               <button
                 className="small-action"
                 type="button"
-                disabled={!isHomeIsland || Boolean(constructionIssue)}
+                disabled={Boolean(constructionIssue)}
                 onClick={() => startBuilding(campfireDefinition.id)}
               >
                 Dựng lửa trại
@@ -110,7 +109,7 @@ export function CampfirePage() {
                     className="campfire-fuel-button"
                     type="button"
                     key={itemId}
-                    disabled={!isHomeIsland || quantity < 1}
+                    disabled={quantity < 1}
                     onClick={() => fuelCampfire(campfire.id, itemId)}
                   >
                     <ItemStack itemId={itemId} quantity={quantity} />
@@ -130,7 +129,7 @@ export function CampfirePage() {
               <button
                 className="small-action"
                 type="button"
-                disabled={!isHomeIsland || (!isWarming && (!isLit || bodyTemperature >= 37))}
+                disabled={!isWarming && (!isLit || bodyTemperature >= 37)}
                 onClick={() => setCampfireWarming(campfire.id, !isWarming)}
               >
                 {isWarming ? 'Dừng sưởi' : 'Sưởi ấm'}
@@ -150,18 +149,34 @@ export function CampfirePage() {
           <section className="campfire-quick-section">
             <div className="campfire-quick-section-heading">
               <div>
-                <span className="section-kicker">MÓN NƯỚNG</span>
-                <h3>Nướng để ăn</h3>
+                <span className="section-kicker">NẤU ĂN & ĐUN NƯỚC</span>
+                <h3>Chế biến bên lửa trại</h3>
               </div>
             </div>
             <div className="campfire-food-list">
-              {foodRecipes.map((recipe) => {
-                const issue = getRecipeAvailability(gameState, recipe.id, now)
+              {campfireRecipes.map((recipe) => {
+                const selectedFishId = recipe.fishProcessing ? fishItemId : undefined
+                const issue = getRecipeAvailability(gameState, recipe.id, now, selectedFishId)
+                const outputQuantity = getRecipeOutputQuantity(recipe, selectedFishId)
                 return (
                   <article className="campfire-food-row" key={recipe.id}>
                     <div className="campfire-food-copy">
                       <strong>{recipe.name}</strong>
+                      {recipe.fishProcessing && (
+                        <FishProcessingSelector
+                          state={gameState}
+                          recipe={recipe}
+                          value={selectedFishId}
+                          onChange={setFishItemId}
+                        />
+                      )}
                       <div className="campfire-food-ingredients">
+                        {recipe.fishProcessing && selectedFishId && (
+                          <ItemStack
+                            itemId={selectedFishId}
+                            quantity={recipe.fishProcessing.inputQuantity}
+                          />
+                        )}
                         {recipe.ingredients.map((ingredient) => (
                           <ItemStack
                             key={ingredient.itemId}
@@ -170,18 +185,18 @@ export function CampfirePage() {
                           />
                         ))}
                         <span aria-hidden="true">→</span>
-                        <ItemStack itemId={recipe.output.itemId} quantity={recipe.output.quantity} />
+                        <ItemStack itemId={recipe.output.itemId} quantity={outputQuantity} />
                       </div>
-                      <small>{itemDefinitions[recipe.output.itemId].name} · ăn trong túi đồ</small>
+                      <small>{itemDefinitions[recipe.output.itemId].name} · nhận vào túi đồ</small>
                       {issue && <small className="activity-blocked">{issue}</small>}
                     </div>
                     <button
                       className="small-action"
                       type="button"
                       disabled={Boolean(issue)}
-                      onClick={() => queueRecipe(recipe.id)}
+                      onClick={() => queueRecipe(recipe.id, selectedFishId)}
                     >
-                      Nướng
+                      Thực hiện
                     </button>
                   </article>
                 )

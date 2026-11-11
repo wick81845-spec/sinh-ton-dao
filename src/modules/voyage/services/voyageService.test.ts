@@ -19,11 +19,15 @@ describe('voyageService', () => {
         ...initialGameState.character,
         researchedTechnologyIds: ['tech_seafaring'],
       },
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [...initialGameState.inventory.slots, { itemId: 'item_rope' as const, quantity: 3 }],
+      },
     }, 'ship_raft', 1_000)
     if (!construction.ok) throw new Error(construction.message)
     expect(construction.state.inventory.slots).toEqual([
       { itemId: 'item_wood', quantity: 2 },
-      { itemId: 'item_stone', quantity: 4 },
+      { itemId: 'item_stone', quantity: 8 },
       { itemId: 'item_wild_fruit', quantity: 5 },
     ])
 
@@ -97,6 +101,10 @@ describe('voyageService', () => {
     const raft = startShipConstruction({
       ...initialGameState,
       character: { ...initialGameState.character, researchedTechnologyIds: ['tech_seafaring'] },
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [...initialGameState.inventory.slots, { itemId: 'item_rope' as const, quantity: 3 }],
+      },
     }, 'ship_raft', 1_000)
     if (!raft.ok) throw new Error(raft.message)
     const raftReady = completeShipConstruction(raft.state, 11_000).state
@@ -105,6 +113,7 @@ describe('voyageService', () => {
       ['item_wood_plank', 16],
       ['item_wood_hard', 6],
       ['item_rope', 8],
+      ['item_woven_cloth', 4],
       ['item_ship_parts', 3],
     ] as const) {
       const added = addItems(inventory, itemId, quantity)

@@ -176,6 +176,29 @@ export interface Database {
           created_at: string
         }[]
       }
+      send_message_bottle: {
+        Args: {
+          p_message: string
+        }
+        Returns: undefined
+      }
+      read_message_bottle: {
+        Args: Record<string, never>
+        Returns: {
+          message_id: number
+          sender_display_name: string
+          sender_island_id: string
+          message: string
+          created_at: string
+        }[]
+      }
+      report_message_bottle: {
+        Args: {
+          p_message_id: number
+          p_reason: string
+        }
+        Returns: undefined
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

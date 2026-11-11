@@ -8,9 +8,9 @@ describe('progressionService', () => {
     const character = awardExperience(initialGameState.character, 'gathering', 100)
 
     expect(character).toMatchObject({
-      experience: 100,
+      experience: 200,
       level: 2,
-      skillExperience: { gathering: 100 },
+      skillExperience: { gathering: 200 },
     })
   })
 

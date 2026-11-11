@@ -1,4 +1,5 @@
 import { fishCatalog, fishRarities, type FishCatalogEntry, type FishRarity } from '../../../data/items/fishCatalog'
+import { fishPhysicalProfiles } from '../../../data/items/fishPhysicalProfiles'
 import type { FishItemId } from '../../../shared/types/game'
 import { getFishingLootAvailableAt, type FishingLootEntry, type FishingLootKind } from '../../../data/items/fishingLootCatalog'
 import type { BiomeId } from '../../world/data/biomeDefinitions'
@@ -170,7 +171,7 @@ const rarityOrder = fishRarities
 export const fishingActivity = {
   id: 'shore-fishing',
   durationSeconds: 60,
-  staminaCost: 12,
+  staminaCost: 6,
   baseYield: 1,
 } as const
 
@@ -211,16 +212,6 @@ export interface FishMeasurement {
   weightKg: number
 }
 
-const fishLengthRanges: Readonly<Record<FishRarity, readonly [number, number]>> = {
-  common: [8, 24],
-  uncommon: [14, 45],
-  unusual: [20, 80],
-  rare: [35, 180],
-  very_rare: [50, 300],
-  epic: [80, 600],
-  legendary: [100, 1_200],
-}
-
 function clampRandomValue(value: number): number {
   return Math.max(0, Math.min(0.999_999_999, value))
 }
@@ -230,10 +221,13 @@ export function rollFishMeasurement(
   lengthRoll: number,
   weightRoll: number,
 ): FishMeasurement {
-  const [minimumLength, maximumLength] = fishLengthRanges[fish.rarity]
+  const { lengthRangeCm, averageWeightKg } = fishPhysicalProfiles[fish.itemId]
+  const [minimumLength, maximumLength] = lengthRangeCm
   const lengthCm = Math.round(minimumLength + (maximumLength - minimumLength) * clampRandomValue(lengthRoll))
+  const lengthRatio = (lengthCm - minimumLength) / Math.max(1, maximumLength - minimumLength)
   const weightVariation = 0.9 + clampRandomValue(weightRoll) * 0.2
-  const weightKg = Math.max(0.01, Math.round(lengthCm ** 3 * 0.000_015 * weightVariation * 100) / 100)
+  const weightScale = 0.5 + 1.5 * lengthRatio ** 2
+  const weightKg = Math.max(0.01, Math.round(averageWeightKg * weightScale * weightVariation * 100) / 100)
   return { lengthCm, weightKg }
 }
 
@@ -277,7 +271,7 @@ export function getFishRarityChances(
   castPower = 0,
 ): { rarity: FishRarity; chance: number }[] {
   const powerBonus = Math.max(0, Math.min(100, castPower)) / 100
-  const getWeight = (entry: FishDefinition) => entry.weight * (1 + powerBonus * rarityFactor[entry.rarity])
+  const getWeight = (entry: FishDefinition) => entry.catchWeight * (1 + powerBonus * rarityFactor[entry.rarity])
   const totalWeight = fish.reduce((total, entry) => total + getWeight(entry), 0)
   if (totalWeight === 0) return []
 
@@ -308,7 +302,7 @@ export function getSpearFishAvailableAt(
 export function rollFishCatch(fish: FishDefinition[], randomValue: number, castPower = 0): FishItemId | undefined {
   if (fish.length === 0) return undefined
   const powerBonus = Math.max(0, Math.min(100, castPower)) / 100
-  const getWeight = (entry: FishDefinition) => entry.weight * (1 + powerBonus * rarityFactor[entry.rarity])
+  const getWeight = (entry: FishDefinition) => entry.catchWeight * (1 + powerBonus * rarityFactor[entry.rarity])
   const totalWeight = fish.reduce((total, entry) => total + getWeight(entry), 0)
   let ticket = Math.max(0, Math.min(0.999_999_999, randomValue)) * totalWeight
   for (const entry of fish) {

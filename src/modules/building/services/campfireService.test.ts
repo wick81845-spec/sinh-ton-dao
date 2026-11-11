@@ -8,13 +8,14 @@ import {
   setCampfireWarming,
 } from './campfireService'
 
-function litCampfireState() {
+function litCampfireState(islandId = initialGameState.character.homeIslandId) {
   return {
     ...initialGameState,
+    character: { ...initialGameState.character, currentLocationId: islandId },
     buildings: [{
       id: 'campfire-1',
       definitionId: 'building_campfire',
-      islandId: initialGameState.character.homeIslandId,
+      islandId,
       level: 1,
       health: 80,
       status: 'completed' as const,
@@ -37,6 +38,10 @@ describe('campfireService', () => {
     expect(result.state.campfireFuel?.['campfire-1']).toEqual({ remainingMs: 5 * 60_000, lastUpdatedAt: 1_000 })
     expect(result.state.inventory.slots.find((slot) => slot.itemId === 'item_branch')?.quantity).toBe(1)
     expect(isCampfireLitAt(result.state, 'campfire-1', 1_000)).toBe(true)
+  })
+
+  it('allows fueling a campfire on another island when present there', () => {
+    expect(fuelCampfire(litCampfireState('island_002'), 'campfire-1', 'item_branch', 1_000).ok).toBe(true)
   })
 
   it('advances fuel by elapsed real time and records when the fire goes out', () => {

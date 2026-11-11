@@ -8,9 +8,10 @@ import {
   startClothesDrying,
 } from './clothesDryingService'
 
-function litCampfireState(wetness = 65) {
+function litCampfireState(wetness = 65, islandId = initialGameState.character.homeIslandId) {
   const state = {
     ...initialGameState,
+    character: { ...initialGameState.character, currentLocationId: islandId },
     survival: { ...initialGameState.survival, wetness },
     inventory: {
       ...initialGameState.inventory,
@@ -19,7 +20,7 @@ function litCampfireState(wetness = 65) {
     buildings: [{
       id: 'campfire-1',
       definitionId: 'building_campfire',
-      islandId: initialGameState.character.homeIslandId,
+      islandId,
       level: 1,
       health: 80,
       status: 'completed' as const,
@@ -80,9 +81,6 @@ describe('clothesDryingService', () => {
     }
 
     expect(startClothesDrying(state, 'campfire-1', 1_000).ok).toBe(false)
-    expect(startClothesDrying({
-      ...litCampfireState(),
-      character: { ...initialGameState.character, currentLocationId: 'island_002' },
-    }, 'campfire-1', 1_000).ok).toBe(false)
+    expect(startClothesDrying(litCampfireState(65, 'island_002'), 'campfire-1', 1_000).ok).toBe(true)
   })
 })

@@ -1,5 +1,11 @@
 import { createContext } from 'react'
 import type { CropId, GameSnapshot, ItemId } from '../../shared/types/game'
+import type { FishProcessingItemId } from '../../modules/crafting/services/craftingService'
+import type {
+  MessageBottle,
+  MessageBottleReportReason,
+} from '../../modules/social/services/messageBottleService'
+import type { SalvageContainerItemId } from '../../modules/inventory/services/salvageService'
 
 export type GameActionResult =
   | { ok: true; message: string }
@@ -7,6 +13,10 @@ export type GameActionResult =
 
 export type FishingActionResult =
   | { ok: true; message: string; itemId: ItemId }
+  | { ok: false; message: string }
+
+export type MessageBottleReadResult =
+  | { ok: true; message: string; bottle: MessageBottle }
   | { ok: false; message: string }
 
 export interface GameContextValue {
@@ -29,13 +39,17 @@ export interface GameContextValue {
   buyMarketItem(itemId: ItemId): GameActionResult
   sellMarketItem(itemId: ItemId, quantity: number): GameActionResult
   consumeItem(itemId: ItemId): GameActionResult
+  openSalvageContainer(itemId: SalvageContainerItemId): GameActionResult
+  sendMessageBottle(message: string): Promise<GameActionResult>
+  readMessageBottle(): Promise<MessageBottleReadResult>
+  reportMessageBottle(messageId: number, reason: MessageBottleReportReason): Promise<GameActionResult>
   discardItems(itemId: ItemId, quantity: number): GameActionResult
   repairItem(itemId: ItemId): GameActionResult
   equipBackpack(): GameActionResult
   unequipBackpack(): GameActionResult
   equipWeapon(itemId: ItemId): GameActionResult
   unequipWeapon(): GameActionResult
-  queueRecipe(recipeId: string): GameActionResult
+  queueRecipe(recipeId: string, fishItemId?: FishProcessingItemId): GameActionResult
   researchTechnology(technologyId: string): GameActionResult
   startBuilding(definitionId: string): GameActionResult
   upgradeBuilding(buildingId: string): GameActionResult

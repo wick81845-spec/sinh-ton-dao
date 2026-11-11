@@ -1,6 +1,7 @@
 import { survivalConfig } from '../data/survivalConfig'
 import type { SurvivalAilment, SurvivalStats } from '../../../shared/types/game'
 import type { WeatherDefinition } from '../../world/data/weatherDefinitions'
+import { getNeedState, getStaminaState } from '../utils/survivalStates'
 
 export type BodyStatusSeverity = 'mild' | 'moderate' | 'severe' | 'positive'
 
@@ -25,11 +26,11 @@ const ailmentDetails: Readonly<Record<string, Omit<BodyStatusEffect, 'severity'>
   allergy: { id: 'allergy', name: 'Dị ứng', appearance: 'Da kích ứng, ngứa ngáy', cause: 'Tiếp xúc với tác nhân gây dị ứng', impact: 'Làm giảm sức khỏe và sức lực.', icon: '✣' },
   smoke: { id: 'smoke', name: 'Hít phải khói', appearance: 'Ho và khó thở', cause: 'Tiếp xúc với khói đậm đặc', impact: 'Làm giảm sức khỏe và sức lực.', icon: '〰' },
   marineSting: { id: 'marineSting', name: 'Sinh vật biển đốt', appearance: 'Vết đốt sưng đau', cause: 'Chạm phải sinh vật biển có độc', impact: 'Gây đau và suy giảm sức khỏe.', icon: '≈' },
-  dehydration: { id: 'dehydration', name: 'Mất nước', appearance: 'Khô môi, chóng mặt và mệt mỏi', cause: 'Thiếu nước hoặc mất nước kéo dài', impact: 'Làm giảm sức khỏe và sức lực.', icon: '⌁' },
+  dehydration: { id: 'dehydration', name: 'Mất nước', appearance: 'Khô môi, chóng mặt và mệt mỏi', cause: 'Tình trạng mất nước đã có từ trước', impact: 'Mức khát hiện tại thể hiện trực tiếp tình trạng cân bằng nước.', icon: '⌁' },
   burns: { id: 'burns', name: 'Bỏng', appearance: 'Da tổn thương do nhiệt', cause: 'Tiếp xúc với lửa hoặc bề mặt nóng', impact: 'Gây đau và mất sức khỏe.', icon: '♨' },
   frostbite: { id: 'frostbite', name: 'Tê cóng', appearance: 'Da tái lạnh, tê buốt', cause: 'Phơi lạnh kéo dài khi cơ thể ướt', impact: 'Làm giảm sức khỏe và sức lực.', icon: '❄' },
   animalBite: { id: 'animalBite', name: 'Động vật cắn', appearance: 'Vết cắn đau và sưng', cause: 'Bị động vật hoang dã tấn công', impact: 'Gây mất sức khỏe; cần được chăm sóc.', icon: '✚' },
-  exhaustion: { id: 'exhaustion', name: 'Kiệt sức', appearance: 'Thở dốc, cơ thể rã rời', cause: 'Sức lực xuống thấp sau hoạt động kéo dài', impact: 'Làm giảm thêm sức lực khi hoạt động.', icon: 'ϟ' },
+  exhaustion: { id: 'exhaustion', name: 'Kiệt sức', appearance: 'Thở dốc, cơ thể rã rời', cause: 'Trạng thái kiệt sức cũ', impact: 'Mức thể lực hiện tại thể hiện trực tiếp tình trạng mệt mỏi.', icon: 'ϟ' },
 }
 
 export function getBodyStatusEffects(
@@ -42,6 +43,7 @@ export function getBodyStatusEffects(
   const effects: BodyStatusEffect[] = []
 
   for (const ailment of ailments) {
+    if (ailment.id === 'exhaustion') continue
     const ailmentSeverity = ailment.severity
       ?? (ailment.elapsedMs >= 10 * 60 * 1000 ? 'severe' : 'moderate')
     if (ailment.id === 'bleeding') {
@@ -134,23 +136,25 @@ export function getBodyStatusEffects(
     })
   }
 
-  if (stats.hunger < survivalConfig.needWarningThreshold) {
-    const starving = stats.hunger === 0
-    const malnourished = stats.hunger <= survivalConfig.criticalNeedThreshold
+  const hungerState = getNeedState(stats.hunger)
+  if (hungerState !== 'normal') {
+    const hungerStages = {
+      rising: { id: 'hunger-rising', name: 'Nhu cầu năng lượng tăng', severity: 'mild' as const, appearance: 'Cơ thể sắp cần được bổ sung thức ăn' },
+      deficit: { id: 'hungry', name: 'Thiếu năng lượng', severity: 'mild' as const, appearance: 'Bụng réo, cơ thể bắt đầu thiếu năng lượng' },
+      danger: { id: 'malnutrition', name: 'Thiếu năng lượng nghiêm trọng', severity: 'moderate' as const, appearance: 'Cơ thể yếu đi do thiếu năng lượng' },
+      critical: { id: 'hunger-critical', name: 'Nguy kịch do thiếu năng lượng', severity: 'severe' as const, appearance: 'Dáng vẻ suy kiệt, cần tìm thức ăn' },
+      depleted: { id: 'starving', name: 'Cạn năng lượng', severity: 'severe' as const, appearance: 'Cơ thể suy kiệt vì đã cạn nguồn năng lượng' },
+    } as const
+    const stage = hungerStages[hungerState]
     effects.push({
-      id: starving ? 'starving' : malnourished ? 'malnutrition' : 'hungry',
-      name: starving ? 'Đói lả' : malnourished ? 'Suy dinh dưỡng' : 'Đói',
-      severity: starving ? 'severe' : malnourished ? 'moderate' : 'mild',
-      appearance: starving ? 'Ôm bụng, dáng vẻ suy kiệt' : malnourished ? 'Thiếu năng lượng, cơ thể yếu đi' : 'Bụng réo, thỉnh thoảng ôm bụng',
+      ...stage,
       cause: 'Chỉ số no bụng thấp',
-      impact: starving
-        ? `Mất ${survivalConfig.health.starvationDamagePerHour} sức khỏe mỗi giờ; hồi sức lực chậm`
-        : malnourished
-          ? `Mất ${survivalConfig.health.malnutritionDamagePerHour} sức khỏe mỗi giờ; hồi sức lực chậm`
-          : 'Làm chậm hồi sức lực khi nghỉ; sức khỏe giảm khi đói kéo dài',
+      impact: hungerState === 'rising' || hungerState === 'deficit'
+        ? 'Thiếu năng lượng kéo dài làm giảm khả năng hồi phục và hoạt động.'
+        : 'Tình trạng này không gây sát thương tức thời; hãy bổ sung thức ăn và nghỉ ngơi.',
       icon: '◒',
     })
-  } else if (stats.hunger >= 75) {
+  } else if (stats.hunger >= 80) {
     effects.push({
       id: 'well-fed',
       name: 'No đủ',
@@ -162,23 +166,25 @@ export function getBodyStatusEffects(
     })
   }
 
-  if (stats.thirst < survivalConfig.needWarningThreshold) {
-    const dehydrated = stats.thirst === 0
-    const severeDehydration = stats.thirst <= survivalConfig.criticalNeedThreshold
+  const thirstState = getNeedState(stats.thirst)
+  if (thirstState !== 'normal') {
+    const thirstStages = {
+      rising: { id: 'thirst-rising', name: 'Nhu cầu nước tăng', severity: 'mild' as const, appearance: 'Cơ thể bắt đầu cần được bổ sung nước' },
+      deficit: { id: 'thirsty', name: 'Thiếu nước', severity: 'mild' as const, appearance: 'Môi khô, thường xuyên liếm môi' },
+      danger: { id: 'thirst-danger', name: 'Thiếu nước nghiêm trọng', severity: 'moderate' as const, appearance: 'Môi khô, cơ thể bắt đầu suy yếu' },
+      critical: { id: 'thirst-critical', name: 'Nguy kịch do thiếu nước', severity: 'severe' as const, appearance: 'Cơ thể suy kiệt, cần tìm nước an toàn' },
+      depleted: { id: 'dehydrated', name: 'Cạn nước', severity: 'severe' as const, appearance: 'Nguồn nước trong cơ thể đã cạn' },
+    } as const
+    const stage = thirstStages[thirstState]
     effects.push({
-      id: dehydrated ? 'dehydrated' : severeDehydration ? 'dehydration' : 'thirsty',
-      name: dehydrated ? 'Mất nước nghiêm trọng' : severeDehydration ? 'Mất nước' : 'Khát',
-      severity: dehydrated ? 'severe' : severeDehydration ? 'moderate' : 'mild',
-      appearance: severeDehydration ? 'Môi khô, vẻ mặt kiệt quệ' : 'Môi khô, thường xuyên liếm môi',
+      ...stage,
       cause: 'Chỉ số nước thấp',
-      impact: dehydrated
-        ? `Mất ${survivalConfig.health.dehydrationDamagePerHour} sức khỏe mỗi giờ; hồi sức lực rất chậm`
-        : severeDehydration
-          ? `Mất ${survivalConfig.health.severeDehydrationDamagePerHour} sức khỏe mỗi giờ; hồi sức lực rất chậm`
-          : 'Làm chậm hồi sức lực; sức khỏe giảm khi mất nước kéo dài',
+      impact: thirstState === 'rising' || thirstState === 'deficit'
+        ? 'Thiếu nước làm giảm khả năng hồi phục và khiến cơ thể nhanh mất thể lực hơn.'
+        : 'Tình trạng này không gây sát thương tức thời; hãy uống nước an toàn và nghỉ ngơi.',
       icon: '⌁',
     })
-  } else if (stats.thirst >= 75) {
+  } else if (stats.thirst >= 80) {
     effects.push({
       id: 'hydrated',
       name: 'Được cung cấp nước',
@@ -190,19 +196,27 @@ export function getBodyStatusEffects(
     })
   }
 
-  if (stats.stamina <= 40) {
+  const staminaState = getStaminaState(stats.stamina)
+  if (staminaState !== 'normal') {
+    const staminaStages = {
+      'slightly-tired': { id: 'slightly-tired', name: 'Hơi mệt', severity: 'mild' as const, appearance: 'Có dấu hiệu mệt nhẹ sau hoạt động' },
+      tired: { id: 'tired', name: 'Mệt mỏi', severity: 'mild' as const, appearance: 'Dáng vẻ mệt mỏi, cần cân nhắc nghỉ ngơi' },
+      'mild-exhaustion': { id: 'exhausted', name: 'Kiệt sức nhẹ', severity: 'moderate' as const, appearance: 'Thở dốc, dáng người rũ xuống' },
+      'severe-exhaustion': { id: 'severely-exhausted', name: 'Kiệt sức nặng', severity: 'severe' as const, appearance: 'Cơ thể gần như cạn sức' },
+      depleted: { id: 'stamina-depleted', name: 'Cạn thể lực', severity: 'severe' as const, appearance: 'Không còn thể lực cho hoạt động nặng' },
+    } as const
+    const stage = staminaStages[staminaState]
     effects.push({
-      id: 'exhausted',
-      name: stats.stamina <= 20 ? 'Kiệt sức' : 'Mệt mỏi',
-      severity: stats.stamina <= 10 ? 'severe' : stats.stamina <= 20 ? 'moderate' : 'mild',
-      appearance: stats.stamina <= 20 ? 'Thở dốc, dáng người rũ xuống' : 'Dáng vẻ mệt mỏi, cần nghỉ',
+      ...stage,
       cause: 'Thể lực thấp sau các hoạt động',
-      impact: 'Không đủ thể lực sẽ không thể bắt đầu hoạt động cần nhiều sức',
+      impact: stats.stamina === 0
+        ? 'Không thể tiếp tục hoạt động nặng; vẫn có thể di chuyển chậm, ăn uống, dùng vật phẩm và nghỉ ngơi.'
+        : 'Thể lực thấp làm giảm hiệu quả hoạt động; nghỉ ngơi để hồi phục.',
       icon: 'ϟ',
     })
   } else if (stats.stamina >= 80
-    && stats.hunger >= survivalConfig.needWarningThreshold
-    && stats.thirst >= survivalConfig.needWarningThreshold
+    && stats.hunger >= survivalConfig.needRecoveryThreshold
+    && stats.thirst >= survivalConfig.needRecoveryThreshold
     && isResting) {
     effects.push({
       id: 'vigorous',
@@ -215,7 +229,7 @@ export function getBodyStatusEffects(
     })
   }
 
-  if (stats.health <= 25 && stats.health > 0) {
+  if (stats.health <= survivalConfig.healthCriticalThreshold && stats.health > 0) {
     effects.push({
       id: 'critical-health',
       name: 'Sinh lực nguy cấp',
@@ -238,8 +252,8 @@ export function getBodyStatusEffects(
   }
 
   if (isResting && (stats.stamina < survivalConfig.stamina.max || stats.health < survivalConfig.health.max)
-    && stats.hunger >= survivalConfig.needWarningThreshold
-    && stats.thirst >= survivalConfig.needWarningThreshold) {
+    && stats.hunger >= survivalConfig.needRecoveryThreshold
+    && stats.thirst >= survivalConfig.needRecoveryThreshold) {
     const recoveryDetails = [
       stats.stamina < survivalConfig.stamina.max
         ? `Hồi ${survivalConfig.stamina.recoveryPerMinute} sức lực/phút`
@@ -288,7 +302,9 @@ export function getBodyStatusEffects(
       severity: weather.temperatureDelta <= -12 ? 'severe' : 'moderate',
       appearance: 'Run rẩy, co người giữ ấm',
       cause: weather.name,
-      impact: 'Phơi lạnh cực độ lâu có thể gây hạ thân nhiệt.',
+      impact: wetness >= 35
+        ? 'Quần áo ướt có thể làm cơ thể mất nhiệt nhanh hơn; hãy trú ấm và hong khô.'
+        : 'Thời tiết lạnh có thể làm thân nhiệt giảm nếu tiếp xúc kéo dài.',
       icon: '❄',
     })
   }

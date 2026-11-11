@@ -8,6 +8,7 @@ import { campfireFuelOptions, getCampfireRemainingMs } from '../services/campfir
 import { ItemStack } from '../../../shared/components/ItemArtwork'
 import { cropDefinitions, getCropPlantAvailability } from '../services/farmService'
 import { CampfireClothesDryingControl } from '../components/CampfireClothesDryingControl'
+import { getIslandDefinition } from '../../world/data/worldDefinitions'
 
 function formatCost(cost: { itemId: keyof typeof itemDefinitions; quantity: number }[]) {
   return (
@@ -58,9 +59,9 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
       )}
       {!ownedOnly && <div className="page-title-row">
         <div>
-          <span className="section-kicker">ĐẢO NHÀ · PHÁT TRIỂN CĂN CỨ</span>
+          <span className="section-kicker">ĐẢO HIỆN TẠI · PHÁT TRIỂN CĂN CỨ</span>
           <h1>Xây dựng</h1>
-          <p>Dựng công trình và nâng cấp căn cứ trên đảo nhà.</p>
+          <p>Dựng công trình và nâng cấp căn cứ trên đảo đang đứng.</p>
         </div>
         <div className="stamina-chip"><strong>{gameState.constructionQueue.length} / 2</strong> việc xây dựng</div>
       </div>}
@@ -77,6 +78,7 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
             {gameState.constructionQueue.map((job) => {
               const building = gameState.buildings.find((entry) => entry.id === job.buildingId)
               const definition = buildingDefinitions.find((entry) => entry.id === building?.definitionId)
+              const island = building && getIslandDefinition(building.islandId)
               const progress = Math.max(0, Math.min(100, ((now - job.startedAt) / (job.completesAt - job.startedAt)) * 100))
               const remaining = Math.max(0, Math.ceil((job.completesAt - now) / 1000))
               return (
@@ -91,7 +93,10 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
                   <div className="gathering-progress-track" role="progressbar" aria-label={`Tiến độ ${definition?.name ?? 'công trình'}`} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
                     <span style={{ width: `${progress}%` }} />
                   </div>
-                  <div className="progress-footer"><span>Cấp mục tiêu {job.targetLevel}</span><span>{Math.floor(progress)}%</span></div>
+                  <div className="progress-footer">
+                    <span>{island ? `Đảo ${island.name}` : 'Đảo không xác định'} · cấp mục tiêu {job.targetLevel}</span>
+                    <span>{Math.floor(progress)}%</span>
+                  </div>
                 </article>
               )
             })}
@@ -104,7 +109,7 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
           <div className="section-heading building-section-heading">
             <div>
               <span className="section-kicker">CÔNG TRÌNH CÓ THỂ DỰNG</span>
-              <h2>Phát triển đảo nhà</h2>
+              <h2>Phát triển đảo hiện tại</h2>
             </div>
           </div>
           <section className="building-grid" aria-label="Công trình có thể xây">

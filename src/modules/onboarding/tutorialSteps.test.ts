@@ -17,7 +17,6 @@ describe('tutorialSteps', () => {
       'craft-axe',
       'build-campfire',
       'build-leaf-shelter',
-      'reach-level-two',
       'explore-nearby-island',
       'research-basic-tools',
       'build-workbench',
@@ -29,7 +28,7 @@ describe('tutorialSteps', () => {
     expect(getNextTutorialStep(tutorialSteps.map((step) => step.id))).toBeNull()
   })
 
-  it('awards enough early quest XP to reach level 2 before the level-gated objective', () => {
+  it('rewards early quests with enough XP to level up and continue to exploration', () => {
     let state = newPlayerGameState
     const earlyActions = [
       { stepId: 'gather-resources', skill: 'gathering' as const, activityExperience: 1 },
@@ -46,15 +45,15 @@ describe('tutorialSteps', () => {
       state = completeTutorialStepInState(state, action.stepId)
     }
 
-    expect(state.character.experience).toBe(106)
+    expect(state.character.experience).toBe(212)
     expect(levelForExperience(state.character.experience)).toBe(2)
-    expect(getNextTutorialStep(state.tutorialCompletedStepIds ?? [])?.id).toBe('reach-level-two')
+    expect(getNextTutorialStep(state.tutorialCompletedStepIds ?? [])?.id).toBe('explore-nearby-island')
     expect(tutorialSteps.slice(0, 4).reduce((total, step) => total + step.experienceReward, 0)).toBe(65)
   })
 
   it('grants each step reward only once and does not reward inferred progress', () => {
     const completed = completeTutorialStepInState(newPlayerGameState, 'gather-resources')
-    expect(completed.character.experience).toBe(15)
+    expect(completed.character.experience).toBe(30)
     expect(completeTutorialStepInState(completed, 'gather-resources')).toBe(completed)
 
     const inferred = completeTutorialStepInState(newPlayerGameState, 'gather-resources', false)
@@ -86,12 +85,12 @@ describe('tutorialSteps', () => {
     })).toEqual([])
   })
 
-  it('infers the new level and settlement objectives from existing character progress', () => {
+  it('does not insert an extra level task and infers completed settlement objectives', () => {
     const levelTwoState = {
       ...newPlayerGameState,
       character: { ...newPlayerGameState.character, level: 2 },
     }
-    expect(inferTutorialProgress(levelTwoState)).toContain('reach-level-two')
+    expect(inferTutorialProgress(levelTwoState)).not.toContain('reach-level-two')
 
     const researchedSettlementState = {
       ...levelTwoState,

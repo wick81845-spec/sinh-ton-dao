@@ -15,6 +15,7 @@ export const gatheringMapLayouts: Readonly<Record<string, IslandGatheringMapLayo
   island_001: {
     nodes: {
       shoreline: { x: 23, y: 68, icon: '⌁' },
+      'sea-water': { x: 44, y: 83, icon: '≈' },
       'rocky-outcrop': { x: 84, y: 61, icon: '◆' },
       'wild-grove': { x: 40, y: 39, icon: '❋' },
       'forest-edge': { x: 62, y: 30, icon: '♧' },
@@ -33,6 +34,8 @@ export const gatheringMapLayouts: Readonly<Record<string, IslandGatheringMapLayo
       'iron-deposit': { x: 70, y: 42, icon: '◆' },
       'riverbank-clay': { x: 51, y: 43, icon: '⬡' },
       'old-growth-forest': { x: 28, y: 18, icon: '♧' },
+      'resin-tree': { x: 53, y: 25, icon: '●' },
+      'bee-hive': { x: 15, y: 32, icon: '♧' },
     },
     fishing: { x: 89, y: 79 },
   },
@@ -86,6 +89,8 @@ export const gatheringMapLayouts: Readonly<Record<string, IslandGatheringMapLayo
       'coal-seam': { x: 17, y: 47, icon: '⬟' },
       'riverbank-clay': { x: 56, y: 35, icon: '⬡' },
       'old-growth-forest': { x: 35, y: 62, icon: '♧' },
+      'resin-tree': { x: 66, y: 17, icon: '●' },
+      'bee-hive': { x: 18, y: 24, icon: '♧' },
     },
     fishing: { x: 88, y: 78 },
   },
@@ -107,6 +112,7 @@ export const gatheringMapLayouts: Readonly<Record<string, IslandGatheringMapLayo
   island_013: {
     nodes: {
       shoreline: { x: 17, y: 47, icon: '⌁' },
+      'sea-water': { x: 42, y: 82, icon: '≈' },
       'rocky-outcrop': { x: 82, y: 42, icon: '◆' },
       'wild-grove': { x: 37, y: 27, icon: '❋' },
       'forest-edge': { x: 61, y: 58, icon: '♧' },

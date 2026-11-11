@@ -22,11 +22,9 @@ const generalAilmentDamagePerHour: Partial<Record<SurvivalAilment['id'], number>
   allergy: 1,
   smoke: 2,
   marineSting: 3,
-  dehydration: 4,
   burns: 3,
   frostbite: 3,
   animalBite: 4,
-  exhaustion: 0.5,
 }
 const generalAilmentStaminaPerHour: Partial<Record<SurvivalAilment['id'], number>> = {
   sunburn: 1.5,
@@ -39,11 +37,9 @@ const generalAilmentStaminaPerHour: Partial<Record<SurvivalAilment['id'], number
   allergy: 2,
   smoke: 4,
   marineSting: 3,
-  dehydration: 5,
   burns: 2,
   frostbite: 3,
   animalBite: 3,
-  exhaustion: 5,
 }
 
 export function inflictCombatWound(state: GameSnapshot): GameSnapshot {
@@ -79,19 +75,14 @@ export function advanceAilments(
   const currentAilments = state.ailments ?? []
   const wetness = state.survival.wetness ?? 0
   const bodyTemperature = state.survival.bodyTemperature ?? 37
-  const heatExposure = !isSheltered
-    && ((weather?.temperatureDelta ?? 0) >= 9 || bodyTemperature >= 39)
+  const heatExposure = !isSheltered && bodyTemperature >= 39
   const coldExposure = !isSheltered && !isNearCampfire
-    && ((weather?.temperatureDelta ?? 0) <= -12
-      || ((weather?.temperatureDelta ?? 0) <= -7 && wetness >= 35)
-      || bodyTemperature <= 35)
+    && bodyTemperature <= 35
   const heatstroke = currentAilments.find((ailment) => ailment.id === 'heatstroke')
   const hypothermia = currentAilments.find((ailment) => ailment.id === 'hypothermia')
   const generalExposureRules = [
     { id: 'sunburn', exposed: !isSheltered && (weather?.temperatureDelta ?? 0) >= 9 },
-    { id: 'frostbite', exposed: !isSheltered && wetness >= 70 && (weather?.temperatureDelta ?? 0) <= -7 },
-    { id: 'dehydration', exposed: state.survival.thirst <= 10 },
-    { id: 'exhaustion', exposed: state.survival.stamina <= 10 },
+    { id: 'frostbite', exposed: !isSheltered && wetness >= 70 && bodyTemperature <= 35 },
   ] as const
   const needsExposureTracking = (heatExposure && !heatstroke)
     || (coldExposure && !hypothermia)
@@ -145,12 +136,16 @@ export function advanceAilments(
     }
 
     if (ailment.id !== 'heatstroke' && ailment.id !== 'hypothermia') {
+      if (ailment.id === 'exhaustion') {
+        changed = true
+        continue
+      }
       if (ailment.id === 'dehydration' && state.survival.thirst >= 50) {
         changed = true
         continue
       }
-      if (ailment.id === 'exhaustion' && state.survival.stamina >= 40) {
-        changed = true
+      if (ailment.id === 'dehydration') {
+        ailments.push({ ...ailment, elapsedMs: ailment.elapsedMs + elapsed })
         continue
       }
       const noLongerExposed = ailment.id === 'sunburn'

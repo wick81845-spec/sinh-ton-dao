@@ -1,9 +1,9 @@
-import type { FishingLootItemId } from '../../shared/types/game'
+import type { FishingLootItemId, ItemId } from '../../shared/types/game'
 
 export type FishingLootKind = 'trash' | 'treasure'
 
 export interface FishingLootEntry {
-  itemId: FishingLootItemId
+  itemId: FishingLootItemId | Extract<ItemId, 'item_wood'>
   name: string
   description: string
   kind: FishingLootKind
@@ -70,7 +70,7 @@ export const fishingLootCatalog: readonly FishingLootEntry[] = [
     image: '/assets/fishing/loot/trash/torn-net.png',
   },
   {
-    itemId: 'item_driftwood',
+    itemId: 'item_wood',
     name: 'Gỗ trôi dạt',
     description: 'Khúc gỗ cũ được sóng biển đưa lên theo lưỡi câu.',
     kind: 'trash',

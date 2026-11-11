@@ -89,17 +89,58 @@ const obsoleteFishItemIds = new Set<string>(
     .filter((itemId) => !currentFishItemIds.has(itemId)),
 )
 
+function hasLegacyItemReference(value: unknown, itemId: string): boolean {
+  if (typeof value === 'string') return value === itemId
+  if (Array.isArray(value)) return value.some((entry) => hasLegacyItemReference(entry, itemId))
+  if (typeof value !== 'object' || value === null) return false
+  return Object.entries(value).some(([key, entry]) => (
+    key === itemId || hasLegacyItemReference(entry, itemId)
+  ))
+}
+
+function migrateLegacySlots(slots: unknown[]): unknown[] {
+  const containsDuplicateDriftwood = slots.some((slot) => (
+    isRecord(slot) && slot.itemId === 'item_driftwood'
+  ))
+  const migratedSlots = slots.map(migrateLegacyFishReferences)
+  if (!containsDuplicateDriftwood) return migratedSlots
+
+  const totalWood = migratedSlots.reduce<number>((total, slot) => (
+    total + (isRecord(slot) && slot.itemId === 'item_wood' && isFiniteNumber(slot.quantity)
+      ? slot.quantity
+      : 0)
+  ), 0)
+  let mergedWood = false
+  return migratedSlots.flatMap((slot) => {
+    if (!isRecord(slot) || slot.itemId !== 'item_wood' || !isFiniteNumber(slot.quantity)) return [slot]
+    if (mergedWood) return []
+    mergedWood = true
+    return [{ ...slot, quantity: totalWood }]
+  })
+}
+
 export function migrateLegacyFishReferences(value: unknown): unknown {
-  if (typeof value === 'string') return obsoleteFishItemIds.has(value) ? 'item_fresh_fish' : value
+  if (typeof value === 'string') {
+    if (obsoleteFishItemIds.has(value)) return 'item_fresh_fish'
+    return value === 'item_driftwood' ? 'item_wood' : value
+  }
   if (Array.isArray(value)) return value.map(migrateLegacyFishReferences)
   if (!isRecord(value)) return value
   return Object.fromEntries(Object.entries(value).flatMap(([key, entry]) => {
     if (key === 'itemDurability' && isRecord(entry)) {
       return [[key, Object.fromEntries(
-        Object.entries(entry).filter(([itemId]) => !obsoleteFishItemIds.has(itemId)),
+        Object.entries(entry).filter(([itemId]) => (
+          !obsoleteFishItemIds.has(itemId) && itemId !== 'item_driftwood'
+        )),
       )]]
     }
-    return [[obsoleteFishItemIds.has(key) ? 'item_fresh_fish' : key, migrateLegacyFishReferences(entry)]]
+    if (key === 'slots' && Array.isArray(entry)) return [[key, migrateLegacySlots(entry)]]
+    const migratedKey = obsoleteFishItemIds.has(key)
+      ? 'item_fresh_fish'
+      : key === 'item_driftwood'
+        ? 'item_wood'
+        : key
+    return [[migratedKey, migrateLegacyFishReferences(entry)]]
   }))
 }
 
@@ -250,7 +291,7 @@ function isSurvivalStats(value: unknown): value is SurvivalStats {
     && isWithinRange(value.hunger, 0, survivalConfig.hunger.max)
     && isWithinRange(value.thirst, 0, survivalConfig.thirst.max)
     && isWithinRange(value.stamina, 0, survivalConfig.stamina.max)
-    && isFiniteNumber(value.temperature)
+    && (value.temperature === undefined || isFiniteNumber(value.temperature))
     && (value.bodyTemperature === undefined || isWithinRange(value.bodyTemperature, 32, 42))
     && (value.wetness === undefined || isWithinRange(value.wetness, 0, 100))
     && Array.isArray(value.conditions)
@@ -348,6 +389,21 @@ function isCraftingJob(value: unknown): value is CraftingJob {
     || typeof value.id !== 'string'
     || typeof value.recipeId !== 'string'
     || !recipes.some((recipe) => recipe.id === value.recipeId)) {
+    return false
+  }
+
+  const recipe = recipes.find((entry) => entry.id === value.recipeId)
+  const hasFishSelection = value.fishItemId === 'item_fresh_fish'
+    || fishCatalog.some((fish) => fish.itemId === value.fishItemId)
+  const hasFishMetadata = value.fishItemId !== undefined || value.outputQuantity !== undefined
+  if (hasFishMetadata
+    && (!recipe?.fishProcessing
+      || value.fishItemId === undefined
+      || !hasFishSelection
+      || !isFiniteNumber(value.outputQuantity)
+      || !Number.isInteger(value.outputQuantity)
+      || value.outputQuantity < 1
+      || value.outputQuantity > recipe.fishProcessing.inputQuantity * 8)) {
     return false
   }
 
@@ -1105,6 +1161,12 @@ export function createGameSaveService(storage: StorageAdapter = localStorageAdap
         && typeof candidate.schemaVersion === 'number'
         && candidate.schemaVersion <= 11) {
         candidate = migrateLegacyFishReferences(candidate)
+      }
+      if (isRecord(candidate)
+        && candidate.schemaVersion === currentSchemaVersion
+        && hasLegacyItemReference(candidate, 'item_driftwood')) {
+        candidate = migrateLegacyFishReferences(candidate)
+        wasMigrated = true
       }
       if (isRecord(candidate) && candidate.schemaVersion === 1) {
         candidate = migrateV1ToV2(candidate)

@@ -3,6 +3,28 @@ import { initialGameState } from '../../../data/mockGameState'
 import { attackCombat, getCombatAvailability, respawnCharacter, startCombat } from './combatService'
 
 describe('combatService', () => {
+  it('blocks starting and continuing combat at zero stamina', () => {
+    const depleted = {
+      ...initialGameState,
+      survival: { ...initialGameState.survival, stamina: 0 },
+    }
+
+    expect(getCombatAvailability(depleted, 'encounter_pirate_patrol'))
+      .toContain('cạn thể lực')
+    expect(startCombat(depleted, 'encounter_pirate_patrol', 1_000).ok).toBe(false)
+
+    const started = startCombat(initialGameState, 'encounter_pirate_patrol', 1_000)
+    if (!started.ok) throw new Error(started.message)
+    const exhaustedBattle = {
+      ...started.state,
+      survival: { ...started.state.survival, stamina: 0 },
+    }
+    expect(attackCombat(exhaustedBattle, 2_000)).toMatchObject({
+      ok: false,
+      message: 'Bạn đã cạn thể lực; hãy rút lui và nghỉ ngơi.',
+    })
+  })
+
   it('uses the crafted axe to win and records battle loot', () => {
     const state = {
       ...initialGameState,

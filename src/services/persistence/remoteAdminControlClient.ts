@@ -142,7 +142,7 @@ function isAdminPlayerSurvivalSummary(value: unknown): value is AdminPlayerSurvi
     && isWithinRange(survival.hunger, 0, 100)
     && isWithinRange(survival.thirst, 0, 100)
     && isWithinRange(survival.stamina, 0, 100)
-    && isWithinRange(survival.temperature, -100, 100)
+    && (survival.temperature === undefined || isWithinRange(survival.temperature, -100, 100))
     && (survival.bodyTemperature === undefined || isWithinRange(survival.bodyTemperature, 0, 100))
     && (survival.wetness === undefined || isWithinRange(survival.wetness, 0, 100))
     && Array.isArray(survival.conditions)

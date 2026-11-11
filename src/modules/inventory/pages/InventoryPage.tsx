@@ -1,32 +1,26 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useGame } from '../../../app/providers/useGame'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import type { ItemContainer, ItemId } from '../../../shared/types/game'
 import { carriedWeightPerSlotKg, getCarriedWeight } from '../services/inventoryService'
-import { survivalConfig } from '../../survival/data/survivalConfig'
 import { SurvivalMeter, type SurvivalStatName } from '../../survival/components/SurvivalMeter'
 import { BodyExposureMeters } from '../../survival/components/BodyExposureMeters'
+import { getSurvivalMeterStatus } from '../../survival/utils/survivalStates'
+import type { MessageBottle, MessageBottleReportReason } from '../../social/services/messageBottleService'
+import type { SalvageContainerItemId } from '../services/salvageService'
 
 const survivalStats: SurvivalStatName[] = ['hunger', 'thirst', 'stamina', 'health']
+const reportReasons: { value: MessageBottleReportReason; label: string }[] = [
+  { value: 'spam', label: 'Spam' },
+  { value: 'inappropriate', label: 'Nội dung không phù hợp' },
+  { value: 'personal_info', label: 'Thông tin cá nhân' },
+  { value: 'scam', label: 'Lừa đảo' },
+  { value: 'other', label: 'Lý do khác' },
+]
 
 function getStatStatus(stat: SurvivalStatName, value: number): string {
-  if (stat === 'hunger') {
-    if (value === 0) return 'Đói lả'
-    if (value <= survivalConfig.criticalNeedThreshold) return 'Suy dinh dưỡng'
-    if (value < survivalConfig.needWarningThreshold) return 'Đói'
-  }
-  if (stat === 'thirst') {
-    if (value === 0) return 'Mất nước'
-    if (value <= survivalConfig.criticalNeedThreshold) return 'Mất nước'
-    if (value < survivalConfig.needWarningThreshold) return 'Khát'
-  }
-  if (stat === 'stamina') {
-    if (value <= 10) return 'Kiệt sức'
-    if (value <= 40) return 'Mệt mỏi'
-  }
-  if (stat === 'health' && value <= 25) return 'Nguy cấp'
-  return 'Ổn định'
+  return getSurvivalMeterStatus(stat, value)
 }
 
 function ContainerPanel({
@@ -36,6 +30,8 @@ function ContainerPanel({
   itemDurability,
   onTransfer,
   onUse,
+  onOpenSalvageContainer,
+  onBottleAction,
   onDiscard,
   onEquipBackpack,
   onEquipWeapon,
@@ -47,6 +43,8 @@ function ContainerPanel({
   itemDurability?: Partial<Record<ItemId, number>>
   onTransfer(itemId: ItemId, quantity: number): void
   onUse?(itemId: ItemId): void
+  onOpenSalvageContainer?(itemId: SalvageContainerItemId): void
+  onBottleAction?(itemId: 'item_glass_bottle' | 'item_message_bottle'): void
   onDiscard?(itemId: ItemId, quantity: number): void
   onEquipBackpack?(): void
   onEquipWeapon?(itemId: ItemId): void
@@ -82,7 +80,7 @@ function ContainerPanel({
         <>
           <div className="container-capacity-copy inventory-weight-copy">
             <span>Tải trọng</span>
-            <strong>{totalWeight.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} / {weightLimit.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} kg</strong>
+            <strong>{totalWeight.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} / {weightLimit.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} kg</strong>
             <em className={isOverloaded ? 'is-overloaded' : isEncumbered ? 'is-encumbered' : ''}>
               {isOverloaded ? 'Quá tải · không thể làm việc' : isEncumbered ? 'Nặng người' : 'Ổn định'}
             </em>
@@ -135,7 +133,7 @@ function ContainerPanel({
                 <img className={`resource-icon ${item.tone}`} src={item.image} alt="" aria-hidden="true" />
               </div>
               <strong className="inventory-slot-name">{item.name}</strong>
-              <small className="inventory-slot-meta">{(item.weight * slot.quantity).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} kg</small>
+              <small className="inventory-slot-meta">{(item.weight * slot.quantity).toLocaleString('vi-VN', { maximumFractionDigits: 2 })} kg</small>
               {item.maxDurability && (
                 <small className="inventory-slot-meta">Độ bền {itemDurability?.[slot.itemId] ?? item.maxDurability}/{item.maxDurability}</small>
               )}
@@ -145,6 +143,28 @@ function ContainerPanel({
                 </small>
               )}
               <div className="inventory-slot-actions">
+                {kind === 'bag' && onOpenSalvageContainer
+                  && (slot.itemId === 'item_sunken_crate' || slot.itemId === 'item_metal_box' || slot.itemId === 'item_small_chest') && (
+                    <button
+                      className="inventory-slot-primary"
+                      type="button"
+                      aria-label={`Mở ${item.name}`}
+                      onClick={() => onOpenSalvageContainer(slot.itemId as SalvageContainerItemId)}
+                    >
+                      Mở
+                    </button>
+                )}
+                {kind === 'bag' && onBottleAction
+                  && (slot.itemId === 'item_glass_bottle' || slot.itemId === 'item_message_bottle') && (
+                    <button
+                      className="inventory-slot-primary"
+                      type="button"
+                      aria-label={`${slot.itemId === 'item_glass_bottle' ? 'Viết thông điệp bằng' : 'Đọc'} ${item.name}`}
+                      onClick={() => onBottleAction(slot.itemId as 'item_glass_bottle' | 'item_message_bottle')}
+                    >
+                      {slot.itemId === 'item_glass_bottle' ? 'Viết tin' : 'Đọc tin'}
+                    </button>
+                )}
                 {kind === 'bag' && item.usable && onUse && (
                   <button
                     className="inventory-slot-primary"
@@ -218,7 +238,7 @@ function ContainerPanel({
       </div>
       <div className="container-footer">
         <span>{occupiedSlots} ô đang sử dụng</span>
-        <span>Khối lượng {totalWeight.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} kg</span>
+        <span>Khối lượng {totalWeight.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} kg</span>
       </div>
     </section>
   )
@@ -238,12 +258,69 @@ export function InventoryPage() {
     equipWeapon,
     unequipWeapon,
     repairItem,
+    openSalvageContainer,
+    sendMessageBottle,
+    readMessageBottle,
+    reportMessageBottle,
   } = useGame()
+  const [bottleDialogMode, setBottleDialogMode] = useState<'send' | 'read' | null>(null)
+  const [bottleMessage, setBottleMessage] = useState('')
+  const [activeBottle, setActiveBottle] = useState<MessageBottle | null>(null)
+  const [bottleError, setBottleError] = useState<string | null>(null)
+  const [bottleReportMessage, setBottleReportMessage] = useState<string | null>(null)
+  const [reportReason, setReportReason] = useState<MessageBottleReportReason>('inappropriate')
+  const [isBottleBusy, setIsBottleBusy] = useState(false)
 
   if (isLoading) return <p className="page-state">Đang tải túi đồ…</p>
   if (!gameState) return <p className="page-state error-state" role="alert">{error ?? 'Chưa có dữ liệu túi đồ.'}</p>
 
   const { inventory, storage, survival } = gameState
+
+  async function handleBottleAction(itemId: 'item_glass_bottle' | 'item_message_bottle') {
+    setBottleDialogMode(itemId === 'item_glass_bottle' ? 'send' : 'read')
+    setBottleMessage('')
+    setActiveBottle(null)
+    setBottleError(null)
+    setBottleReportMessage(null)
+    if (itemId !== 'item_message_bottle') return
+
+    setIsBottleBusy(true)
+    const result = await readMessageBottle()
+    setIsBottleBusy(false)
+    if (!result.ok) {
+      setBottleError(result.message)
+      return
+    }
+    setActiveBottle(result.bottle)
+  }
+
+  async function handleSendBottle(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (isBottleBusy) return
+    setIsBottleBusy(true)
+    setBottleError(null)
+    const result = await sendMessageBottle(bottleMessage)
+    setIsBottleBusy(false)
+    if (!result.ok) {
+      setBottleError(result.message)
+      return
+    }
+    setBottleDialogMode(null)
+    setBottleMessage('')
+  }
+
+  async function handleReportBottle() {
+    if (!activeBottle || isBottleBusy || bottleReportMessage) return
+    setIsBottleBusy(true)
+    setBottleError(null)
+    const result = await reportMessageBottle(activeBottle.message_id, reportReason)
+    setIsBottleBusy(false)
+    if (!result.ok) {
+      setBottleError(result.message)
+      return
+    }
+    setBottleReportMessage(result.message)
+  }
 
   return (
     <div className="inventory-page">
@@ -326,6 +403,8 @@ export function InventoryPage() {
           itemDurability={gameState.itemDurability}
           onTransfer={(itemId, quantity) => transferToStorage(itemId, quantity)}
           onUse={(itemId) => consumeItem(itemId)}
+          onOpenSalvageContainer={openSalvageContainer}
+          onBottleAction={(itemId) => void handleBottleAction(itemId)}
           onDiscard={(itemId, quantity) => discardItems(itemId, quantity)}
           onEquipBackpack={equipBackpack}
           onEquipWeapon={equipWeapon}
@@ -340,6 +419,73 @@ export function InventoryPage() {
         />
       </div>
       <p className="inventory-note">Chọn số lượng rồi bấm “Lấy số lượng” để chuyển đồ từ rương vào túi; “Lấy tất cả” chuyển toàn bộ chồng. Nếu kho đích không đủ chỗ, vật phẩm sẽ ở nguyên vị trí cũ.</p>
+      {bottleDialogMode && (
+        <div className="message-bottle-backdrop">
+          <section className="message-bottle-dialog" role="dialog" aria-modal="true" aria-labelledby="message-bottle-title">
+            <header>
+              <div>
+                <span className="section-kicker">THÔNG ĐIỆP TRÔI DẠT</span>
+                <h2 id="message-bottle-title">{bottleDialogMode === 'send' ? 'Viết lời nhắn' : 'Mở chai thông điệp'}</h2>
+              </div>
+              <button type="button" className="message-bottle-close" aria-label="Đóng" onClick={() => setBottleDialogMode(null)}>×</button>
+            </header>
+            {bottleDialogMode === 'send' ? (
+              <form onSubmit={(event) => void handleSendBottle(event)}>
+                <label htmlFor="message-bottle-text">Thông điệp (tối đa 280 ký tự)</label>
+                <textarea
+                  id="message-bottle-text"
+                  rows={5}
+                  maxLength={280}
+                  value={bottleMessage}
+                  onChange={(event) => setBottleMessage(event.currentTarget.value)}
+                  disabled={isBottleBusy}
+                  required
+                />
+                <p className="message-bottle-guidance">Mỗi ngày gửi được một lần. Không gửi liên kết, số điện thoại, thông tin cá nhân hoặc nội dung xấu.</p>
+                <div className="message-bottle-dialog-actions">
+                  <span>{bottleMessage.length}/280</span>
+                  <button type="submit" className="small-action" disabled={isBottleBusy || !bottleMessage.trim()}>
+                    {isBottleBusy ? 'Đang gửi…' : 'Thả chai'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                {isBottleBusy && <p role="status">Đang tìm thông điệp trôi đến đảo…</p>}
+                {activeBottle && (
+                  <article className="message-bottle-reading">
+                    <p className="message-bottle-sender">Người gửi: <strong>{activeBottle.sender_display_name}</strong> · Đảo {activeBottle.sender_island_id}</p>
+                    <blockquote>{activeBottle.message}</blockquote>
+                    <time dateTime={activeBottle.created_at}>
+                      Gửi lúc {new Date(activeBottle.created_at).toLocaleString('vi-VN')}
+                    </time>
+                    <p className="message-bottle-guidance">Thông điệp này có thể được đọc bởi nhiều người chơi ở các đảo khác nhau.</p>
+                    {bottleReportMessage ? (
+                      <p role="status">{bottleReportMessage}</p>
+                    ) : (
+                      <div className="message-bottle-report">
+                        <label htmlFor="message-bottle-report-reason">Báo cáo thông điệp</label>
+                        <select
+                          id="message-bottle-report-reason"
+                          value={reportReason}
+                          onChange={(event) => setReportReason(event.currentTarget.value as MessageBottleReportReason)}
+                          disabled={isBottleBusy}
+                        >
+                          {reportReasons.map((reason) => <option key={reason.value} value={reason.value}>{reason.label}</option>)}
+                        </select>
+                        <button type="button" className="small-action" onClick={() => void handleReportBottle()} disabled={isBottleBusy}>
+                          Báo cáo
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                )}
+              </>
+            )}
+            {bottleError && <p className="message-bottle-error" role="alert">{bottleError}</p>}
+          </section>
+        </div>
+      )}
     </div>
   )
 }

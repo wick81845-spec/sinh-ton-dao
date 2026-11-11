@@ -8,7 +8,7 @@ describe('technologyService', () => {
     if (!result.ok) throw new Error(result.message)
 
     expect(result.state.character.researchedTechnologyIds).toEqual(['tech_basic_tools'])
-    expect(result.state.character.skillExperience).toMatchObject({ processing: 20 })
+    expect(result.state.character.skillExperience).toMatchObject({ processing: 40 })
     expect(result.state.inventory.slots).toEqual([
       { itemId: 'item_wood', quantity: 9 },
       { itemId: 'item_stone', quantity: 6 },

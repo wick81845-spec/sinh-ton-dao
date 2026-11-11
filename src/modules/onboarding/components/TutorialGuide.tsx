@@ -4,6 +4,7 @@ import { useGame } from '../../../app/providers/useGame'
 import { gameEventBus } from '../../../services/events/gameEvents'
 import { isFishingActivityId } from '../../gathering/data/fishingConfig'
 import { getNextTutorialStep, inferTutorialProgress, tutorialSteps } from '../tutorialSteps'
+import { experienceRewardMultiplier } from '../../progression/services/progressionService'
 
 const noCompletedSteps: string[] = []
 
@@ -30,12 +31,6 @@ export function TutorialGuide() {
       .filter((stepId) => !savedStepIds.includes(stepId))
       .forEach((stepId) => completeTutorialStep(stepId, false))
   }, [completeTutorialStep, gameState, savedStepIds])
-
-  useEffect(() => {
-    if (currentStep?.requiredLevel && gameState && gameState.character.level >= currentStep.requiredLevel) {
-      completeTutorialStep(currentStep.id, false)
-    }
-  }, [completeTutorialStep, currentStep, gameState])
 
   useEffect(() => {
     if (!currentStep) return
@@ -132,7 +127,7 @@ export function TutorialGuide() {
           <h2>{currentStep.title}</h2>
           <p>{currentStep.description}</p>
           {currentStep.experienceReward > 0 && (
-            <p className="tutorial-step-reward">Thưởng hoàn thành: +{currentStep.experienceReward} XP</p>
+            <p className="tutorial-step-reward">Thưởng hoàn thành: +{currentStep.experienceReward * experienceRewardMultiplier} XP</p>
           )}
           <Link className="tutorial-guide-action" to={currentStep.destination} onClick={() => setIsOpen(false)}>
             {currentStep.actionLabel}<span aria-hidden="true">↗</span>

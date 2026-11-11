@@ -13,8 +13,8 @@ describe('advanceSurvival', () => {
     }
 
     expect(advanceSurvival(stats, 30 * 60 * 1000, true)).toMatchObject({
-      hunger: 15,
-      thirst: 0,
+      hunger: 32.5,
+      thirst: 30,
       stamina: 100,
     })
   })
@@ -22,11 +22,11 @@ describe('advanceSurvival', () => {
   it('scales hunger and thirst to game hours and daily activity needs', () => {
     const stats = { ...initialGameState.survival, hunger: 100, thirst: 100 }
 
-    expect(advanceSurvival(stats, 30 * 60 * 1000)).toMatchObject({ hunger: 65, thirst: 40 })
+    expect(advanceSurvival(stats, 30 * 60 * 1000)).toMatchObject({ hunger: 82.5, thirst: 70 })
     expect(advanceSurvival(stats, 30 * 60 * 1000, false, undefined, 1, 1.5))
-      .toMatchObject({ hunger: 47.5, thirst: 10 })
+      .toMatchObject({ hunger: 73.75, thirst: 55 })
     expect(advanceSurvival(stats, 30 * 60 * 1000, false, undefined, 1, 1, false, undefined, 1.2).thirst)
-      .toBe(28)
+      .toBe(64)
   })
 
   it('clamps needs at zero and stamina at its maximum', () => {
@@ -41,7 +41,7 @@ describe('advanceSurvival', () => {
       hunger: 0,
       thirst: 0,
       stamina: 100,
-      conditions: ['starving', 'dehydrated'],
+      conditions: ['hunger-depleted', 'thirst-depleted'],
     })
   })
 
@@ -50,28 +50,16 @@ describe('advanceSurvival', () => {
 
     expect(advanceSurvival(stats, -1000)).toMatchObject({
       hunger: 24,
-      conditions: ['hungry'],
+      conditions: ['hunger-danger', 'thirst-rising'],
     })
 
   })
 
-  it('causes damage only while hunger or thirst is empty', () => {
+  it('does not damage health when hunger or thirst is depleted', () => {
     const stats = { ...initialGameState.survival, hunger: 0, thirst: 0, health: 50 }
 
-    expect(advanceSurvival(stats, 60_000).health).toBe(45.2)
-    expect(advanceSurvival({ ...stats, hunger: 1 }, 60_000).health).toBe(46.23)
-  })
-
-  it('clamps health to zero after prolonged deprivation', () => {
-    const stats = { ...initialGameState.survival, hunger: 0, thirst: 0, health: 1 }
-
-    expect(advanceSurvival(stats, 60 * 60 * 1000).health).toBe(0)
-  })
-
-  it('starts deprivation damage only after the remaining need is depleted', () => {
-    const stats = { ...initialGameState.survival, hunger: 1, thirst: 100, health: 50 }
-
-    expect(advanceSurvival(stats, 60_000)).toMatchObject({ hunger: 0, health: 49.43 })
+    expect(advanceSurvival(stats, 60_000).health).toBe(50)
+    expect(advanceSurvival({ ...stats, hunger: 1 }, 60_000).health).toBe(50)
   })
 
   it('slows stamina recovery when hunger, thirst, or health are low', () => {
@@ -79,14 +67,27 @@ describe('advanceSurvival', () => {
     const hungry = { ...healthy, hunger: 20 }
     const dehydrated = { ...healthy, thirst: 20 }
 
-    expect(advanceSurvival(healthy, 60_000, true).stamina).toBe(25)
-    expect(advanceSurvival(hungry, 60_000, true).stamina).toBe(22.5)
-    expect(advanceSurvival(dehydrated, 60_000, true).stamina).toBe(22.5)
+    expect(advanceSurvival(healthy, 60_000, true).stamina).toBe(28)
+    expect(advanceSurvival(hungry, 60_000, true).stamina).toBe(24)
+    expect(advanceSurvival(dehydrated, 60_000, true).stamina).toBe(24)
   })
 
   it('does not recover stamina until rest is explicitly requested', () => {
     const stats = { ...initialGameState.survival, stamina: 20 }
     expect(advanceSurvival(stats, 60_000).stamina).toBe(20)
+  })
+
+  it('recovers stamina faster when resting at night than during the day', () => {
+    const stats = {
+      ...initialGameState.survival,
+      hunger: 100,
+      thirst: 100,
+      stamina: 20,
+    }
+
+    expect(advanceSurvival(stats, 60_000, true, undefined, 1, 1, false, 1, 1, 1).stamina).toBe(28)
+    expect(advanceSurvival(stats, 60_000, true, undefined, 1, 1, false, 1, 1, 1.5).stamina).toBe(32)
+    expect(advanceSurvival(stats, 60_000, false, undefined, 1, 1, false, 1, 1, 1.5).stamina).toBe(20)
   })
 
   it('recovers stamina only while resting and health only when well fed and hydrated', () => {
@@ -115,7 +116,7 @@ describe('advanceSurvival', () => {
     }
 
     expect(advanceSurvival(stats, 60_000, true, undefined, 1.5)).toMatchObject({
-      stamina: 27.5,
+      stamina: 32,
       health: 50.03,
     })
   })
@@ -123,34 +124,34 @@ describe('advanceSurvival', () => {
   it('increases thirst loss in hot weather', () => {
     const stats = { ...initialGameState.survival, thirst: 100, stamina: 100 }
 
-    expect(advanceSurvival(stats, 60_000, false).thirst).toBe(98)
-    expect(advanceSurvival(stats, 60_000, false, getWeatherDefinition('extreme_heat')).thirst).toBe(97)
+    expect(advanceSurvival(stats, 60_000, false).thirst).toBe(99)
+    expect(advanceSurvival(stats, 60_000, false, getWeatherDefinition('extreme_heat')).thirst).toBe(98.5)
     expect(advanceSurvival(stats, 60_000, false, getWeatherDefinition('extreme_heat'), 1, 1, true).thirst)
-      .toBe(98)
+      .toBe(99)
   })
 
-  it('damages health during extreme heat or cold unless protected by shelter', () => {
+  it('does not apply direct health damage from weather alone', () => {
     const stats = { ...initialGameState.survival, health: 70, hunger: 100, thirst: 100 }
 
     expect(advanceSurvival(stats, 60_000, false, getWeatherDefinition('extreme_heat')).health)
-      .toBe(68.4)
+      .toBe(70)
     expect(advanceSurvival(stats, 60_000, false, getWeatherDefinition('extreme_heat'), 1, 1, true).health)
       .toBe(70)
     expect(advanceSurvival(stats, 60_000, false, getWeatherDefinition('blizzard')).health)
-      .toBe(68.4)
+      .toBe(70)
   })
 
   it('increases hunger and thirst loss during strenuous activity', () => {
     const stats = { ...initialGameState.survival, hunger: 100, thirst: 100 }
 
     expect(advanceSurvival(stats, 60_000, false, undefined, 1, 1.5))
-      .toMatchObject({ hunger: 98.25, thirst: 97 })
+      .toMatchObject({ hunger: 99.13, thirst: 98.5 })
   })
 
-  it('gradually damages health during severe hunger and dehydration before needs reach zero', () => {
+  it('does not damage health during hunger and dehydration stages', () => {
     const stats = { ...initialGameState.survival, health: 80, hunger: 10, thirst: 10 }
 
-    expect(advanceSurvival(stats, 60_000, false).health).toBe(78.8)
+    expect(advanceSurvival(stats, 60_000, false).health).toBe(80)
   })
 
   it('does not restore a depleted health value while resting', () => {
@@ -161,12 +162,12 @@ describe('advanceSurvival', () => {
 })
 
 describe('getSurvivalConditions', () => {
-  it('reports hunger and thirst warnings at the configured threshold', () => {
+  it('reports hunger and thirst stages', () => {
     expect(getSurvivalConditions({
       ...initialGameState.survival,
       hunger: 25,
       thirst: 25,
-    })).toEqual(['hungry', 'thirsty'])
+    })).toEqual(['hunger-danger', 'thirst-danger'])
   })
 })
 

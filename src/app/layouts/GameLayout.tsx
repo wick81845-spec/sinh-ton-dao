@@ -8,6 +8,7 @@ import { SurvivalPage } from '../../modules/survival/pages/SurvivalPage'
 import { CraftingPage } from '../../modules/crafting/pages/CraftingPage'
 import { BuildingPage } from '../../modules/building/pages/BuildingPage'
 import { CampfirePage } from '../../modules/building/pages/CampfirePage'
+import { CookingStovePage } from '../../modules/building/pages/CookingStovePage'
 import { WorldPage } from '../../modules/world/pages/WorldPage'
 import { ExplorationPage } from '../../modules/exploration/pages/ExplorationPage'
 import { VoyagePage } from '../../modules/voyage/pages/VoyagePage'
@@ -91,6 +92,7 @@ const panelContentByPath: Record<string, () => ReactNode> = {
   '/building': () => <BuildingPage />,
   '/structures': () => <BuildingPage ownedOnly />,
   '/campfire': () => null,
+  '/cooking-stove': () => null,
   '/island': () => <WorldPage />,
   '/exploration': () => <ExplorationPage />,
   '/voyage': () => <VoyagePage />,
@@ -145,7 +147,7 @@ export function GameLayout() {
     || (item.path === '/market' && !isMarketAvailableAt(gameState?.character.currentLocationId ?? ''))
   )
   const displayTemperature = gameState
-    ? gameState.survival.temperature + (weatherAtGameTime?.temperatureDelta ?? 0)
+    ? (gameState.survival.temperature ?? 28) + (weatherAtGameTime?.temperatureDelta ?? 0)
     : 28
   const shelterRestingAt = gameState?.buildings.find((building) => (
     building.definitionId === 'building_shelter'
@@ -229,6 +231,7 @@ export function GameLayout() {
       return renderActivityHub()
     }
     if (activePanel.path === '/campfire') return <CampfirePage />
+    if (activePanel.path === '/cooking-stove') return <CookingStovePage />
     if (activePanel.path !== '/activities') return panelContentByPath[activePanel.path]?.() ?? null
     return renderActivityHub()
   }

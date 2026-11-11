@@ -63,7 +63,11 @@ describe('ailmentService', () => {
 
   it('tracks extreme heat exposure, causes heatstroke after ten minutes, and cools down under shelter', () => {
     const heat = getWeatherDefinition('extreme_heat')
-    const first = advanceAilments(initialGameState, 9 * 60 * 1000, heat)
+    const hotState = {
+      ...initialGameState,
+      survival: { ...initialGameState.survival, bodyTemperature: 39 },
+    }
+    const first = advanceAilments(hotState, 9 * 60 * 1000, heat)
     expect(first.state.ailments).toEqual([
       { id: 'heatstroke', elapsedMs: 9 * 60 * 1000 },
       { id: 'sunburn', elapsedMs: 0, severity: 'mild' },
@@ -86,9 +90,29 @@ describe('ailmentService', () => {
 
   it('tracks severe cold and deals damage only after the exposure threshold', () => {
     const cold = getWeatherDefinition('blizzard')
-    const result = advanceAilments(initialGameState, 12 * 60 * 1000, cold)
+    const coldState = {
+      ...initialGameState,
+      survival: { ...initialGameState.survival, bodyTemperature: 34.5, wetness: 50 },
+    }
+    const result = advanceAilments(coldState, 12 * 60 * 1000, cold)
     expect(result.state.ailments).toEqual([{ id: 'hypothermia', elapsedMs: 12 * 60 * 1000 }])
     expect(result.state.survival.health).toBe(99.8)
+  })
+
+  it('does not trigger heat or cold injury from weather when body temperature is stable', () => {
+    const warmRain = advanceAilments(
+      initialGameState,
+      60 * 60 * 1000,
+      getWeatherDefinition('heavy_rain'),
+    )
+    expect(warmRain.state.ailments ?? []).toEqual([])
+
+    const hotWeather = advanceAilments(
+      initialGameState,
+      60 * 60 * 1000,
+      getWeatherDefinition('extreme_heat'),
+    )
+    expect(hotWeather.state.ailments?.map((ailment) => ailment.id) ?? []).not.toContain('heatstroke')
   })
 
   it('recovers from hypothermia near a lit campfire', () => {
@@ -115,13 +139,29 @@ describe('ailmentService', () => {
     expect(resolved.changed).toBe(true)
   })
 
-  it('adds dehydration and exhaustion when survival needs reach a critical level', () => {
+  it('does not add ailments or damage health from depleted needs or stamina alone', () => {
     const result = advanceAilments({
       ...initialGameState,
-      survival: { ...initialGameState.survival, thirst: 10, stamina: 10 },
-    }, 1)
+      survival: { ...initialGameState.survival, health: 50, thirst: 0, stamina: 0 },
+    }, 60_000)
 
-    expect(result.state.ailments?.map((ailment) => ailment.id)).toEqual(['dehydration', 'exhaustion'])
+    expect(result.state.ailments ?? []).toEqual([])
+    expect(result.state.survival.health).toBe(50)
+    expect(result.changed).toBe(false)
+  })
+
+  it('preserves legacy dehydration but removes derived exhaustion without old damage', () => {
+    const result = advanceAilments({
+      ...initialGameState,
+      survival: { ...initialGameState.survival, health: 50, thirst: 0, stamina: 0 },
+      ailments: [
+        { id: 'dehydration', elapsedMs: 60_000 },
+        { id: 'exhaustion', elapsedMs: 60_000 },
+      ],
+    }, 60_000)
+
+    expect(result.state.ailments).toEqual([{ id: 'dehydration', elapsedMs: 120_000 }])
+    expect(result.state.survival.health).toBe(50)
     expect(result.changed).toBe(true)
   })
 })

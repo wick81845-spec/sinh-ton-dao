@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { newPlayerGameState } from '../../data/mockGameState'
+import { itemDefinitions } from '../../data/items/itemDefinitions'
 import { completeConstructions, getShelterRestBonusMultiplier, startConstruction, upgradeBuilding } from '../../modules/building/services/buildingService'
 import {
   advanceCampfireFuel,
@@ -17,6 +18,7 @@ import {
 import { advanceRainCollection, collectRainwater as collectCollectedRainwater } from '../../modules/building/services/waterCollectionService'
 import { attackCombat as resolveCombatTurn, retreatCombat as retreatFromCombat, respawnCharacter as respawn, startCombat } from '../../modules/combat/services/combatService'
 import { completeCrafting, queueRecipe } from '../../modules/crafting/services/craftingService'
+import type { FishProcessingItemId } from '../../modules/crafting/services/craftingService'
 import { completeExploration, startExploration } from '../../modules/exploration/services/explorationService'
 import { cancelGathering, completeGathering, failFishing as failFishingGathering, refreshResourceNodes, startGathering } from '../../modules/gathering/services/gatheringService'
 import { isFishingActivityId } from '../../modules/gathering/data/fishingConfig'
@@ -27,12 +29,19 @@ import {
   equipWeapon,
   isInventoryOverloaded,
   initializeFoodFreshness,
+  removeItems,
   repairItem,
   spoilExpiredFood,
   transferItems,
   unequipBackpack,
   unequipWeapon,
 } from '../../modules/inventory/services/inventoryService'
+import { openSalvageContainer } from '../../modules/inventory/services/salvageService'
+import {
+  readMessageBottle as fetchMessageBottle,
+  reportMessageBottle as reportOnlineMessageBottle,
+  sendMessageBottle as sendOnlineMessageBottle,
+} from '../../modules/social/services/messageBottleService'
 import { buyMarketItem as buyMarket, sellMarketItem as sellMarket } from '../../modules/economy/services/marketService'
 import { addFriend as addSocialFriend, proposeTrade as createTradeOffer, resolveTrade as resolveSocialTrade, returnToHomeIsland, visitPlayerIsland as visitIsland } from '../../modules/social/services/socialService'
 import { completeShipConstruction, startShipConstruction } from '../../modules/ship/services/shipService'
@@ -44,7 +53,7 @@ import { researchTechnology as researchTech } from '../../modules/progression/se
 import { advanceWeather, createWeatherState } from '../../modules/world/services/weatherService'
 import { visitIslandAsAdmin as visitIslandForAdmin } from '../../modules/world/services/adminExplorationService'
 import { getWeatherDefinition } from '../../modules/world/data/weatherDefinitions'
-import { getWorldSeason, getWorldWeatherAtTime } from '../../modules/world/services/worldClock'
+import { getWorldClock, getWorldSeason, getWorldWeatherAtTime } from '../../modules/world/services/worldClock'
 import { randomWorldEventDefinitions } from '../../modules/world/data/randomWorldEventDefinitions'
 import {
   advanceRandomWorldEvents,
@@ -391,6 +400,117 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return commitState(result.state, result.message)
   }, [commitState])
 
+  const openSalvageContainerAction = useCallback((itemId: Parameters<typeof openSalvageContainer>[1]): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    if (currentState.activeCombat) {
+      const message = 'Không thể mở vật phẩm trục vớt trong khi chiến đấu.'
+      setNotice(message)
+      return { ok: false, message }
+    }
+
+    const result = openSalvageContainer(currentState, itemId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    const message = `Đã mở ${itemId === 'item_sunken_crate' ? 'thùng hàng chìm' : itemId === 'item_metal_box' ? 'hộp kim loại' : 'rương nhỏ'} và nhận ${result.reward.quantity} ${itemDefinitions[result.reward.itemId].name}.`
+    return commitState(result.state, message)
+  }, [commitState])
+
+  const sendMessageBottleAction = useCallback(async (messageText: string): Promise<GameActionResult> => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    if (currentState.character.status !== 'alive') {
+      return { ok: false, message: 'Bạn cần hồi sinh trước khi gửi chai thông điệp.' }
+    }
+    if (currentState.activeCombat) {
+      return { ok: false, message: 'Không thể gửi chai thông điệp trong khi chiến đấu.' }
+    }
+    if (!currentState.inventory.slots.some((slot) => slot.itemId === 'item_glass_bottle')) {
+      return { ok: false, message: 'Cần có một chai thủy tinh trong hành trang để gửi thông điệp.' }
+    }
+
+    try {
+      await sendOnlineMessageBottle(messageText)
+    } catch (sendError: unknown) {
+      const message = describeError(sendError)
+      setNotice(message)
+      return { ok: false, message }
+    }
+
+    const latestState = stateRef.current
+    if (!latestState) {
+      const message = 'Thông điệp đã gửi, nhưng dữ liệu hành trang không còn sẵn sàng để trừ chai.'
+      setNotice(message)
+      return { ok: false, message }
+    }
+    const removedBottle = removeItems(latestState.inventory, 'item_glass_bottle', 1)
+    if (!removedBottle.ok) {
+      const message = `Thông điệp đã gửi nhưng không thể trừ chai khỏi hành trang: ${removedBottle.message}`
+      setNotice(message)
+      return { ok: false, message }
+    }
+    return commitState(
+      { ...latestState, inventory: removedBottle.container },
+      'Đã thả chai thông điệp xuống biển.',
+    )
+  }, [commitState])
+
+  const readMessageBottleAction = useCallback(async () => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false as const, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    if (currentState.character.status !== 'alive') {
+      return { ok: false as const, message: 'Bạn cần hồi sinh trước khi đọc chai thông điệp.' }
+    }
+    if (currentState.activeCombat) {
+      return { ok: false as const, message: 'Không thể đọc chai thông điệp trong khi chiến đấu.' }
+    }
+    if (!currentState.inventory.slots.some((slot) => slot.itemId === 'item_message_bottle')) {
+      return { ok: false as const, message: 'Bạn không có chai chứa thông điệp trong hành trang.' }
+    }
+
+    let bottle
+    try {
+      bottle = await fetchMessageBottle()
+    } catch (readError: unknown) {
+      const message = describeError(readError)
+      setNotice(message)
+      return { ok: false as const, message }
+    }
+
+    const latestState = stateRef.current
+    if (!latestState) {
+      const message = 'Đã đọc chai nhưng dữ liệu hành trang không còn sẵn sàng để trừ chai.'
+      setNotice(message)
+      return { ok: false as const, message }
+    }
+    const removedBottle = removeItems(latestState.inventory, 'item_message_bottle', 1)
+    if (!removedBottle.ok) {
+      const message = `Đã đọc thông điệp nhưng không thể trừ chai khỏi hành trang: ${removedBottle.message}`
+      setNotice(message)
+      return { ok: false as const, message }
+    }
+    commitState({ ...latestState, inventory: removedBottle.container }, 'Bạn đã đọc một thông điệp trôi dạt.')
+    return { ok: true as const, message: 'Đã mở chai thông điệp.', bottle }
+  }, [commitState])
+
+  const reportMessageBottleAction = useCallback(async (
+    messageId: number,
+    reason: Parameters<typeof reportOnlineMessageBottle>[1],
+  ): Promise<GameActionResult> => {
+    try {
+      await reportOnlineMessageBottle(messageId, reason)
+      const message = 'Đã gửi báo cáo thông điệp.'
+      setNotice(message)
+      return { ok: true, message }
+    } catch (reportError: unknown) {
+      const message = describeError(reportError)
+      setNotice(message)
+      return { ok: false, message }
+    }
+  }, [])
+
   const discardItemsAction = useCallback((itemId: ItemId, quantity: number): GameActionResult => {
     const currentState = stateRef.current
     if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
@@ -484,11 +604,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return commitState(result.state, result.message)
   }, [commitState])
 
-  const queueRecipeAction = useCallback((recipeId: string): GameActionResult => {
+  const queueRecipeAction = useCallback((recipeId: string, fishItemId?: FishProcessingItemId): GameActionResult => {
     const currentState = stateRef.current
     if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
 
-    const result = queueRecipe(currentState, recipeId, gameClock.now())
+    const result = queueRecipe(currentState, recipeId, gameClock.now(), fishItemId)
     if (!result.ok) {
       setNotice(result.message)
       return result
@@ -1091,6 +1211,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
           hasShelter,
           undefined,
           getWorldSeason(now).thirstMultiplier,
+          getWorldClock(now).lightLevel === 'night'
+            ? survivalConfig.stamina.nightRestRecoveryMultiplier
+            : 1,
         )
         : stateAfterFood.survival
       const bodyExposure = advanceBodyExposure(
@@ -1299,6 +1422,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       buyMarketItem: buyMarketItemAction,
       sellMarketItem: sellMarketItemAction,
       consumeItem: consumeItemAction,
+      openSalvageContainer: openSalvageContainerAction,
+      sendMessageBottle: sendMessageBottleAction,
+      readMessageBottle: readMessageBottleAction,
+      reportMessageBottle: reportMessageBottleAction,
       discardItems: discardItemsAction,
       repairItem: repairItemAction,
       equipBackpack: equipBackpackAction,

@@ -2,6 +2,7 @@ import { survivalConfig } from '../data/survivalConfig'
 import type { GameSnapshot, SurvivalStats } from '../../../shared/types/game'
 import type { WeatherDefinition } from '../../world/data/weatherDefinitions'
 import { worldGameTimeScale } from '../../world/services/worldClock'
+import { getNeedState } from './survivalStates'
 
 const millisecondsPerHour = 60 * 60 * 1000
 const millisecondsPerMinute = 60 * 1000
@@ -10,20 +11,13 @@ function roundStat(value: number): number {
   return Math.round(value * 100) / 100
 }
 
-function durationBelowThreshold(value: number, threshold: number, decayPerHour: number, elapsed: number): number {
-  const timeToThreshold = Math.max(0, (value - threshold) / decayPerHour * millisecondsPerHour)
-  return Math.max(0, Math.min(elapsed, elapsed - timeToThreshold))
-}
-
 export function getSurvivalConditions(stats: SurvivalStats): string[] {
   const conditions: string[] = []
 
-  if (stats.hunger < survivalConfig.needWarningThreshold) {
-    conditions.push(stats.hunger === 0 ? 'starving' : 'hungry')
-  }
-  if (stats.thirst < survivalConfig.needWarningThreshold) {
-    conditions.push(stats.thirst === 0 ? 'dehydrated' : 'thirsty')
-  }
+  const hungerState = getNeedState(stats.hunger)
+  const thirstState = getNeedState(stats.thirst)
+  if (hungerState !== 'normal') conditions.push(`hunger-${hungerState}`)
+  if (thirstState !== 'normal') conditions.push(`thirst-${thirstState}`)
 
   return conditions
 }
@@ -56,6 +50,7 @@ export function advanceSurvival(
   isSheltered = false,
   gameTimeScale = worldGameTimeScale,
   seasonalThirstMultiplier = 1,
+  nightRestMultiplier = 1,
 ): SurvivalStats {
   const elapsed = Math.max(0, elapsedMilliseconds)
   const gameElapsed = elapsed * Math.max(0, gameTimeScale)
@@ -66,10 +61,6 @@ export function advanceSurvival(
     * needMultiplier
     * Math.max(0, seasonalThirstMultiplier)
     * (hotWeather && !isSheltered ? survivalConfig.hotWeatherThirstMultiplier : 1)
-  const temperatureDelta = weather?.temperatureDelta ?? 0
-  const extremeWeatherDamage = !isSheltered && (temperatureDelta >= 9 || temperatureDelta <= -12)
-    ? (gameElapsed / millisecondsPerHour) * survivalConfig.extremeWeatherDamagePerHour
-    : 0
   const hunger = Math.max(
     0,
     stats.hunger - (gameElapsed / millisecondsPerHour) * hungerDecayPerHour,
@@ -78,60 +69,40 @@ export function advanceSurvival(
     0,
     stats.thirst - (gameElapsed / millisecondsPerHour) * thirstDecayPerHour,
   )
-  const hungerDepletedAt = stats.hunger / hungerDecayPerHour * millisecondsPerHour
-  const thirstDepletedAt = stats.thirst / thirstDecayPerHour * millisecondsPerHour
-  const starvationDuration = Math.max(0, gameElapsed - hungerDepletedAt)
-  const dehydrationDuration = Math.max(0, gameElapsed - thirstDepletedAt)
-  const malnutritionDuration = durationBelowThreshold(
-    stats.hunger,
-    survivalConfig.criticalNeedThreshold,
-    hungerDecayPerHour,
-    gameElapsed,
-  )
-  const severeDehydrationDuration = durationBelowThreshold(
-    stats.thirst,
-    survivalConfig.criticalNeedThreshold,
-    thirstDecayPerHour,
-    gameElapsed,
-  )
-  const starvationDamage = (
-    malnutritionDuration * survivalConfig.health.malnutritionDamagePerHour
-    + starvationDuration * (survivalConfig.health.starvationDamagePerHour - survivalConfig.health.malnutritionDamagePerHour)
-  ) / millisecondsPerHour
-  const dehydrationDamage = (
-    severeDehydrationDuration * survivalConfig.health.severeDehydrationDamagePerHour
-    + dehydrationDuration * (survivalConfig.health.dehydrationDamagePerHour - survivalConfig.health.severeDehydrationDamagePerHour)
-  ) / millisecondsPerHour
   let staminaRecoveryMultiplier = 1
-  if (stats.hunger < survivalConfig.needWarningThreshold) {
+  if (stats.hunger < survivalConfig.needRisingThreshold) {
     staminaRecoveryMultiplier *= survivalConfig.stamina.lowNeedRecoveryMultiplier
   }
-  if (stats.thirst < survivalConfig.needWarningThreshold) {
+  if (stats.thirst < survivalConfig.needRisingThreshold) {
     staminaRecoveryMultiplier *= survivalConfig.stamina.lowNeedRecoveryMultiplier
   }
-  if (stats.hunger <= survivalConfig.criticalNeedThreshold) {
+  if (stats.hunger < survivalConfig.needDangerThreshold) {
     staminaRecoveryMultiplier *= survivalConfig.stamina.criticalNeedRecoveryMultiplier
   }
-  if (stats.thirst <= survivalConfig.criticalNeedThreshold) {
+  if (stats.thirst < survivalConfig.needDangerThreshold) {
     staminaRecoveryMultiplier *= survivalConfig.stamina.criticalNeedRecoveryMultiplier
   }
-  if (stats.health <= survivalConfig.health.max * survivalConfig.warningThreshold / 100) {
+  if (stats.health <= survivalConfig.healthCriticalThreshold) {
     staminaRecoveryMultiplier *= survivalConfig.stamina.lowHealthRecoveryMultiplier
   }
   const staminaRecovery = isResting
-    ? (elapsed / millisecondsPerMinute) * survivalConfig.stamina.recoveryPerMinute * staminaRecoveryMultiplier * restBonusMultiplier
+    ? (elapsed / millisecondsPerMinute)
+      * survivalConfig.stamina.recoveryPerMinute
+      * staminaRecoveryMultiplier
+      * restBonusMultiplier
+      * Math.max(1, nightRestMultiplier)
     : 0
   const healthRecovery = isResting
     && stats.health > 0
-    && stats.hunger >= survivalConfig.needWarningThreshold
-    && stats.thirst >= survivalConfig.needWarningThreshold
+    && stats.hunger >= survivalConfig.needRecoveryThreshold
+    && stats.thirst >= survivalConfig.needRecoveryThreshold
     ? (elapsed / millisecondsPerHour) * survivalConfig.health.restRecoveryPerHour * restBonusMultiplier
     : 0
   const updatedStats = {
     ...stats,
     health: roundStat(Math.max(0, Math.min(
       survivalConfig.health.max,
-      stats.health - starvationDamage - dehydrationDamage - extremeWeatherDamage + healthRecovery,
+      stats.health + healthRecovery,
     ))),
     hunger: roundStat(hunger),
     thirst: roundStat(thirst),

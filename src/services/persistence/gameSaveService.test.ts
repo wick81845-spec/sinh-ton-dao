@@ -23,6 +23,30 @@ class MemoryStorage implements StorageAdapter {
 }
 
 describe('gameSaveService', () => {
+  it('merges salvaged driftwood into the existing wood item when loading current saves', async () => {
+    const storage = new MemoryStorage()
+    const service = createGameSaveService(storage)
+    await storage.set('game.save', {
+      schemaVersion: 12,
+      savedAt: '2026-11-08T00:00:00.000Z',
+      data: {
+        ...initialGameState,
+        inventory: {
+          ...initialGameState.inventory,
+          slots: [
+            { itemId: 'item_wood', quantity: 1 },
+            { itemId: 'item_driftwood', quantity: 2 },
+          ],
+        },
+      },
+    })
+
+    const restored = await service.load()
+    expect(restored?.data.inventory.slots).toEqual([{ itemId: 'item_wood', quantity: 3 }])
+    await expect(storage.get('game.save'))
+      .resolves.toMatchObject({ schemaVersion: 12, data: { inventory: { slots: [{ itemId: 'item_wood', quantity: 3 }] } } })
+  })
+
   it('accepts a custom home island name and rejects names longer than the profile limit', () => {
     expect(isValidGameSnapshot({
       ...initialGameState,
@@ -112,6 +136,14 @@ describe('gameSaveService', () => {
     })).toBe(true)
   })
 
+  it('accepts legacy survival saves without the ambient temperature field', () => {
+    const { temperature: _temperature, ...legacySurvival } = initialGameState.survival
+    expect(isValidGameSnapshot({
+      ...initialGameState,
+      survival: legacySurvival,
+    })).toBe(true)
+  })
+
   it('accepts legacy saves with zero health and normalizes them as dead on load', () => {
     const legacyDeadSave = {
       ...initialGameState,
@@ -175,6 +207,44 @@ describe('gameSaveService', () => {
     })
   })
 
+  it('persists fish-processing selections and accepts older crafting jobs', async () => {
+    const state = {
+      ...initialGameState,
+      craftingQueue: [{
+        id: 'roast-bluefin-1',
+        recipeId: 'recipe_roast_fish',
+        startedAt: 1_000,
+        completesAt: 11_000,
+        fishItemId: 'item_bluefin_tuna' as const,
+        outputQuantity: 8,
+      }],
+    }
+    const service = createGameSaveService(new MemoryStorage())
+
+    expect(isValidGameSnapshot(state)).toBe(true)
+    await service.save(state, 11_000)
+    await expect(service.load()).resolves.toMatchObject({
+      data: { craftingQueue: state.craftingQueue },
+    })
+    expect(isValidGameSnapshot({
+      ...state,
+      craftingQueue: [{
+        id: 'legacy-roast',
+        recipeId: 'recipe_roast_fish',
+        startedAt: 1_000,
+        completesAt: 11_000,
+      }],
+    })).toBe(true)
+    expect(isValidGameSnapshot({
+      ...state,
+      craftingQueue: [{ ...state.craftingQueue[0], fishItemId: 'item_unknown_fish' }],
+    })).toBe(false)
+    expect(isValidGameSnapshot({
+      ...state,
+      craftingQueue: [{ ...state.craftingQueue[0], outputQuantity: 17 }],
+    })).toBe(false)
+  })
+
   it('validates wildlife sightings against the matching exploration task', () => {
     const task = wildlifeObservationTasks.find((entry) => (
       entry.locationId === 'island_001' && entry.observedSpeciesId === 'turtle_land'
@@ -215,7 +285,11 @@ describe('gameSaveService', () => {
     })
 
     const restored = await service.load()
-    expect(restored?.data.resourceNodes).toHaveLength(14)
+    expect(restored?.data.resourceNodes).toHaveLength(17)
+    expect(restored?.data.resourceNodes.find((node) => node.nodeId === 'sea-water'))
+      .toMatchObject({ available: 24, respawnAt: null })
+    expect(restored?.data.resourceNodes.find((node) => node.nodeId === 'bee-hive'))
+      .toMatchObject({ available: 8, respawnAt: null })
     expect(restored?.data.resourceNodes.find((node) => node.nodeId === 'tidal-rocks'))
       .toMatchObject({ available: 18, respawnAt: null })
     expect(restored?.data.resourceNodes.find((node) => node.nodeId === 'iron-deposit'))

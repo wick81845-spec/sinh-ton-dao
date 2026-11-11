@@ -6,6 +6,8 @@ import { awardExperience } from '../../progression/services/progressionService'
 import { buildingDefinitions } from '../../building/data/buildingDefinitions'
 import { getIslandDefinition } from '../../world/data/worldDefinitions'
 import { isCampfireLitAt } from '../../building/services/campfireService'
+import { fishCatalog } from '../../../data/items/fishCatalog'
+import type { FishItemId } from '../../../shared/types/fish'
 
 export type CraftingActionResult =
   | { ok: true; state: GameSnapshot; message: string }
@@ -15,6 +17,15 @@ export type CraftingCompletionResult =
   | { status: 'pending'; state: GameSnapshot }
   | { status: 'completed'; state: GameSnapshot; jobId: string; recipeId: string; itemId: ItemId; quantity: number; message: string }
   | { status: 'failed'; state: GameSnapshot; message: string }
+
+export type FishProcessingItemId = FishItemId | 'item_fresh_fish'
+
+export interface FishProcessingOption {
+  itemId: FishProcessingItemId
+  name: string
+  quantity: number
+  issue: string | null
+}
 
 function getRecipe(recipeId: string): RecipeDefinition | undefined {
   return recipes.find((recipe) => recipe.id === recipeId)
@@ -30,6 +41,90 @@ function hasIngredients(state: GameSnapshot, ingredients: RecipeIngredient[]): b
   return ingredients.every((ingredient) => countItem(state, ingredient.itemId) >= ingredient.quantity)
 }
 
+function getFishPortionYield(itemId: FishProcessingItemId): number {
+  if (itemId === 'item_fresh_fish') return 1
+  const fish = fishCatalog.find((entry) => entry.itemId === itemId)
+  if (!fish) return 1
+  if (fish.averageWeightKg >= 100) return 8
+  if (fish.averageWeightKg >= 25) return 4
+  if (fish.averageWeightKg >= 5) return 2
+  return 1
+}
+
+export function getRecipeOutputQuantity(
+  recipe: RecipeDefinition,
+  fishItemId?: FishProcessingItemId,
+): number {
+  if (!recipe.fishProcessing || !fishItemId) return recipe.output.quantity
+  const fishYield = getFishPortionYield(fishItemId)
+  const totalPortions = recipe.fishProcessing.inputQuantity * fishYield
+  return recipe.fishProcessing.method === 'dry'
+    ? Math.max(1, Math.floor(totalPortions / 2))
+    : totalPortions
+}
+
+function getFishSelectionIssue(
+  state: GameSnapshot,
+  recipe: RecipeDefinition,
+  fishItemId?: FishProcessingItemId,
+): { itemId: FishProcessingItemId | undefined; issue: string | null } {
+  const rule = recipe.fishProcessing
+  if (!rule) {
+    return fishItemId
+      ? { itemId: undefined, issue: 'Công thức này không sử dụng cá.' }
+      : { itemId: undefined, issue: null }
+  }
+
+  const selectedFishId = fishItemId
+    ?? (countItem(state, 'item_fresh_fish') >= rule.inputQuantity ? 'item_fresh_fish' : undefined)
+  if (!selectedFishId) return { itemId: undefined, issue: 'Hãy chọn loài cá cần chế biến.' }
+
+  const fish = fishCatalog.find((entry) => entry.itemId === selectedFishId)
+  if (fish?.requiresPreparation) {
+    return {
+      itemId: selectedFishId,
+      issue: `${fish.name} cần được sơ chế an toàn; hiện chưa có công thức xử lý loài cá này.`,
+    }
+  }
+  if (countItem(state, selectedFishId) < rule.inputQuantity) {
+    const name = fish?.name ?? itemDefinitions.item_fresh_fish.name
+    return { itemId: selectedFishId, issue: `Không đủ ${name}; cần ${rule.inputQuantity} con.` }
+  }
+  return { itemId: selectedFishId, issue: null }
+}
+
+export function getFishProcessingOptions(
+  state: GameSnapshot,
+  recipe: RecipeDefinition,
+): FishProcessingOption[] {
+  const inputQuantity = recipe.fishProcessing?.inputQuantity
+  if (inputQuantity === undefined) return []
+  const options: FishProcessingOption[] = fishCatalog
+    .filter((fish) => countItem(state, fish.itemId) > 0)
+    .map((fish) => ({
+      itemId: fish.itemId,
+      name: fish.name,
+      quantity: countItem(state, fish.itemId),
+      issue: fish.requiresPreparation
+        ? `${fish.name} cần được sơ chế an toàn; hiện chưa có công thức xử lý loài cá này.`
+        : countItem(state, fish.itemId) < inputQuantity
+          ? `Cần ${inputQuantity} con.`
+          : null,
+    }))
+  const legacyQuantity = countItem(state, 'item_fresh_fish')
+  if (legacyQuantity > 0) {
+    options.push({
+      itemId: 'item_fresh_fish',
+      name: itemDefinitions.item_fresh_fish.name,
+      quantity: legacyQuantity,
+      issue: legacyQuantity < inputQuantity
+        ? `Cần ${inputQuantity} con.`
+        : null,
+    })
+  }
+  return options
+}
+
 function hasStation(state: GameSnapshot, stationId: string): boolean {
   return state.buildings.some((building) => (
     building.definitionId === stationId
@@ -43,7 +138,11 @@ function simulateReservedOutputs(state: GameSnapshot, nextOutput: RecipeIngredie
   for (const job of state.craftingQueue) {
     const queuedRecipe = getRecipe(job.recipeId)
     if (!queuedRecipe) return null
-    const reservation = addItems(inventory, queuedRecipe.output.itemId, queuedRecipe.output.quantity)
+    const reservation = addItems(
+      inventory,
+      queuedRecipe.output.itemId,
+      job.outputQuantity ?? queuedRecipe.output.quantity,
+    )
     if (!reservation.ok) return null
     inventory = reservation.container
   }
@@ -51,7 +150,12 @@ function simulateReservedOutputs(state: GameSnapshot, nextOutput: RecipeIngredie
   return reservation.ok ? reservation.container : null
 }
 
-export function getRecipeAvailability(state: GameSnapshot, recipeId: string, now = Date.now()): string | null {
+export function getRecipeAvailability(
+  state: GameSnapshot,
+  recipeId: string,
+  now = Date.now(),
+  fishItemId?: FishProcessingItemId,
+): string | null {
   const recipe = getRecipe(recipeId)
   if (!recipe) return 'Công thức không tồn tại.'
   if (state.character.status !== 'alive') return 'Bạn cần hồi sinh trước khi chế tạo.'
@@ -77,8 +181,14 @@ export function getRecipeAvailability(state: GameSnapshot, recipeId: string, now
   if (recipe.requiresLitCampfire && !state.buildings.some((building) => (
     building.definitionId === 'building_campfire' && isCampfireLitAt(state, building.id, now)
   ))) return 'Cần có lửa trại đang cháy; hãy thêm nhiên liệu cho lửa trại.'
+  const fishSelection = getFishSelectionIssue(state, recipe, fishItemId)
+  if (fishSelection.issue) return fishSelection.issue
   if (!hasIngredients(state, recipe.ingredients)) return 'Không đủ nguyên liệu trong túi đồ.'
-  if (!simulateReservedOutputs(state, recipe.output)) return 'Không đủ chỗ trong túi đồ cho sản phẩm.'
+  const output = {
+    ...recipe.output,
+    quantity: getRecipeOutputQuantity(recipe, fishSelection.itemId),
+  }
+  if (!simulateReservedOutputs(state, output)) return 'Không đủ chỗ trong túi đồ cho sản phẩm.'
   return null
 }
 
@@ -92,21 +202,34 @@ function consumeIngredients(state: GameSnapshot, ingredients: RecipeIngredient[]
   return { ...state, inventory }
 }
 
-export function queueRecipe(state: GameSnapshot, recipeId: string, now: number): CraftingActionResult {
-  const issue = getRecipeAvailability(state, recipeId, now)
+export function queueRecipe(
+  state: GameSnapshot,
+  recipeId: string,
+  now: number,
+  fishItemId?: FishProcessingItemId,
+): CraftingActionResult {
+  const issue = getRecipeAvailability(state, recipeId, now, fishItemId)
   if (issue) return { ok: false, message: issue }
   const recipe = getRecipe(recipeId)
   if (!recipe) return { ok: false, message: 'Công thức không tồn tại.' }
 
-  const consumedState = consumeIngredients(state, recipe.ingredients)
+  const fishSelection = getFishSelectionIssue(state, recipe, fishItemId)
+  if (fishSelection.issue) return { ok: false, message: fishSelection.issue }
+  const ingredients = fishSelection.itemId && recipe.fishProcessing
+    ? [...recipe.ingredients, { itemId: fishSelection.itemId, quantity: recipe.fishProcessing.inputQuantity }]
+    : recipe.ingredients
+  const consumedState = consumeIngredients(state, ingredients)
   if (!consumedState) return { ok: false, message: 'Không thể tiêu hao nguyên liệu cho công thức này.' }
 
   const isFirstJob = state.craftingQueue.length === 0
+  const outputQuantity = getRecipeOutputQuantity(recipe, fishSelection.itemId)
   const job: CraftingJob = {
     id: `${recipe.id}-${now}-${state.craftingQueue.length}`,
     recipeId,
     startedAt: isFirstJob ? now : null,
     completesAt: isFirstJob ? now + recipe.durationSeconds * 1000 : null,
+    ...(fishSelection.itemId ? { fishItemId: fishSelection.itemId } : {}),
+    ...(recipe.fishProcessing ? { outputQuantity } : {}),
   }
 
   return {
@@ -142,7 +265,8 @@ export function completeCrafting(state: GameSnapshot, now: number): CraftingComp
     }
   }
 
-  const inventory = addItems(state.inventory, recipe.output.itemId, recipe.output.quantity, now)
+  const outputQuantity = activeJob.outputQuantity ?? recipe.output.quantity
+  const inventory = addItems(state.inventory, recipe.output.itemId, outputQuantity, now)
   if (!inventory.ok) {
     return {
       status: 'failed',
@@ -167,9 +291,9 @@ export function completeCrafting(state: GameSnapshot, now: number): CraftingComp
     jobId: activeJob.id,
     recipeId: recipe.id,
     itemId: recipe.output.itemId,
-    quantity: recipe.output.quantity,
-    message: `${recipe.kind === 'processing' ? 'Sơ chế' : 'Chế tạo'} hoàn tất: ${itemDefinitions[recipe.output.itemId].name} × ${recipe.output.quantity}.`,
+    quantity: outputQuantity,
+    message: `${recipe.kind === 'processing' ? 'Sơ chế' : 'Chế tạo'} hoàn tất: ${itemDefinitions[recipe.output.itemId].name} × ${outputQuantity}.`,
   }
 }
 
-export { recipes }
+export { getCraftingPageRecipes, getRecipesForStation, recipes } from '../data/recipes'

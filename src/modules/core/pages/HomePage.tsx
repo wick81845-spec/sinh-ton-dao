@@ -2,8 +2,9 @@ import { Link } from 'react-router-dom'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import { useGame } from '../../../app/providers/useGame'
 import { SurvivalMeter, type SurvivalStatName } from '../../survival/components/SurvivalMeter'
+import { BodyExposureMeters } from '../../survival/components/BodyExposureMeters'
 import { getBodyStatusEffects } from '../../survival/services/bodyStatusService'
-import { survivalConfig } from '../../survival/data/survivalConfig'
+import { getSurvivalMeterStatus } from '../../survival/utils/survivalStates'
 import { getIslandDefinition, worldLocations } from '../../world/data/worldDefinitions'
 import { getCurrentWeather } from '../../world/services/weatherService'
 import { isSurvivorResting } from '../../survival/utils/survivalCalculator'
@@ -65,7 +66,13 @@ export function HomePage() {
     : bodyAlerts.some((effect) => effect.severity === 'moderate') || weatherAlert
       ? 'moderate'
       : 'mild'
-  const hasFoodNeed = bodyAlerts.some((effect) => ['hungry', 'malnutrition', 'starving'].includes(effect.id))
+  const hasFoodNeed = bodyAlerts.some((effect) => [
+    'hunger-rising',
+    'hungry',
+    'malnutrition',
+    'hunger-critical',
+    'starving',
+  ].includes(effect.id))
   const ongoingActivities = [
     ...(gameState.activeCombat ? [{ label: 'Đang chiến đấu', to: '/combat', icon: '⚔' }] : []),
     ...(gameState.activeGathering ? [{ label: 'Đang thu thập', to: '/gathering', icon: '⌁' }] : []),
@@ -78,13 +85,7 @@ export function HomePage() {
   ]
   const survivalStats = survivalStatNames.map(({ name, label }) => {
     const value = survival[name]
-    const status = name === 'hunger'
-      ? value === 0 ? 'Đói lả' : value <= survivalConfig.criticalNeedThreshold ? 'Suy dinh dưỡng' : value <= survivalConfig.warningThreshold ? 'Đói' : 'Ổn định'
-      : name === 'thirst'
-        ? value === 0 ? 'Mất nước' : value <= survivalConfig.criticalNeedThreshold ? 'Mất nước' : value <= survivalConfig.warningThreshold ? 'Khát' : 'Ổn định'
-        : name === 'stamina'
-          ? value <= 10 ? 'Kiệt sức' : value <= 40 ? 'Mệt mỏi' : 'Ổn định'
-          : value <= 25 ? 'Nguy cấp' : 'Ổn định'
+    const status = getSurvivalMeterStatus(name, value)
     return { name, label, value, status }
   })
 
@@ -150,6 +151,7 @@ export function HomePage() {
               <SurvivalMeter key={stat.label} stat={stat.name} value={stat.value} status={stat.status} />
             ))}
           </div>
+          <BodyExposureMeters stats={survival} />
           <div className="overview-weather">
             <span aria-hidden="true">{weather?.icon ?? '☀'}</span>
             <strong>{weather?.name ?? 'Thời tiết ổn định'}</strong>

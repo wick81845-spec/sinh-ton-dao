@@ -166,6 +166,16 @@ export function GatheringPage({
   const currentPositionName = currentWorldLocation?.name ?? currentIsland?.name ?? 'Vị trí chưa xác định'
   const currentFishingZone = fishingZoneDefinitions.find((entry) => entry.id === currentIsland?.oceanZoneId)
   const currentFishingRod = getBestFishingRod(gameState)
+  const hasCampfireHere = gameState.buildings.some((building) => (
+    building.definitionId === 'building_campfire'
+    && building.status === 'completed'
+    && building.islandId === gameState.character.currentLocationId
+  ))
+  const hasCookingStoveHere = gameState.buildings.some((building) => (
+    building.definitionId === 'building_cooking_stove'
+    && building.status === 'completed'
+    && building.islandId === gameState.character.currentLocationId
+  ))
   const shelter = gameState.buildings.find((building) => (
     building.definitionId === 'building_shelter'
     && building.status === 'completed'
@@ -427,10 +437,16 @@ export function GatheringPage({
               </aside>
               {!selectedNodeId && !isFishingLocationSelected && !active && (
                 <div className="gathering-map-home-actions" aria-label="Thao tác căn cứ">
-                  {gameState.character.currentLocationId === gameState.character.homeIslandId && (
-                    <button type="button" aria-label="Chăm lửa trại và nướng thức ăn" onClick={() => onOpenPanel?.('/campfire', 'Lửa trại')}>
+                  {(gameState.character.currentLocationId === gameState.character.homeIslandId || hasCampfireHere) && (
+                    <button type="button" aria-label="Nấu thức ăn và đun nước ở lửa trại" onClick={() => onOpenPanel?.('/campfire', 'Lửa trại')}>
                       <span aria-hidden="true">🔥</span>
                       <span><strong>Lửa trại</strong></span>
+                    </button>
+                  )}
+                  {hasCookingStoveHere && (
+                    <button type="button" aria-label="Mở bếp nấu" onClick={() => onOpenPanel?.('/cooking-stove', 'Bếp nấu')}>
+                      <span aria-hidden="true">♨</span>
+                      <span><strong>Bếp nấu</strong></span>
                     </button>
                   )}
                   <button type="button" aria-label="Mở bàn chế tạo" onClick={() => onOpenPanel?.('/crafting', 'Bàn chế tạo')}>

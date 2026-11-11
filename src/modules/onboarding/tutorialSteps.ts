@@ -9,7 +9,6 @@ export interface TutorialStep {
   actionLabel: string
   experienceReward: number
   experienceSkill?: SkillId
-  requiredLevel?: number
 }
 
 export const tutorialSteps: readonly TutorialStep[] = [
@@ -48,15 +47,6 @@ export const tutorialSteps: readonly TutorialStep[] = [
     actionLabel: 'Mở xây dựng',
     experienceReward: 20,
     experienceSkill: 'building',
-  },
-  {
-    id: 'reach-level-two',
-    title: 'Đạt cấp 2 để tiếp tục',
-    description: 'Hoàn thành các bước đầu để nhận đủ kinh nghiệm. Khi đạt cấp 2, bạn có thể nghiên cứu công nghệ định cư.',
-    destination: '/progression',
-    actionLabel: 'Xem tiến trình',
-    experienceReward: 0,
-    requiredLevel: 2,
   },
   {
     id: 'explore-nearby-island',
@@ -101,7 +91,8 @@ export function completeTutorialStepInState(
   stepId: string,
   grantExperience = true,
 ): GameSnapshot {
-  const completed = state.tutorialCompletedStepIds ?? []
+  const completed = (state.tutorialCompletedStepIds ?? [])
+    .filter((completedStepId) => tutorialSteps.some((step) => step.id === completedStepId))
   if (getNextTutorialStep(completed)?.id !== stepId) return state
 
   const step = tutorialSteps.find((entry) => entry.id === stepId)
@@ -148,7 +139,6 @@ export function inferTutorialProgress(state: GameSnapshot): string[] {
   if (hasShelter) completed.add('build-leaf-shelter')
   if (researchedTools || hasCompletedWorkbench) completed.add('research-basic-tools')
   if (hasCompletedWorkbench) completed.add('build-workbench')
-  if (state.character.level >= 2) completed.add('reach-level-two')
   if (researchedSettlement) completed.add('research-island-settlement')
 
   return tutorialSteps.filter((step) => completed.has(step.id)).map((step) => step.id)

@@ -1,4 +1,4 @@
-export const worldDayDurationMs = 30 * 60 * 1000
+export const worldDayDurationMs = 60 * 60 * 1000
 export const worldGameTimeScale = 24 * 60 * 60 * 1000 / worldDayDurationMs
 export const worldDaysPerSeason = 7
 const gameMinutesPerDay = 24 * 60

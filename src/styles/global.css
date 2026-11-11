@@ -4520,6 +4520,124 @@ p {
   line-height: 1.6;
 }
 
+.message-bottle-backdrop {
+  position: fixed;
+  z-index: 120;
+  display: grid;
+  padding: 18px;
+  background: rgb(16 28 25 / 62%);
+  inset: 0;
+  place-items: center;
+}
+
+.message-bottle-dialog {
+  width: min(100%, 480px);
+  max-height: min(90vh, 680px);
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: 0 22px 65px rgb(0 0 0 / 28%);
+}
+
+.message-bottle-dialog > header,
+.message-bottle-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.message-bottle-dialog h2 {
+  margin-top: 5px;
+  font-size: 22px;
+}
+
+.message-bottle-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--ink);
+  background: var(--paper);
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.message-bottle-dialog form {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.message-bottle-dialog label {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.message-bottle-dialog textarea,
+.message-bottle-report select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--paper);
+  font: inherit;
+}
+
+.message-bottle-dialog textarea {
+  resize: vertical;
+}
+
+.message-bottle-guidance,
+.message-bottle-sender,
+.message-bottle-reading time,
+.message-bottle-dialog-actions > span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.message-bottle-reading {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.message-bottle-reading blockquote {
+  padding: 14px;
+  margin: 0;
+  border-left: 3px solid var(--sea);
+  border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--paper) 82%, var(--sea-soft));
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.message-bottle-report {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.message-bottle-report .small-action {
+  justify-self: start;
+}
+
+.message-bottle-error {
+  padding: 9px 11px;
+  margin: 12px 0 0;
+  border-radius: 7px;
+  color: #983b31;
+  background: color-mix(in srgb, #f8e9e5 84%, var(--paper));
+  font-size: 12px;
+}
+
 .combat-preparation {
   background:
     radial-gradient(ellipse at 92% 3%, rgb(134 197 176 / 12%), transparent 28%),
@@ -11557,6 +11675,25 @@ body {
 
 .recipe-materials .activity-requirements > span {
   font-size: 8px;
+}
+
+.fish-processing-select {
+  display: grid;
+  gap: 4px;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.fish-processing-select select {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
 }
 
 .recipe-materials > .activity-blocked {

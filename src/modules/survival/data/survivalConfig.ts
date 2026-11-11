@@ -1,10 +1,6 @@
 export const survivalConfig = {
   health: {
     max: 100,
-    starvationDamagePerHour: 2,
-    dehydrationDamagePerHour: 4,
-    malnutritionDamagePerHour: 0.5,
-    severeDehydrationDamagePerHour: 1,
     restRecoveryPerHour: 1,
   },
   hunger: { max: 100, decayPerDay: 35 },
@@ -12,14 +8,15 @@ export const survivalConfig = {
   activityNeedMultiplier: 1.5,
   stamina: {
     max: 100,
-    recoveryPerMinute: 5,
+    recoveryPerMinute: 8,
+    nightRestRecoveryMultiplier: 1.5,
     lowNeedRecoveryMultiplier: 0.5,
     criticalNeedRecoveryMultiplier: 0.5,
     lowHealthRecoveryMultiplier: 0.5,
   },
   hotWeatherThirstMultiplier: 1.5,
-  extremeWeatherDamagePerHour: 2,
-  warningThreshold: 25,
-  needWarningThreshold: 50,
-  criticalNeedThreshold: 10,
+  healthCriticalThreshold: 25,
+  needRisingThreshold: 60,
+  needDangerThreshold: 20,
+  needRecoveryThreshold: 80,
 } as const

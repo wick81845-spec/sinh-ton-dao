@@ -12,7 +12,7 @@ describe('resourceDefinitions', () => {
       expect(resource.image).toMatch(/^\/assets\/resources\/.+\.(?:png|svg)$/)
       const expectedImage = resource.id === 'small_fish' || resource.id === 'large_fish'
         ? '/assets/resources/marine-life.svg'
-        : resource.id === 'fresh_water'
+        : resource.id === 'fresh_water' || resource.id === 'sea_water'
           ? '/assets/resources/marine-life.svg'
           : resource.id === 'rotten_wood'
             ? '/assets/resources/driftwood.png'
@@ -32,11 +32,11 @@ describe('resourceDefinitions', () => {
   })
 
   it('sets stamina costs according to the effort required for gathering', () => {
-    expect(resourceDefinitionsById.driftwood.harvesting.staminaCost).toBe(8)
-    expect(resourceDefinitionsById.wild_fruit.harvesting.staminaCost).toBe(5)
-    expect(resourceDefinitionsById.wood_soft.harvesting.staminaCost).toBe(18)
-    expect(resourceDefinitionsById.small_fish.harvesting.staminaCost).toBe(12)
-    expect(resourceDefinitionsById.rough_stone.harvesting.staminaCost).toBe(16)
-    expect(resourceDefinitions.every((resource) => resource.harvesting.staminaCost >= 5)).toBe(true)
+    expect(resourceDefinitionsById.driftwood.harvesting.staminaCost).toBe(4)
+    expect(resourceDefinitionsById.wild_fruit.harvesting.staminaCost).toBe(3)
+    expect(resourceDefinitionsById.wood_soft.harvesting.staminaCost).toBe(10)
+    expect(resourceDefinitionsById.small_fish.harvesting.staminaCost).toBe(6)
+    expect(resourceDefinitionsById.rough_stone.harvesting.staminaCost).toBe(9)
+    expect(resourceDefinitions.every((resource) => resource.harvesting.staminaCost >= 3)).toBe(true)
   })
 })

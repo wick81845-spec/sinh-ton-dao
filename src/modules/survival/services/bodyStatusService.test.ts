@@ -4,7 +4,7 @@ import { getBodyStatusEffects } from './bodyStatusService'
 import { getWeatherDefinition } from '../../world/data/weatherDefinitions'
 
 describe('bodyStatusService', () => {
-  it('derives hunger, thirst and exhaustion effects from survival stats', () => {
+  it('derives hunger, thirst and stamina stages without describing direct health damage', () => {
     const effects = getBodyStatusEffects({
       ...initialGameState.survival,
       hunger: 0,
@@ -15,11 +15,11 @@ describe('bodyStatusService', () => {
 
     expect(effects.map(({ id, severity }) => [id, severity])).toEqual([
       ['starving', 'severe'],
-      ['thirsty', 'mild'],
-      ['exhausted', 'moderate'],
+      ['thirst-critical', 'severe'],
+      ['severely-exhausted', 'severe'],
       ['critical-health', 'severe'],
     ])
-    expect(effects[0].impact).toContain('2 sức khỏe')
+    expect(effects[0].impact).not.toContain('sức khỏe')
   })
 
   it('shows positive appearance states when survival stats are healthy and resting', () => {
@@ -41,14 +41,18 @@ describe('bodyStatusService', () => {
     expect(effects.every((effect) => effect.severity === 'positive')).toBe(true)
   })
 
-  it('shows no body effects in normal-range mid stats', () => {
+  it('shows the shared needs and stamina states in the middle bands', () => {
     expect(getBodyStatusEffects({
       ...initialGameState.survival,
       health: 70,
       hunger: 60,
-      thirst: 55,
+      thirst: 60,
       stamina: 50,
-    }).map((effect) => effect.id)).toEqual(['recovering'])
+    }).map((effect) => effect.id)).toEqual([
+      'hunger-rising',
+      'thirst-rising',
+      'tired',
+    ])
   })
 
   it('adds visible heat, cold, and rain appearances from the active weather', () => {

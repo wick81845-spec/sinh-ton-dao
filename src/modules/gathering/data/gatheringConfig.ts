@@ -54,6 +54,16 @@ export const resourceNodeDefinitions: readonly ResourceNodeDefinition[] = [
     unlockStage: 'starter',
   },
   {
+    id: 'sea-water',
+    name: 'Bờ nước biển',
+    description: 'Thu nước biển để kết tinh muối.',
+    locationId: 'island_001',
+    capacity: 24,
+    respawnSeconds: 120,
+    resourceId: 'sea_water',
+    unlockStage: 'starter',
+  },
+  {
     id: 'wild-grove',
     name: 'Bụi cây',
     description: 'Quả dại, lá non và dây leo mọc thành bụi.',
@@ -183,6 +193,26 @@ export const resourceNodeDefinitions: readonly ResourceNodeDefinition[] = [
     resourceId: 'wood_hard',
     unlockStage: 'tool',
   },
+  {
+    id: 'resin-tree',
+    name: 'Cây lấy nhựa',
+    description: 'Cây cổ thụ có thể lấy nhựa mà không cần đốn hạ.',
+    locationId: 'island_002',
+    capacity: 12,
+    respawnSeconds: 480,
+    resourceId: 'tree_resin',
+    unlockStage: 'exploration',
+  },
+  {
+    id: 'bee-hive',
+    name: 'Tổ ong',
+    description: 'Tổ ong rừng chứa mật có thể thu hoạch.',
+    locationId: 'island_002',
+    capacity: 8,
+    respawnSeconds: 600,
+    resourceId: 'honey',
+    unlockStage: 'exploration',
+  },
 ]
 
 export const gatheringActivities: readonly GatheringActivityDefinition[] = [
@@ -218,6 +248,16 @@ export const gatheringActivities: readonly GatheringActivityDefinition[] = [
     ],
     luckyDrop: { itemId: 'item_crab', quantity: [1, 1], chance: 1 },
     adverseMessage: 'Bạn bị cứa nhẹ vào tay bởi vỏ sò sắc, mất 30 giây xử lý vết thương.',
+  },
+  {
+    id: 'collect-seawater',
+    name: 'Thu nước biển',
+    description: 'Múc nước biển ở bờ để đem đi kết tinh muối.',
+    nodeId: 'sea-water',
+    resourceId: 'sea_water',
+    ordinaryByproducts: [],
+    luckyDrop: { itemId: 'item_seashell', quantity: [1, 1], chance: 1 },
+    adverseMessage: 'Sóng tạt vào người khiến bạn mất thêm thời gian.',
   },
   {
     id: 'pick-wild-fruit',
@@ -379,6 +419,26 @@ export const gatheringActivities: readonly GatheringActivityDefinition[] = [
     ordinaryByproducts: [{ itemId: 'item_branch', quantity: [1, 2], chance: 0.3 }],
     luckyDrop: { itemId: 'item_wood_hard', quantity: [2, 3], chance: 1 },
     adverseMessage: 'Cành gỗ nặng rơi xuống làm bạn bị thương nhẹ.',
+  },
+  {
+    id: 'tap-tree-resin',
+    name: 'Thu nhựa cây',
+    description: 'Rạch nhẹ vỏ cây cổ thụ và hứng nhựa mà không làm đổ cây.',
+    nodeId: 'resin-tree',
+    resourceId: 'tree_resin',
+    ordinaryByproducts: [],
+    luckyDrop: { itemId: 'item_tree_resin', quantity: [1, 1], chance: 1 },
+    adverseMessage: 'Nhựa dính vào tay, bạn mất thêm thời gian làm sạch.',
+  },
+  {
+    id: 'collect-honey',
+    name: 'Thu mật ong',
+    description: 'Thu mật từ tổ ong rừng ở những đảo có rừng phù hợp.',
+    nodeId: 'bee-hive',
+    resourceId: 'honey',
+    ordinaryByproducts: [],
+    luckyDrop: { itemId: 'item_honey', quantity: [1, 1], chance: 1 },
+    adverseMessage: 'Ong đốt bạn khi tiếp cận tổ, mất 30 giây xử lý vết đốt.',
   },
 ]
 

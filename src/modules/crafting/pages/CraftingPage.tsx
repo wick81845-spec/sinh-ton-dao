@@ -2,18 +2,26 @@ import { useEffect, useState } from 'react'
 import { useGame } from '../../../app/providers/useGame'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import { gameClock } from '../../../services/clock/gameClock'
-import { getRecipeAvailability, recipes } from '../services/craftingService'
 import { craftingConceptGroups } from '../data/craftingConceptCatalog'
 import { ItemStack } from '../../../shared/components/ItemArtwork'
 import { buildingDefinitions } from '../../building/data/buildingDefinitions'
 import { characterLevelTitle } from '../../progression/data/progressionDefinitions'
 import { getIslandDefinition } from '../../world/data/worldDefinitions'
+import { FishProcessingSelector } from '../components/FishProcessingSelector'
+import {
+  getRecipeAvailability,
+  getCraftingPageRecipes,
+  getRecipeOutputQuantity,
+  recipes,
+  type FishProcessingItemId,
+} from '../services/craftingService'
 
 export function CraftingPage() {
   const { gameState, isLoading, error, queueRecipe } = useGame()
   const [now, setNow] = useState(gameClock.now())
   const [recipeFilter, setRecipeFilter] = useState<'all' | 'processing' | 'crafting'>('all')
   const [recipeSearch, setRecipeSearch] = useState('')
+  const [fishSelections, setFishSelections] = useState<Partial<Record<string, FishProcessingItemId>>>({})
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(gameClock.now()), 250)
@@ -32,7 +40,7 @@ export function CraftingPage() {
   const secondsRemaining = isActive
     ? Math.max(0, Math.ceil((activeJob.completesAt! - now) / 1000))
     : 0
-  const visibleRecipes = recipes.filter((recipe) => {
+  const visibleRecipes = getCraftingPageRecipes().filter((recipe) => {
     const matchesKind = recipeFilter === 'all' || recipe.kind === recipeFilter
     const ingredientNames = recipe.ingredients.map((ingredient) => itemDefinitions[ingredient.itemId].name).join(' ')
     const matchesSearch = `${recipe.name} ${recipe.description} ${ingredientNames}`.toLocaleLowerCase('vi')
@@ -46,7 +54,7 @@ export function CraftingPage() {
         <div>
           <span className="section-kicker">SẢN XUẤT · CHẾ TÁC</span>
           <h1>Chế biến & chế tạo</h1>
-          <p>Sơ chế nguyên liệu hoặc chế tạo vật dụng tại bàn làm việc.</p>
+          <p>Sơ chế nguyên liệu và chế tạo vật dụng tại các trạm phù hợp.</p>
         </div>
         <div className="stamina-chip"><strong>{gameState.craftingQueue.length} / 3</strong> việc trong hàng đợi</div>
       </div>
@@ -72,7 +80,11 @@ export function CraftingPage() {
             <span style={{ width: `${progress}%` }} />
           </div>
           <div className="progress-footer">
-            <ItemStack itemId={activeRecipe.output.itemId} quantity={activeRecipe.output.quantity} className="crafting-progress-output" />
+            <ItemStack
+              itemId={activeRecipe.output.itemId}
+              quantity={activeJob.outputQuantity ?? activeRecipe.output.quantity}
+              className="crafting-progress-output"
+            />
             <span>{Math.floor(progress)}%</span>
           </div>
         </section>
@@ -96,7 +108,13 @@ export function CraftingPage() {
                     <strong>{recipe?.name ?? 'Công thức không xác định'}</strong>
                     <small>{index === 0 && isActive ? 'Đang thực hiện' : 'Chờ đến lượt'}</small>
                   </span>
-                  {recipe && <ItemStack itemId={recipe.output.itemId} quantity={recipe.output.quantity} className="queue-output" />}
+                  {recipe && (
+                    <ItemStack
+                      itemId={recipe.output.itemId}
+                      quantity={job.outputQuantity ?? recipe.output.quantity}
+                      className="queue-output"
+                    />
+                  )}
                 </li>
               )
             })}
@@ -141,8 +159,10 @@ export function CraftingPage() {
       </div>
       <section className="recipe-grid" aria-label="Danh sách công thức">
         {visibleRecipes.map((recipe) => {
-          const issue = getRecipeAvailability(gameState, recipe.id, now)
+          const fishItemId = fishSelections[recipe.id]
+          const issue = getRecipeAvailability(gameState, recipe.id, now, fishItemId)
           const output = itemDefinitions[recipe.output.itemId]
+          const outputQuantity = getRecipeOutputQuantity(recipe, fishItemId)
           return (
             <article
               className={`recipe-card${issue ? ' is-unavailable' : ''}`}
@@ -163,9 +183,29 @@ export function CraftingPage() {
               <div className="recipe-materials">
                 <div className="recipe-materials-heading">
                   <strong>Nguyên liệu</strong>
-                  <ItemStack itemId={recipe.output.itemId} quantity={recipe.output.quantity} className="recipe-output" />
+                  <ItemStack itemId={recipe.output.itemId} quantity={outputQuantity} className="recipe-output" />
                 </div>
+                {recipe.fishProcessing && (
+                  <FishProcessingSelector
+                    state={gameState}
+                    recipe={recipe}
+                    value={fishItemId}
+                    onChange={(itemId) => setFishSelections((current) => ({
+                      ...current,
+                      [recipe.id]: itemId,
+                    }))}
+                  />
+                )}
                 <div className="activity-requirements">
+                  {recipe.fishProcessing && fishItemId && (
+                    <span>
+                      <ItemStack itemId={fishItemId} quantity={recipe.fishProcessing.inputQuantity} />
+                      {' · Có '}
+                      {gameState.inventory.slots
+                        .filter((slot) => slot.itemId === fishItemId)
+                        .reduce((total, slot) => total + slot.quantity, 0)}
+                    </span>
+                  )}
                   {recipe.ingredients.map((ingredient) => {
                     const available = gameState.inventory.slots
                       .filter((slot) => slot.itemId === ingredient.itemId)
@@ -190,7 +230,7 @@ export function CraftingPage() {
                 className="gather-button recipe-action"
                 type="button"
                 disabled={Boolean(issue)}
-                onClick={() => queueRecipe(recipe.id)}
+                onClick={() => queueRecipe(recipe.id, fishItemId)}
               >
                 {issue ? 'Chưa thể thực hiện' : recipe.kind === 'processing' ? 'Sơ chế' : 'Chế tạo'}
               </button>

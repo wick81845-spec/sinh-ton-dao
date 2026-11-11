@@ -31,7 +31,8 @@ export const buildingDefinitions: readonly BuildingDefinition[] = [
     maxHealth: 100,
     constructionCost: [
       { itemId: 'item_wood', quantity: 8 },
-      { itemId: 'item_stone', quantity: 3 },
+      { itemId: 'item_branch', quantity: 3 },
+      { itemId: 'item_rope', quantity: 1 },
     ],
     constructionDurationSeconds: 6,
     upgradeCosts: {
@@ -42,16 +43,13 @@ export const buildingDefinitions: readonly BuildingDefinition[] = [
   {
     id: 'building_kiln',
     name: 'Lò nung',
-    description: 'Lò đất đơn giản để nung gỗ thành than củi và xử lý vật liệu.',
+    description: 'Lò đất thô có thể nâng cấp thành lò gạch để nung và xử lý vật liệu.',
     maxLevel: 2,
     maxHealth: 140,
-    constructionCost: [
-      { itemId: 'item_wood_plank', quantity: 4 },
-      { itemId: 'item_stone', quantity: 6 },
-    ],
+    constructionCost: [{ itemId: 'item_clay', quantity: 6 }, { itemId: 'item_stone', quantity: 4 }],
     constructionDurationSeconds: 14,
     upgradeCosts: {
-      2: [{ itemId: 'item_wood_plank', quantity: 6 }, { itemId: 'item_stone', quantity: 8 }],
+      2: [{ itemId: 'item_clay_brick', quantity: 6 }, { itemId: 'item_stone', quantity: 8 }],
     },
     upgradeDurationSeconds: { 2: 20 },
   },
@@ -124,7 +122,7 @@ export const buildingDefinitions: readonly BuildingDefinition[] = [
     maxHealth: 100,
     constructionCost: [
       { itemId: 'item_branch', quantity: 4 },
-      { itemId: 'item_plant_fiber', quantity: 3 },
+      { itemId: 'item_rope', quantity: 1 },
     ],
     constructionDurationSeconds: 10,
     upgradeCosts: {},
@@ -146,7 +144,7 @@ export const buildingDefinitions: readonly BuildingDefinition[] = [
   {
     id: 'building_water_filter',
     name: 'Bộ lọc nước thô',
-    description: 'Lọc cặn bằng sỏi, cát và than trước khi đun sôi nước.',
+    description: 'Lọc cặn bằng sỏi và than trước khi đun sôi nước.',
     maxLevel: 1,
     maxHealth: 120,
     constructionCost: [{ itemId: 'item_wood', quantity: 4 }, { itemId: 'item_gravel', quantity: 6 }, { itemId: 'item_charcoal', quantity: 2 }],
@@ -275,6 +273,7 @@ export const buildingDefinitions: readonly BuildingDefinition[] = [
     upgradeDurationSeconds: {},
     requiredLevel: 3,
     technologyId: 'tech_island_settlement',
+    requiredDiscoveryId: 'island_002',
   },
   {
     id: 'building_tannery',

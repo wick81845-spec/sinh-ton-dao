@@ -73,9 +73,6 @@ export function fuelCampfire(
 ): CampfireActionResult {
   if (state.character.status !== 'alive') return { ok: false, message: 'Bạn cần hồi sinh trước khi nhóm thêm lửa.' }
   if (state.activeCombat) return { ok: false, message: 'Không thể thêm nhiên liệu trong khi chiến đấu.' }
-  if (state.character.currentLocationId !== state.character.homeIslandId) {
-    return { ok: false, message: 'Chỉ có thể thêm nhiên liệu khi đang ở đảo nhà.' }
-  }
   if (!getCampfireBuilding(state, buildingId)) {
     return { ok: false, message: 'Không tìm thấy lửa trại đã hoàn thành tại đảo này.' }
   }

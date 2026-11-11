@@ -1,6 +1,12 @@
 import type { ItemQuantity } from '../../../shared/types/game'
 
 export type RecipeIngredient = ItemQuantity
+export type FishProcessingMethod = 'roast' | 'dry' | 'smoke' | 'salt'
+
+export interface FishProcessingRule {
+  method: FishProcessingMethod
+  inputQuantity: number
+}
 
 export interface RecipeDefinition {
   id: string
@@ -15,6 +21,7 @@ export interface RecipeDefinition {
   technologyId?: string
   requiredDiscoveryId?: string
   requiresLitCampfire?: boolean
+  fishProcessing?: FishProcessingRule
 }
 
 export const craftingQueueLimit = 3
@@ -37,30 +44,28 @@ export const recipes: readonly RecipeDefinition[] = [
     id: 'recipe_shovel',
     kind: 'crafting',
     name: 'Xẻng đá',
-    description: 'Buộc mũi đá vào cán gỗ để đào đất sét ở bờ sông.',
+    description: 'Buộc mũi đá vào cán gỗ bằng vỏ cây để đào đất sét ở bờ sông.',
     ingredients: [
       { itemId: 'item_branch', quantity: 2 },
       { itemId: 'item_stone', quantity: 2 },
-      { itemId: 'item_rope', quantity: 1 },
+      { itemId: 'item_bark', quantity: 1 },
     ],
     output: { itemId: 'item_shovel', quantity: 1 },
     durationSeconds: 10,
-    stationId: 'building_workbench',
     requiredLevel: 1,
   },
   {
     id: 'recipe_fishing_spear',
     kind: 'crafting',
     name: 'Lao đánh cá',
-    description: 'Mài nhọn cán gỗ để bắt cá nhỏ ở vùng ven bờ và rạn san hô.',
+    description: 'Buộc mũi đá nhẹ bằng sợi thực vật để bắt cá nhỏ ở vùng ven bờ.',
     ingredients: [
       { itemId: 'item_branch', quantity: 2 },
-      { itemId: 'item_stone', quantity: 2 },
-      { itemId: 'item_rope', quantity: 1 },
+      { itemId: 'item_stone', quantity: 1 },
+      { itemId: 'item_plant_fiber', quantity: 2 },
     ],
     output: { itemId: 'item_fishing_spear', quantity: 1 },
     durationSeconds: 12,
-    stationId: 'building_workbench',
     requiredLevel: 1,
   },
   {
@@ -95,8 +100,8 @@ export const recipes: readonly RecipeDefinition[] = [
     ingredients: [{ itemId: 'item_wild_fruit', quantity: 3 }],
     output: { itemId: 'item_dried_fruit', quantity: 2 },
     durationSeconds: 10,
+    stationId: 'building_drying_rack',
     requiredLevel: 1,
-    requiredDiscoveryId: 'island_002',
   },
   {
     id: 'recipe_backpack',
@@ -110,8 +115,7 @@ export const recipes: readonly RecipeDefinition[] = [
     ],
     output: { itemId: 'item_backpack', quantity: 1 },
     durationSeconds: 24,
-    stationId: 'building_workbench',
-    requiredLevel: 2,
+    requiredLevel: 1,
   },
   {
     id: 'recipe_rope',
@@ -119,6 +123,19 @@ export const recipes: readonly RecipeDefinition[] = [
     name: 'Bện dây từ sợi thực vật',
     description: 'Thu thập sợi thực vật ở Rừng dừa, rồi bện ba sợi thành dây chắc để làm cần câu.',
     ingredients: [{ itemId: 'item_plant_fiber', quantity: 3 }],
+    output: { itemId: 'item_rope', quantity: 1 },
+    durationSeconds: 8,
+    requiredLevel: 1,
+  },
+  {
+    id: 'recipe_reused_rope',
+    kind: 'crafting',
+    name: 'Gia cố dây thừng cũ',
+    description: 'Bện thêm sợi thực vật vào đoạn dây thừng cũ còn dùng được để tái sử dụng.',
+    ingredients: [
+      { itemId: 'item_old_rope', quantity: 1 },
+      { itemId: 'item_plant_fiber', quantity: 1 },
+    ],
     output: { itemId: 'item_rope', quantity: 1 },
     durationSeconds: 8,
     requiredLevel: 1,
@@ -134,7 +151,6 @@ export const recipes: readonly RecipeDefinition[] = [
     ],
     output: { itemId: 'item_fishing_rod', quantity: 1 },
     durationSeconds: 12,
-    stationId: 'building_workbench',
     requiredLevel: 1,
   },
   {
@@ -156,16 +172,18 @@ export const recipes: readonly RecipeDefinition[] = [
     id: 'recipe_fishing_rod_3',
     kind: 'crafting',
     name: 'Nâng cấp cần câu composite',
-    description: 'Dùng gỗ cứng và dây bện để cần nhẹ hơn, thu dây nhanh hơn.',
+    description: 'Gia cố gỗ cứng bằng vải dệt và keo tự nhiên để tạo thân cần composite nhẹ, bền.',
     ingredients: [
       { itemId: 'item_fishing_rod_2', quantity: 1 },
-      { itemId: 'item_wood_hard', quantity: 3 },
-      { itemId: 'item_rope', quantity: 2 },
+      { itemId: 'item_wood_hard', quantity: 2 },
+      { itemId: 'item_woven_cloth', quantity: 1 },
+      { itemId: 'item_natural_adhesive', quantity: 1 },
     ],
     output: { itemId: 'item_fishing_rod_3', quantity: 1 },
     durationSeconds: 20,
     stationId: 'building_workbench',
     requiredLevel: 3,
+    technologyId: 'tech_island_settlement',
   },
   {
     id: 'recipe_fishing_rod_4',
@@ -186,22 +204,24 @@ export const recipes: readonly RecipeDefinition[] = [
     id: 'recipe_fishing_rod_5',
     kind: 'crafting',
     name: 'Nâng cấp cần câu thép',
-    description: 'Thay khớp chịu lực bằng hợp kim bền để câu cá lớn.',
+    description: 'Thay khớp chịu lực bằng thép để câu cá lớn.',
     ingredients: [
       { itemId: 'item_fishing_rod_4', quantity: 1 },
-      { itemId: 'item_bronze_ingot', quantity: 2 },
+      { itemId: 'item_steel_ingot', quantity: 2 },
       { itemId: 'item_rope', quantity: 3 },
     ],
     output: { itemId: 'item_fishing_rod_5', quantity: 1 },
     durationSeconds: 28,
     stationId: 'building_workbench',
     requiredLevel: 5,
+    technologyId: 'tech_metalworking',
+    requiredDiscoveryId: 'island_004',
   },
   {
     id: 'recipe_fishing_rod_6',
     kind: 'crafting',
     name: 'Nâng cấp cần câu biển sâu',
-    description: 'Gia cố thân cần bằng thép để chịu được cá vùng nước sâu.',
+    description: 'Gia cố thân cần bằng sắt và gỗ cứng để chịu được cá vùng nước sâu.',
     ingredients: [
       { itemId: 'item_fishing_rod_5', quantity: 1 },
       { itemId: 'item_iron_ingot', quantity: 3 },
@@ -228,6 +248,40 @@ export const recipes: readonly RecipeDefinition[] = [
     requiredLevel: 7,
   },
   {
+    id: 'recipe_fiber_spool',
+    kind: 'crafting',
+    name: 'Cuộn sợi thực vật',
+    description: 'Cuộn sợi gọn thành bó để chuẩn bị đưa vào khung dệt.',
+    ingredients: [{ itemId: 'item_plant_fiber', quantity: 4 }],
+    output: { itemId: 'item_fiber_spool', quantity: 1 },
+    durationSeconds: 8,
+    requiredLevel: 1,
+  },
+  {
+    id: 'recipe_woven_cloth',
+    kind: 'crafting',
+    name: 'Dệt vải thực vật',
+    description: 'Dệt cuộn sợi thực vật thành vải dai để gia cố cần câu composite.',
+    ingredients: [{ itemId: 'item_fiber_spool', quantity: 1 }],
+    output: { itemId: 'item_woven_cloth', quantity: 1 },
+    durationSeconds: 16,
+    stationId: 'building_weaving_loom',
+    requiredLevel: 3,
+    technologyId: 'tech_island_settlement',
+  },
+  {
+    id: 'recipe_natural_adhesive',
+    kind: 'crafting',
+    name: 'Nấu keo tự nhiên',
+    description: 'Đun nhựa cây thành keo để liên kết vật liệu composite.',
+    ingredients: [{ itemId: 'item_tree_resin', quantity: 2 }],
+    output: { itemId: 'item_natural_adhesive', quantity: 1 },
+    durationSeconds: 12,
+    stationId: 'building_workbench',
+    requiredLevel: 3,
+    technologyId: 'tech_island_settlement',
+  },
+  {
     id: 'recipe_wooden_spear',
     kind: 'crafting',
     name: 'Lao gỗ',
@@ -239,20 +293,20 @@ export const recipes: readonly RecipeDefinition[] = [
     ],
     output: { itemId: 'item_wooden_spear', quantity: 1 },
     durationSeconds: 16,
-    stationId: 'building_workbench',
-    requiredLevel: 2,
+    requiredLevel: 1,
   },
   {
     id: 'recipe_roast_fish',
     kind: 'processing',
     name: 'Nướng cá',
-    description: 'Nướng cá tươi trên lửa trại đang cháy; món ăn no lâu nhưng vẫn cần dùng sớm.',
-    ingredients: [{ itemId: 'item_fresh_fish', quantity: 1 }],
+    description: 'Nướng một con cá phù hợp trên lửa trại; cá lớn cho nhiều phần ăn hơn.',
+    ingredients: [],
     output: { itemId: 'item_cooked_fish', quantity: 1 },
     durationSeconds: 10,
     stationId: 'building_campfire',
     requiresLitCampfire: true,
     requiredLevel: 1,
+    fishProcessing: { method: 'roast', inputQuantity: 1 },
   },
   {
     id: 'recipe_roast_crab',
@@ -285,25 +339,24 @@ export const recipes: readonly RecipeDefinition[] = [
     description: 'Nấu nấm rừng với nước sạch để có món ăn bù cả năng lượng và nước.',
     ingredients: [
       { itemId: 'item_wild_mushroom', quantity: 2 },
-      { itemId: 'item_fresh_water', quantity: 1 },
+      { itemId: 'item_clean_water', quantity: 1 },
     ],
     output: { itemId: 'item_mushroom_soup', quantity: 1 },
     durationSeconds: 12,
-    stationId: 'building_campfire',
-    requiresLitCampfire: true,
+    stationId: 'building_cooking_stove',
     requiredLevel: 1,
   },
   {
     id: 'recipe_dried_fish',
     kind: 'processing',
     name: 'Phơi cá khô',
-    description: 'Hong cá tươi trên giàn phơi để tạo lương thực nhẹ, bảo quản lâu cho hành trình.',
-    ingredients: [{ itemId: 'item_fresh_fish', quantity: 2 }],
+    description: 'Hong hai con cá phù hợp trên giàn phơi; cá lớn cho nhiều phần dự trữ hơn.',
+    ingredients: [],
     output: { itemId: 'item_dried_fish', quantity: 1 },
     durationSeconds: 30,
     stationId: 'building_drying_rack',
-    requiredLevel: 2,
-    requiredDiscoveryId: 'island_002',
+    requiredLevel: 1,
+    fishProcessing: { method: 'dry', inputQuantity: 2 },
   },
   {
     id: 'recipe_medicinal_poultice',
@@ -316,7 +369,6 @@ export const recipes: readonly RecipeDefinition[] = [
     ],
     output: { itemId: 'item_medicinal_poultice', quantity: 1 },
     durationSeconds: 16,
-    stationId: 'building_workbench',
     requiredLevel: 2,
   },
   {
@@ -330,13 +382,12 @@ export const recipes: readonly RecipeDefinition[] = [
     stationId: 'building_campfire',
     requiresLitCampfire: true,
     requiredLevel: 1,
-    technologyId: 'tech_water_safety',
   },
   {
     id: 'recipe_filter_water',
     kind: 'processing',
     name: 'Lọc nước thô',
-    description: 'Lọc cặn bằng sỏi, cát và than; nước sau lọc vẫn cần đun sôi.',
+    description: 'Lọc cặn bằng sỏi và than; nước sau lọc vẫn cần đun sôi.',
     ingredients: [
       { itemId: 'item_fresh_water', quantity: 1 },
       { itemId: 'item_gravel', quantity: 2 },
@@ -359,14 +410,13 @@ export const recipes: readonly RecipeDefinition[] = [
     stationId: 'building_campfire',
     requiresLitCampfire: true,
     requiredLevel: 1,
-    technologyId: 'tech_water_safety',
   },
   {
     id: 'recipe_sea_salt',
     kind: 'processing',
     name: 'Kết tinh muối biển',
-    description: 'Làm khô rong biển trên khay kết tinh để thu muối.',
-    ingredients: [{ itemId: 'item_seaweed', quantity: 3 }],
+    description: 'Làm bay hơi nước biển trên khay kết tinh để thu muối.',
+    ingredients: [{ itemId: 'item_seawater', quantity: 3 }],
     output: { itemId: 'item_sea_salt', quantity: 1 },
     durationSeconds: 20,
     stationId: 'building_salt_pan',
@@ -377,32 +427,34 @@ export const recipes: readonly RecipeDefinition[] = [
     id: 'recipe_salted_fish',
     kind: 'processing',
     name: 'Ướp cá muối',
-    description: 'Dùng muối biển để kéo dài thời gian bảo quản cá.',
-    ingredients: [{ itemId: 'item_fresh_fish', quantity: 2 }, { itemId: 'item_sea_salt', quantity: 1 }],
+    description: 'Ướp hai con cá phù hợp với muối biển để kéo dài thời gian bảo quản.',
+    ingredients: [{ itemId: 'item_sea_salt', quantity: 1 }],
     output: { itemId: 'item_salted_fish', quantity: 2 },
     durationSeconds: 20,
     stationId: 'building_workbench',
     requiredLevel: 2,
     technologyId: 'tech_food_preservation',
+    fishProcessing: { method: 'salt', inputQuantity: 2 },
   },
   {
     id: 'recipe_smoked_fish',
     kind: 'processing',
     name: 'Hun khói cá',
-    description: 'Hun cá chậm để dự trữ lâu hơn cá nướng.',
-    ingredients: [{ itemId: 'item_fresh_fish', quantity: 2 }, { itemId: 'item_wood', quantity: 1 }],
+    description: 'Hun hai con cá phù hợp với gỗ để dự trữ lâu hơn cá nướng.',
+    ingredients: [{ itemId: 'item_wood', quantity: 1 }],
     output: { itemId: 'item_smoked_fish', quantity: 2 },
     durationSeconds: 30,
     stationId: 'building_smokehouse',
     requiredLevel: 3,
     technologyId: 'tech_food_preservation',
+    fishProcessing: { method: 'smoke', inputQuantity: 2 },
   },
   {
     id: 'recipe_fruit_jam',
     kind: 'processing',
     name: 'Nấu mứt trái cây',
     description: 'Nấu cô đặc trái cây dại thành món ăn dự trữ giàu năng lượng.',
-    ingredients: [{ itemId: 'item_wild_fruit', quantity: 3 }, { itemId: 'item_sea_salt', quantity: 1 }],
+    ingredients: [{ itemId: 'item_wild_fruit', quantity: 3 }, { itemId: 'item_honey', quantity: 1 }],
     output: { itemId: 'item_fruit_jam', quantity: 2 },
     durationSeconds: 20,
     stationId: 'building_cooking_stove',
@@ -412,8 +464,8 @@ export const recipes: readonly RecipeDefinition[] = [
   {
     id: 'recipe_vegetable_stew',
     kind: 'processing',
-    name: 'Nấu canh rau củ',
-    description: 'Hầm rau dại, nấm và nước sạch thành bữa ăn đủ chất.',
+    name: 'Nấu canh nấm quả',
+    description: 'Hầm nấm rừng, quả dại và nước sạch thành bữa ăn đủ chất.',
     ingredients: [
       { itemId: 'item_wild_mushroom', quantity: 2 },
       { itemId: 'item_wild_fruit', quantity: 2 },
@@ -523,6 +575,22 @@ export const recipes: readonly RecipeDefinition[] = [
     requiredDiscoveryId: 'island_004',
   },
   {
+    id: 'recipe_steel_ingot',
+    kind: 'processing',
+    name: 'Luyện thỏi thép',
+    description: 'Luyện sắt với than trong lò luyện kim để tạo thép chịu lực.',
+    ingredients: [
+      { itemId: 'item_iron_ingot', quantity: 2 },
+      { itemId: 'item_coal', quantity: 1 },
+    ],
+    output: { itemId: 'item_steel_ingot', quantity: 1 },
+    durationSeconds: 30,
+    stationId: 'building_smelter',
+    requiredLevel: 6,
+    technologyId: 'tech_metalworking',
+    requiredDiscoveryId: 'island_004',
+  },
+  {
     id: 'recipe_copper_ingot',
     kind: 'processing',
     name: 'Luyện thỏi đồng',
@@ -591,3 +659,14 @@ export const recipes: readonly RecipeDefinition[] = [
     requiredDiscoveryId: 'island_004',
   },
 ]
+
+export function getRecipesForStation(stationId: string): RecipeDefinition[] {
+  return recipes.filter((recipe) => recipe.stationId === stationId)
+}
+
+export function getCraftingPageRecipes(): RecipeDefinition[] {
+  return recipes.filter((recipe) => (
+    recipe.stationId !== 'building_campfire'
+    && recipe.stationId !== 'building_cooking_stove'
+  ))
+}

@@ -52,8 +52,9 @@ export function advanceBodyExposure(
   const shelterTemperatureMultiplier = isSheltered ? 0.2 : 1
   const ambientShiftPerMinute = temperatureDelta >= 0
     ? temperatureDelta * 0.008
-    : temperatureDelta * 0.004
-  const wetColdShiftPerMinute = temperatureDelta < 0 ? (wetness / 100) * 0.03 : 0
+    : temperatureDelta <= -7 ? temperatureDelta * 0.004 : 0
+  const coldOrWindy = temperatureDelta <= -7 || (weather?.wind ?? 0) >= 5
+  const wetColdShiftPerMinute = coldOrWindy ? (wetness / 100) * 0.03 : 0
   const campfireWarmth = isNearCampfire
     ? Math.min(
       Math.max(0, 37 - previousBodyTemperature),

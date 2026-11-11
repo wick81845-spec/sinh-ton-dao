@@ -4,7 +4,7 @@ import { getWeatherDefinition } from '../../world/data/weatherDefinitions'
 import { advanceBodyExposure } from './bodyExposureService'
 
 describe('bodyExposureService', () => {
-  it('accumulates rain wetness and lowers body temperature in cold weather', () => {
+  it('accumulates tropical rain wetness without automatically cooling the body', () => {
     const result = advanceBodyExposure(
       initialGameState,
       10 * 60 * 1000,
@@ -12,6 +12,20 @@ describe('bodyExposureService', () => {
     )
 
     expect(result.changed).toBe(true)
+    expect(result.state.survival.wetness).toBeGreaterThan(0)
+    expect(result.state.survival.bodyTemperature).toBe(37)
+  })
+
+  it('cools wetness faster in cold weather', () => {
+    const result = advanceBodyExposure(
+      {
+        ...initialGameState,
+        survival: { ...initialGameState.survival, wetness: 80 },
+      },
+      10 * 60 * 1000,
+      getWeatherDefinition('blizzard'),
+    )
+
     expect(result.state.survival.wetness).toBeGreaterThan(0)
     expect(result.state.survival.bodyTemperature).toBeLessThan(37)
   })

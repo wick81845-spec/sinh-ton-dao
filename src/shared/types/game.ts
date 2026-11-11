@@ -27,7 +27,7 @@ export interface SurvivalStats {
   hunger: number
   thirst: number
   stamina: number
-  temperature: number
+  temperature?: number
   bodyTemperature?: number
   wetness?: number
   conditions: string[]
@@ -99,7 +99,6 @@ export type FishingLootItemId =
   | 'item_old_shoe'
   | 'item_old_rope'
   | 'item_torn_net'
-  | 'item_driftwood'
   | 'item_plastic_scrap'
   | 'item_sunken_crate'
   | 'item_metal_box'
@@ -149,12 +148,18 @@ export type ItemId =
   | 'item_iron_ingot'
   | 'item_copper_ingot'
   | 'item_bronze_ingot'
+  | 'item_steel_ingot'
+  | 'item_woven_cloth'
+  | 'item_fiber_spool'
+  | 'item_tree_resin'
+  | 'item_natural_adhesive'
   | 'item_stone_pickaxe'
   | 'item_shovel'
   | 'item_fishing_spear'
   | 'item_copper_axe'
   | 'item_iron_axe'
   | 'item_fresh_water'
+  | 'item_seawater'
   | 'item_coconut'
   | 'item_rotten_wood'
   | 'item_honey'
@@ -239,6 +244,8 @@ export interface CraftingJob {
   recipeId: string
   startedAt: number | null
   completesAt: number | null
+  fishItemId?: FishItemId | 'item_fresh_fish'
+  outputQuantity?: number
 }
 
 export interface PlayerBuilding {

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { getWeatherDefinition } from '../data/weatherDefinitions'
-import { getWorldClock, getWorldSeason, getWorldWeatherAtTime, worldDayDurationMs, worldDaysPerSeason } from './worldClock'
+import { getWorldClock, getWorldSeason, getWorldWeatherAtTime, worldDayDurationMs, worldDaysPerSeason, worldGameTimeScale } from './worldClock'
 
 const timestampAtGameMinute = (minute: number) => minute * worldDayDurationMs / (24 * 60)
 
 describe('worldClock', () => {
-  it('runs a synchronized 24-hour cycle in 30 real minutes', () => {
+  it('runs a synchronized 24-hour cycle in 60 real minutes', () => {
+    expect(worldDayDurationMs).toBe(60 * 60 * 1000)
+    expect(worldGameTimeScale).toBe(24)
     expect(getWorldClock(0).time).toBe('00:00')
     expect(getWorldClock(worldDayDurationMs / 2).time).toBe('12:00')
     expect(getWorldClock(worldDayDurationMs).time).toBe('00:00')
