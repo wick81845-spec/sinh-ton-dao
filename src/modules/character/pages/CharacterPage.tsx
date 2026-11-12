@@ -40,6 +40,7 @@ export function CharacterPage() {
     gameState,
     isLoading,
     error,
+    consumeItem,
     equipAccessory,
     equipBackpack,
     equipClothing,
@@ -352,11 +353,28 @@ export function CharacterPage() {
                     </div>
                   ) : <p className="equipment-picker-empty">Chưa có đồ ăn, nước uống hoặc vật phẩm hồi phục.</p>}
                   {gameState.equippedAccessoryId && (
-                    <button type="button" className="equipment-picker-remove" onClick={() => {
-                      if (unequipAccessory().ok) setOpenPicker(null)
-                    }}>
-                      Bỏ {itemDefinitions[gameState.equippedAccessoryId].name}
-                    </button>
+                    <div className="equipment-picker-actions">
+                      <button
+                        type="button"
+                        className="small-action"
+                        onClick={() => {
+                          if (gameState.equippedAccessoryId) {
+                            consumeItem(gameState.equippedAccessoryId)
+                          }
+                        }}
+                      >
+                        Dùng {itemDefinitions[gameState.equippedAccessoryId].name}
+                      </button>
+                      <button
+                        type="button"
+                        className="equipment-picker-remove"
+                        onClick={() => {
+                          if (unequipAccessory().ok) setOpenPicker(null)
+                        }}
+                      >
+                        Bỏ khỏi ô
+                      </button>
+                    </div>
                   )}
                 </>
               )}

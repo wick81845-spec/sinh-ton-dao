@@ -39,6 +39,7 @@ export interface GameContextValue {
   buyMarketItem(itemId: ItemId): GameActionResult
   sellMarketItem(itemId: ItemId, quantity: number): GameActionResult
   consumeItem(itemId: ItemId): GameActionResult
+  filletFish(itemId: ItemId): GameActionResult
   openSalvageContainer(itemId: SalvageContainerItemId): GameActionResult
   sendMessageBottle(message: string): Promise<GameActionResult>
   readMessageBottle(): Promise<MessageBottleReadResult>

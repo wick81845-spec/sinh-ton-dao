@@ -12137,14 +12137,15 @@ body {
 }
 
 .crafting-category-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   flex: 1 1 auto;
 }
 
 .crafting-category-tabs button {
   display: flex;
+  flex: 1 1 105px;
   min-width: 0;
   min-height: 40px;
   align-items: center;
@@ -12750,6 +12751,13 @@ body {
   font-size: 10px;
 }
 
+.equipment-picker-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .equipment-picker-remove {
   justify-self: start;
   padding: 6px 9px;
@@ -12769,7 +12777,9 @@ body {
   }
 
   .crafting-category-tabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   .crafting-category-tabs button {

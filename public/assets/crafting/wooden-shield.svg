@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <defs>
+    <linearGradient id="shieldWood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#a67c52"/>
+      <stop offset="50%" stop-color="#8d633a"/>
+      <stop offset="100%" stop-color="#6e4a27"/>
+    </linearGradient>
+    <linearGradient id="shieldIron" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e2e8f0"/>
+      <stop offset="50%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#64748b"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- Background plate -->
+  <rect width="96" height="96" rx="18" fill="#1e293b" fill-opacity="0.1"/>
+  <g filter="url(#shadow)">
+    <!-- Shield Border (Iron) -->
+    <path d="M22 18 C34 16, 62 16, 74 18 C74 46, 64 68, 48 82 C32 68, 22 46, 22 18 Z"
+          fill="url(#shieldIron)" stroke="#334155" stroke-width="2.5" stroke-linejoin="round"/>
+
+    <!-- Shield Wood Body -->
+    <path d="M26 22 C36 20, 60 20, 70 22 C70 44, 61 64, 48 76 C35 64, 26 44, 26 22 Z"
+          fill="url(#shieldWood)" stroke="#47311c" stroke-width="1.5"/>
+
+    <!-- Vertical Plank Lines -->
+    <path d="M40 21 C40 40, 42 60, 48 74" fill="none" stroke="#5a3d21" stroke-width="1.5"/>
+    <path d="M56 21 C56 40, 54 60, 48 74" fill="none" stroke="#5a3d21" stroke-width="1.5"/>
+    <path d="M48 20 L48 75" fill="none" stroke="#3b2613" stroke-width="1.5"/>
+
+    <!-- Iron Rim Corner Studs -->
+    <circle cx="26" cy="22" r="2" fill="#cbd5e1" stroke="#475569" stroke-width="1"/>
+    <circle cx="70" cy="22" r="2" fill="#cbd5e1" stroke="#475569" stroke-width="1"/>
+    <circle cx="48" cy="78" r="2" fill="#cbd5e1" stroke="#475569" stroke-width="1"/>
+
+    <!-- Center Iron Boss -->
+    <polygon points="48,34 56,42 48,50 40,42" fill="url(#shieldIron)" stroke="#334155" stroke-width="1.5"/>
+    <circle cx="48" cy="42" r="2" fill="#cbd5e1"/>
+  </g>
+</svg>

@@ -142,6 +142,41 @@ describe('inventoryService', () => {
     })
   })
 
+  it('spoilExpiredFood never exceeds maxSlots in container', () => {
+    const fullInventory = {
+      ...initialGameState.inventory,
+      maxSlots: 3,
+      slots: [
+        { itemId: 'item_wood' as const, quantity: 10 },
+        { itemId: 'item_wild_fruit' as const, quantity: 30, expiresAt: 500 },
+        { itemId: 'item_fresh_fish' as const, quantity: 30, expiresAt: 500 },
+      ],
+    }
+    const state = { ...initialGameState, inventory: fullInventory }
+    const result = spoilExpiredFood(state, 1_000)
+    // 1 item_wood remaining + max 2 spoiled food slots = 3 slots <= maxSlots
+    expect(result.state.inventory.slots.length).toBeLessThanOrEqual(3)
+  })
+
+  it('consumes fresh food when both fresh and expired slots exist', () => {
+    const state = {
+      ...initialGameState,
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [
+          { itemId: 'item_wild_fruit' as const, quantity: 1, expiresAt: 500 },
+          { itemId: 'item_wild_fruit' as const, quantity: 2, expiresAt: 50_000 },
+        ],
+      },
+    }
+    const result = consumeItem(state, 'item_wild_fruit', 1_000)
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error(result.message)
+    // Fresh slot decreased from 2 to 1, expired slot remains
+    expect(result.state.inventory.slots).toContainEqual({ itemId: 'item_wild_fruit', quantity: 1, expiresAt: 50_000 })
+    expect(result.state.inventory.slots).toContainEqual({ itemId: 'item_wild_fruit', quantity: 1, expiresAt: 500 })
+  })
+
   it('uses one fruit to restore hunger and consume exactly one item', () => {
     const result = consumeItem(initialGameState, 'item_wild_fruit')
 

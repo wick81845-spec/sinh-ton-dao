@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { newPlayerGameState } from '../../data/mockGameState'
 import { itemDefinitions } from '../../data/items/itemDefinitions'
+import { fishCatalog } from '../../data/items/fishCatalog'
 import { completeConstructions, getShelterRestBonusMultiplier, startConstruction, upgradeBuilding } from '../../modules/building/services/buildingService'
 import {
   advanceCampfireFuel,
@@ -23,6 +24,7 @@ import { completeExploration, startExploration } from '../../modules/exploration
 import { cancelGathering, completeGathering, ensureResourceNodeStates, failFishing as failFishingGathering, refreshResourceNodes, startGathering } from '../../modules/gathering/services/gatheringService'
 import { isFishingActivityId } from '../../modules/gathering/data/fishingConfig'
 import {
+  addItems,
   consumeItem,
   discardItems,
   equipAccessory,
@@ -336,12 +338,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const transferToStorage = useCallback((itemId: ItemId, quantity: number): GameActionResult => {
     const currentState = stateRef.current
     if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const isAtHome = currentState.character.currentLocationId === currentState.character.homeIslandId
+    const hasStorageOnIsland = currentState.buildings.some(
+      (b) => b.definitionId === 'building_storage' && b.islandId === currentState.character.currentLocationId && b.status === 'completed',
+    )
     if (currentState.character.status !== 'alive' || currentState.activeCombat
-      || currentState.character.currentLocationId !== currentState.character.homeIslandId
+      || (!isAtHome && !hasStorageOnIsland)
       || currentState.voyages.some((voyage) => voyage.status === 'departed' || voyage.status === 'traveling')) {
       const message = currentState.activeCombat
         ? 'Không thể dùng kho trong khi chiến đấu.'
-        : 'Kho chứa chỉ có thể sử dụng khi bạn đang ở đảo nhà và còn sống.'
+        : (!isAtHome && !hasStorageOnIsland)
+          ? 'Đảo này chưa có rương đồ. Bạn hãy xây Rương chứa đồ (building_storage) trên đảo này để cất đồ.'
+          : 'Kho chứa chỉ có thể sử dụng khi bạn đang ở đảo có kho chứa và còn sống.'
       setNotice(message)
       return { ok: false, message }
     }
@@ -360,12 +368,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const transferToInventory = useCallback((itemId: ItemId, quantity: number): GameActionResult => {
     const currentState = stateRef.current
     if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const isAtHome = currentState.character.currentLocationId === currentState.character.homeIslandId
+    const hasStorageOnIsland = currentState.buildings.some(
+      (b) => b.definitionId === 'building_storage' && b.islandId === currentState.character.currentLocationId && b.status === 'completed',
+    )
     if (currentState.character.status !== 'alive' || currentState.activeCombat
-      || currentState.character.currentLocationId !== currentState.character.homeIslandId
+      || (!isAtHome && !hasStorageOnIsland)
       || currentState.voyages.some((voyage) => voyage.status === 'departed' || voyage.status === 'traveling')) {
       const message = currentState.activeCombat
         ? 'Không thể dùng kho trong khi chiến đấu.'
-        : 'Kho chứa chỉ có thể sử dụng khi bạn đang ở đảo nhà và còn sống.'
+        : (!isAtHome && !hasStorageOnIsland)
+          ? 'Đảo này chưa có rương đồ. Bạn hãy xây Rương chứa đồ (building_storage) trên đảo này để lấy đồ.'
+          : 'Kho chứa chỉ có thể sử dụng khi bạn đang ở đảo có kho chứa và còn sống.'
       setNotice(message)
       return { ok: false, message }
     }
@@ -410,6 +424,50 @@ export function GameProvider({ children }: { children: ReactNode }) {
       gameEventBus.emit('survival:stat-changed', { stat: 'hunger', value: result.state.survival.hunger })
     }
     return commitState(result.state, result.message)
+  }, [commitState])
+
+  const filletFishAction = useCallback((itemId: ItemId): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    if (currentState.activeCombat) {
+      const message = 'Không thể xẻ cá trong khi chiến đấu.'
+      setNotice(message)
+      return { ok: false, message }
+    }
+    const fish = fishCatalog.find((f) => f.itemId === itemId)
+    const isFresh = itemId === 'item_fresh_fish'
+    if (!fish && !isFresh) {
+      return { ok: false, message: 'Vật phẩm này không phải cá để xẻ phi lê.' }
+    }
+
+    const removeRes = removeItems(currentState.inventory, itemId, 1)
+    if (!removeRes.ok) {
+      setNotice('Không có cá trong hành trang để xẻ thịt.')
+      return { ok: false, message: 'Không có cá trong hành trang để xẻ thịt.' }
+    }
+
+    const weight = fish ? fish.averageWeightKg : 2
+    let filletCount = 2
+    if (weight >= 200) filletCount = 40
+    else if (weight >= 100) filletCount = 25
+    else if (weight >= 50) filletCount = 16
+    else if (weight >= 25) filletCount = 8
+    else if (weight >= 5) filletCount = 4
+    else if (weight >= 1) filletCount = 2
+
+    const addFillets = addItems(removeRes.container, 'item_fish_fillet', filletCount, gameClock.now())
+    if (!addFillets.ok) {
+      const message = 'Túi đồ không đủ chỗ trống để nhận miếng phi lê!'
+      setNotice(message)
+      return { ok: false, message }
+    }
+
+    const addBone = addItems(addFillets.container, 'item_animal_bone', 1)
+    const finalContainer = addBone.ok ? addBone.container : addFillets.container
+    const fishName = fish ? fish.name : 'Cá tươi'
+    const successMessage = `Đã xẻ ${fishName} thành ${filletCount} miếng phi lê cá và 1 xương thú!`
+    setNotice(successMessage)
+    return commitState({ ...currentState, inventory: finalContainer }, successMessage)
   }, [commitState])
 
   const openSalvageContainerAction = useCallback((itemId: Parameters<typeof openSalvageContainer>[1]): GameActionResult => {
@@ -1450,6 +1508,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       buyMarketItem: buyMarketItemAction,
       sellMarketItem: sellMarketItemAction,
       consumeItem: consumeItemAction,
+      filletFish: filletFishAction,
       openSalvageContainer: openSalvageContainerAction,
       sendMessageBottle: sendMessageBottleAction,
       readMessageBottle: readMessageBottleAction,

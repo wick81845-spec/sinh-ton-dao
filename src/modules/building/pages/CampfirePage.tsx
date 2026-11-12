@@ -22,7 +22,7 @@ import { getConstructionAvailability } from '../services/buildingService'
 export function CampfirePage() {
   const { gameState, isLoading, error, startBuilding, fuelCampfire, setCampfireWarming, queueRecipe } = useGame()
   const [now, setNow] = useState(gameClock.now())
-  const [fishItemId, setFishItemId] = useState<FishProcessingItemId>()
+  const [fishSelections, setFishSelections] = useState<Partial<Record<string, FishProcessingItemId>>>({})
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(gameClock.now()), 250)
@@ -155,7 +155,7 @@ export function CampfirePage() {
             </div>
             <div className="campfire-food-list">
               {campfireRecipes.map((recipe) => {
-                const selectedFishId = recipe.fishProcessing ? fishItemId : undefined
+                const selectedFishId = recipe.fishProcessing ? fishSelections[recipe.id] : undefined
                 const issue = getRecipeAvailability(gameState, recipe.id, now, selectedFishId)
                 const outputQuantity = getRecipeOutputQuantity(recipe, selectedFishId)
                 return (
@@ -167,7 +167,10 @@ export function CampfirePage() {
                           state={gameState}
                           recipe={recipe}
                           value={selectedFishId}
-                          onChange={setFishItemId}
+                          onChange={(nextFishId) => setFishSelections((current) => ({
+                            ...current,
+                            [recipe.id]: nextFishId,
+                          }))}
                         />
                       )}
                       <div className="campfire-food-ingredients">

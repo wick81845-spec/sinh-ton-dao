@@ -4,6 +4,7 @@ import { addItems, removeItems } from '../../inventory/services/inventoryService
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import type { GameSnapshot, RandomWorldEventRecord } from '../../../shared/types/game'
 import { inflictSurvivalAilment } from '../../survival/services/ailmentService'
+import { getSurvivalConditions } from '../../survival/utils/survivalCalculator'
 
 export const RANDOM_WORLD_EVENT_INTERVAL_MS = 30 * 60 * 1000
 const EVENT_DURATION_MS = 180_000
@@ -260,10 +261,13 @@ export function resolveRandomWorldEvent(
         health,
         hunger,
         thirst,
-        conditions: [
-          ...(hunger <= 25 ? [hunger === 0 ? 'starving' : 'hungry'] : []),
-          ...(thirst <= 25 ? [thirst === 0 ? 'dehydrated' : 'thirsty'] : []),
-        ],
+        conditions: getSurvivalConditions({
+          ...stateWithAilment.survival,
+          stamina,
+          health,
+          hunger,
+          thirst,
+        }),
       },
       isResting: false,
       randomWorldEvents: updatedRecords.slice(-50),

@@ -28,6 +28,7 @@ import { fishCatalog } from '../../../data/items/fishCatalog'
 import { getBestFishingRod } from '../../../data/items/fishingRodCatalog'
 import { biomeDefinitionsById } from '../../world/data/biomeDefinitions'
 import { getIslandDefinition, worldLocations } from '../../world/data/worldDefinitions'
+import { getIslandPresence } from '../../world/services/islandPresenceService'
 import { getCurrentWeather } from '../../world/services/weatherService'
 import { buildingDefinitions } from '../../building/data/buildingDefinitions'
 import { getBodyStatusEffects, type BodyStatusSeverity } from '../../survival/services/bodyStatusService'
@@ -60,7 +61,7 @@ export function GatheringPage({
   onOpenPanel?: (path: string, title: string) => void
   onClosePanel?: () => void
 }) {
-  const { gameState, isLoading, error, startGathering, cancelGathering, finishFishing, failFishing } = useGame()
+  const { gameState, isLoading, error, startGathering, cancelGathering, finishFishing, failFishing, consumeItem } = useGame()
   const caughtFishSpecies = fishCatalog.filter((fish) => (gameState?.fishingJournal?.[fish.itemId] ?? 0) > 0).length
   const [now, setNow] = useState(gameClock.now())
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
@@ -176,6 +177,7 @@ export function GatheringPage({
   if (!gameState) return <p className="page-state error-state" role="alert">{error ?? 'Chưa có dữ liệu trò chơi.'}</p>
 
   const currentIsland = getIslandDefinition(gameState.character.currentLocationId)
+  const islandPresence = getIslandPresence(gameState.character.currentLocationId)
   const currentMapLayout = currentIsland ? gatheringMapLayouts[currentIsland.id] : undefined
   const currentWorldLocation = worldLocations.find((location) => location.islandId === gameState.character.currentLocationId)
   const currentPositionName = currentWorldLocation?.name ?? currentIsland?.name ?? 'Vị trí chưa xác định'
@@ -408,6 +410,22 @@ export function GatheringPage({
                   <span>Cấp {gameState.character.level}</span>
                   {gameState.isResting && <span className="gathering-map-resting-indicator">Đang nghỉ ngơi tại {shelterLabel}</span>}
                 </div>
+                <div className="gathering-map-presence-bar">
+                  {islandPresence.isPersonal ? (
+                    <span className="gathering-presence-tag is-personal">
+                      🏝 <strong>Đảo nhà riêng tư</strong> (Chỉ có bạn)
+                    </span>
+                  ) : (
+                    <div className="gathering-presence-shared">
+                      <span className="gathering-presence-tag is-shared">
+                        👥 <strong>Đảo chung ({islandPresence.playerCount} người đang có mặt):</strong>
+                      </span>
+                      <small className="gathering-presence-names">
+                        {islandPresence.players.join(' · ')}
+                      </small>
+                    </div>
+                  )}
+                </div>
                 <div className="gathering-map-survival-stats" aria-label="Thông số sinh tồn hiện tại">
                   {([
                     ['hunger', 'Đói', '◒'],
@@ -463,6 +481,20 @@ export function GatheringPage({
                     <button type="button" aria-label="Mở bếp nấu" onClick={() => onOpenPanel?.('/cooking-stove', 'Bếp nấu')}>
                       <span aria-hidden="true">♨</span>
                       <span><strong>Bếp nấu</strong></span>
+                    </button>
+                  )}
+                  {gameState.equippedAccessoryId && itemDefinitions[gameState.equippedAccessoryId] && (
+                    <button
+                      type="button"
+                      aria-label={`Dùng ${itemDefinitions[gameState.equippedAccessoryId].name}`}
+                      onClick={() => consumeItem(gameState.equippedAccessoryId!)}
+                    >
+                      <img
+                        src={itemDefinitions[gameState.equippedAccessoryId].image}
+                        alt=""
+                        style={{ width: '16px', height: '16px', objectFit: 'contain' }}
+                      />
+                      <span><strong>Dùng {itemDefinitions[gameState.equippedAccessoryId].name}</strong></span>
                     </button>
                   )}
                   <button type="button" aria-label="Mở bàn chế tạo" onClick={() => onOpenPanel?.('/crafting', 'Bàn chế tạo')}>

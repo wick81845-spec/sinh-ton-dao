@@ -51,11 +51,27 @@ function getFishPortionYield(itemId: FishProcessingItemId): number {
   return 1
 }
 
+function getFishFilletYield(itemId: FishProcessingItemId): number {
+  if (itemId === 'item_fresh_fish') return 2
+  const fish = fishCatalog.find((entry) => entry.itemId === itemId)
+  if (!fish) return 2
+  if (fish.averageWeightKg >= 200) return 40
+  if (fish.averageWeightKg >= 100) return 25
+  if (fish.averageWeightKg >= 50) return 16
+  if (fish.averageWeightKg >= 25) return 8
+  if (fish.averageWeightKg >= 5) return 4
+  return 2
+}
+
 export function getRecipeOutputQuantity(
   recipe: RecipeDefinition,
   fishItemId?: FishProcessingItemId,
 ): number {
   if (!recipe.fishProcessing || !fishItemId) return recipe.output.quantity
+  if (recipe.fishProcessing.method === 'fillet') {
+    const filletYield = getFishFilletYield(fishItemId)
+    return recipe.fishProcessing.inputQuantity * filletYield
+  }
   const fishYield = getFishPortionYield(fishItemId)
   const totalPortions = recipe.fishProcessing.inputQuantity * fishYield
   return recipe.fishProcessing.method === 'dry'
@@ -133,8 +149,23 @@ function hasStation(state: GameSnapshot, stationId: string): boolean {
   ))
 }
 
-function simulateReservedOutputs(state: GameSnapshot, nextOutput: RecipeIngredient) {
+function consumeIngredients(state: GameSnapshot, ingredients: RecipeIngredient[]): GameSnapshot | null {
   let inventory = state.inventory
+  for (const ingredient of ingredients) {
+    const result = removeItems(inventory, ingredient.itemId, ingredient.quantity)
+    if (!result.ok) return null
+    inventory = result.container
+  }
+  return { ...state, inventory }
+}
+
+function simulateReservedOutputs(
+  state: GameSnapshot,
+  nextOutput: RecipeIngredient,
+  ingredientsToConsume: RecipeIngredient[] = [],
+) {
+  const consumed = consumeIngredients(state, ingredientsToConsume)
+  let inventory = consumed ? consumed.inventory : state.inventory
   for (const job of state.craftingQueue) {
     const queuedRecipe = getRecipe(job.recipeId)
     if (!queuedRecipe) return null
@@ -188,18 +219,11 @@ export function getRecipeAvailability(
     ...recipe.output,
     quantity: getRecipeOutputQuantity(recipe, fishSelection.itemId),
   }
-  if (!simulateReservedOutputs(state, output)) return 'Không đủ chỗ trong túi đồ cho sản phẩm.'
+  const ingredients = fishSelection.itemId && recipe.fishProcessing
+    ? [...recipe.ingredients, { itemId: fishSelection.itemId, quantity: recipe.fishProcessing.inputQuantity }]
+    : recipe.ingredients
+  if (!simulateReservedOutputs(state, output, ingredients)) return 'Không đủ chỗ trong túi đồ cho sản phẩm.'
   return null
-}
-
-function consumeIngredients(state: GameSnapshot, ingredients: RecipeIngredient[]): GameSnapshot | null {
-  let inventory = state.inventory
-  for (const ingredient of ingredients) {
-    const result = removeItems(inventory, ingredient.itemId, ingredient.quantity)
-    if (!result.ok) return null
-    inventory = result.container
-  }
-  return { ...state, inventory }
 }
 
 export function queueRecipe(

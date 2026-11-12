@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <defs>
+    <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="60%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+    <linearGradient id="glassGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.6"/>
+      <stop offset="30%" stop-color="#ffffff" stop-opacity="0.1"/>
+      <stop offset="70%" stop-color="#ffffff" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.4"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <rect width="96" height="96" rx="18" fill="#1e293b" fill-opacity="0.1"/>
+  <g filter="url(#shadow)">
+    <!-- Flask Cork -->
+    <rect x="42" y="10" width="12" height="8" rx="2" fill="#a16207" stroke="#713f12" stroke-width="1.5"/>
+    <!-- Flask Neck -->
+    <path d="M40 18 L56 18 L56 30 L40 30 Z" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+    <!-- Flask Body -->
+    <path d="M40 30 L26 68 C22 78, 30 86, 42 86 L54 86 C66 86, 74 78, 70 68 L56 30 Z"
+          fill="#f0f9ff" stroke="#0284c7" stroke-width="2"/>
+    <!-- Liquid Inside -->
+    <path d="M34 50 Q48 46, 62 50 L68 68 C71 76, 64 82, 54 82 L42 82 C32 82, 25 76, 28 68 Z"
+          fill="url(#waterGrad)"/>
+    <!-- Bubbles -->
+    <circle cx="44" cy="65" r="3" fill="#bae6fd" opacity="0.8"/>
+    <circle cx="52" cy="72" r="2" fill="#bae6fd" opacity="0.8"/>
+    <circle cx="48" cy="56" r="1.5" fill="#bae6fd" opacity="0.8"/>
+    <!-- Glass Highlight -->
+    <path d="M30 65 L42 34" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+  </g>
+</svg>

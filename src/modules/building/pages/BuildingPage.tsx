@@ -336,12 +336,22 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
                   {ownedOnly
                     && building.status === 'completed'
                     && isAtBuilding
-                    && ['building_workbench', 'building_kiln', 'building_drying_rack', 'building_cooking_stove', 'building_smokehouse'].includes(building.definitionId)
+                    && ['building_workbench', 'building_kiln', 'building_drying_rack', 'building_smokehouse'].includes(building.definitionId)
                     && <Link className="small-action" to="/crafting">Mở chế biến tại công trình</Link>}
                   {ownedOnly
                     && building.status === 'completed'
+                    && isAtBuilding
+                    && building.definitionId === 'building_cooking_stove'
+                    && <Link className="small-action" to="/cooking-stove">Mở bếp nấu</Link>}
+                  {ownedOnly
+                    && building.status === 'completed'
+                    && isAtBuilding
+                    && building.definitionId === 'building_campfire'
+                    && <Link className="small-action" to="/campfire">Mở góc bếp lửa trại</Link>}
+                  {ownedOnly
+                    && building.status === 'completed'
                     && !isAtBuilding
-                    && ['building_workbench', 'building_kiln', 'building_drying_rack', 'building_cooking_stove', 'building_smokehouse'].includes(building.definitionId)
+                    && ['building_workbench', 'building_kiln', 'building_drying_rack', 'building_cooking_stove', 'building_smokehouse', 'building_campfire'].includes(building.definitionId)
                     && <small className="activity-blocked">Đến đảo này để sử dụng công trình.</small>}
                   {ownedOnly
                     && building.definitionId === 'building_storage'

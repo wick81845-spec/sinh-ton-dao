@@ -5,9 +5,10 @@ import { gameClock } from '../../../services/clock/gameClock'
 import { ItemStack } from '../../../shared/components/ItemArtwork'
 import { getRecipeAvailability, getRecipesForStation } from '../../crafting/services/craftingService'
 import { buildingDefinitions } from '../data/buildingDefinitions'
+import { getConstructionAvailability } from '../services/buildingService'
 
 export function CookingStovePage() {
-  const { gameState, isLoading, error, queueRecipe } = useGame()
+  const { gameState, isLoading, error, queueRecipe, startBuilding } = useGame()
   const [now, setNow] = useState(gameClock.now())
 
   useEffect(() => {
@@ -26,6 +27,12 @@ export function CookingStovePage() {
     && building.islandId === gameState.character.currentLocationId
     && building.status === 'completed'
   ))
+  const stoveUnderConstruction = gameState.buildings.some((building) => (
+    building.definitionId === stoveDefinition.id
+    && building.islandId === gameState.character.currentLocationId
+    && building.status !== 'completed'
+  ))
+  const constructionIssue = getConstructionAvailability(gameState, stoveDefinition.id)
   const stoveRecipes = getRecipesForStation(stoveDefinition.id)
 
   return (
@@ -39,51 +46,79 @@ export function CookingStovePage() {
         </div>
       </header>
 
-      {!stove
-        ? <p className="settings-note">Chưa có bếp nấu hoàn thành trên đảo này.</p>
-        : (
-          <section className="campfire-quick-section">
-            <div className="campfire-quick-section-heading">
-              <div>
-                <span className="section-kicker">MÓN NẤU</span>
-                <h3>Chế biến tại bếp</h3>
-              </div>
+      {!stove && (
+        <section className="campfire-quick-section">
+          <div className="campfire-quick-section-heading">
+            <div>
+              <span className="section-kicker">CHUẨN BỊ</span>
+              <h3>{stoveUnderConstruction ? 'Đang xây bếp nấu' : 'Chưa có bếp nấu'}</h3>
             </div>
-            <div className="campfire-food-list">
-              {stoveRecipes.map((recipe) => {
-                const issue = getRecipeAvailability(gameState, recipe.id, now)
-                return (
-                  <article className="campfire-food-row" key={recipe.id}>
-                    <div className="campfire-food-copy">
-                      <strong>{recipe.name}</strong>
-                      <div className="campfire-food-ingredients">
-                        {recipe.ingredients.map((ingredient) => (
-                          <ItemStack
-                            key={ingredient.itemId}
-                            itemId={ingredient.itemId}
-                            quantity={ingredient.quantity}
-                          />
-                        ))}
-                        <span aria-hidden="true">→</span>
-                        <ItemStack itemId={recipe.output.itemId} quantity={recipe.output.quantity} />
-                      </div>
-                      <small>{itemDefinitions[recipe.output.itemId].name} · nhận vào túi đồ</small>
-                      {issue && <small className="activity-blocked">{issue}</small>}
+            {!stoveUnderConstruction && (
+              <button
+                className="small-action"
+                type="button"
+                disabled={Boolean(constructionIssue)}
+                onClick={() => startBuilding(stoveDefinition.id)}
+              >
+                Xây bếp nấu
+              </button>
+            )}
+          </div>
+          {constructionIssue && !stoveUnderConstruction && (
+            <small className="activity-blocked">{constructionIssue}</small>
+          )}
+          <div className="campfire-food-ingredients" style={{ marginTop: '10px' }}>
+            <span>Chi phí xây: </span>
+            {stoveDefinition.constructionCost.map((cost) => (
+              <ItemStack key={cost.itemId} itemId={cost.itemId} quantity={cost.quantity} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {stove && (
+        <section className="campfire-quick-section">
+          <div className="campfire-quick-section-heading">
+            <div>
+              <span className="section-kicker">MÓN NẤU</span>
+              <h3>Chế biến tại bếp</h3>
+            </div>
+          </div>
+          <div className="campfire-food-list">
+            {stoveRecipes.map((recipe) => {
+              const issue = getRecipeAvailability(gameState, recipe.id, now)
+              return (
+                <article className="campfire-food-row" key={recipe.id}>
+                  <div className="campfire-food-copy">
+                    <strong>{recipe.name}</strong>
+                    <div className="campfire-food-ingredients">
+                      {recipe.ingredients.map((ingredient) => (
+                        <ItemStack
+                          key={ingredient.itemId}
+                          itemId={ingredient.itemId}
+                          quantity={ingredient.quantity}
+                        />
+                      ))}
+                      <span aria-hidden="true">→</span>
+                      <ItemStack itemId={recipe.output.itemId} quantity={recipe.output.quantity} />
                     </div>
-                    <button
-                      className="small-action"
-                      type="button"
-                      disabled={Boolean(issue)}
-                      onClick={() => queueRecipe(recipe.id)}
-                    >
-                      Nấu
-                    </button>
-                  </article>
-                )
-              })}
-            </div>
-          </section>
-        )}
+                    <small>{itemDefinitions[recipe.output.itemId].name} · nhận vào túi đồ</small>
+                    {issue && <small className="activity-blocked">{issue}</small>}
+                  </div>
+                  <button
+                    className="small-action"
+                    type="button"
+                    disabled={Boolean(issue)}
+                    onClick={() => queueRecipe(recipe.id)}
+                  >
+                    Nấu
+                  </button>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

@@ -9,4 +9,23 @@ export default defineConfig({
       '/api': 'http://127.0.0.1:3001',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-router-dom')) {
+              return 'vendor-react'
+            }
+            if (id.includes('@supabase')) {
+              return 'vendor-supabase'
+            }
+            if (id.includes('pixelfx')) {
+              return 'vendor-pixelfx'
+            }
+          }
+        },
+      },
+    },
+  },
 })

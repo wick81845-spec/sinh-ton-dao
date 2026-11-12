@@ -248,6 +248,39 @@ describe('craftingService', () => {
     expect(completeCrafting(queued.state, 16_000).status).toBe('completed')
   })
 
+  it('allows crafting when inventory is full if consumed ingredients free a slot', () => {
+    const fullInventoryState = {
+      ...initialGameState,
+      inventory: {
+        ...initialGameState.inventory,
+        maxSlots: 12,
+        slots: [
+          { itemId: 'item_wood' as const, quantity: 3 },
+          { itemId: 'item_stone' as const, quantity: 2 },
+          { itemId: 'item_branch' as const, quantity: 1 },
+          { itemId: 'item_bark' as const, quantity: 1 },
+          { itemId: 'item_plant_fiber' as const, quantity: 1 },
+          { itemId: 'item_clay' as const, quantity: 1 },
+          { itemId: 'item_rope' as const, quantity: 1 },
+          { itemId: 'item_sea_salt' as const, quantity: 1 },
+          { itemId: 'item_copper_ore' as const, quantity: 1 },
+          { itemId: 'item_tin_ore' as const, quantity: 1 },
+          { itemId: 'item_charcoal' as const, quantity: 1 },
+          { itemId: 'item_rough_stone' as const, quantity: 1 },
+        ],
+      },
+    }
+
+    expect(fullInventoryState.inventory.slots.length).toBe(12)
+    // Wood and stone will be completely consumed, freeing 2 slots for 1 wooden axe
+    expect(getRecipeAvailability(fullInventoryState, 'recipe_wooden_axe')).toBeNull()
+    const queued = queueRecipe(fullInventoryState, 'recipe_wooden_axe', 1_000)
+    expect(queued.ok).toBe(true)
+    if (!queued.ok) throw new Error(queued.message)
+    const completed = completeCrafting(queued.state, 8_000)
+    expect(completed.status).toBe('completed')
+  })
+
   it('requires the kiln and progression level for charcoal production', () => {
     const state = {
       ...initialGameState,

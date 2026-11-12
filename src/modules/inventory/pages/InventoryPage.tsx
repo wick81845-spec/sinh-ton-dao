@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useGame } from '../../../app/providers/useGame'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
+import { fishCatalog } from '../../../data/items/fishCatalog'
 import type { ItemContainer, ItemId } from '../../../shared/types/game'
 import { carriedWeightPerSlotKg, getCarriedWeight } from '../services/inventoryService'
 import { SurvivalMeter, type SurvivalStatName } from '../../survival/components/SurvivalMeter'
@@ -33,6 +34,7 @@ function ContainerPanel({
   onOpenSalvageContainer,
   onBottleAction,
   onDiscard,
+  onFilletFish,
   onEquipBackpack,
   onEquipWeapon,
   onRepair,
@@ -46,6 +48,7 @@ function ContainerPanel({
   onOpenSalvageContainer?(itemId: SalvageContainerItemId): void
   onBottleAction?(itemId: 'item_glass_bottle' | 'item_message_bottle'): void
   onDiscard?(itemId: ItemId, quantity: number): void
+  onFilletFish?(itemId: ItemId): void
   onEquipBackpack?(): void
   onEquipWeapon?(itemId: ItemId): void
   onRepair?(itemId: ItemId): void
@@ -201,6 +204,11 @@ function ContainerPanel({
                     {kind === 'bag' && onDiscard && (
                       <button className="small-action" type="button" onClick={() => onDiscard(slot.itemId, slot.quantity)}>Vứt tất cả</button>
                     )}
+                    {kind === 'bag' && (slot.itemId === 'item_fresh_fish' || fishCatalog.some((f) => f.itemId === slot.itemId)) && onFilletFish && (
+                      <button className="small-action" type="button" onClick={() => onFilletFish(slot.itemId)}>
+                        🔪 Xẻ thịt / Phi lê cá
+                      </button>
+                    )}
                     {slot.quantity > 1 && (
                       <div className="inventory-slot-transfer">
                         <label>
@@ -252,6 +260,7 @@ export function InventoryPage() {
     transferToStorage,
     transferToInventory,
     consumeItem,
+    filletFish,
     discardItems,
     equipBackpack,
     unequipBackpack,
@@ -322,13 +331,22 @@ export function InventoryPage() {
     setBottleReportMessage(result.message)
   }
 
+  const isAtHome = gameState.character.currentLocationId === gameState.character.homeIslandId
+  const hasStorageOnCurrentIsland = isAtHome || gameState.buildings.some(
+    (b) => b.definitionId === 'building_storage' && b.islandId === gameState.character.currentLocationId && b.status === 'completed',
+  )
+
   return (
     <div className="inventory-page">
       <div className="page-title-row">
         <div>
           <span className="section-kicker">VẬT PHẨM · LƯU TRỮ</span>
           <h1>Túi đồ &amp; kho chứa</h1>
-          <p>Hành trang cơ bản có 12 ô. Trang bị ba lô để mở rộng lên 24 ô.</p>
+          <p>
+            {hasStorageOnCurrentIsland
+              ? (isAtHome ? 'Bạn đang ở đảo nhà · rương đồ kết nối đầy đủ.' : 'Đảo này có Rương chứa đồ · bạn có thể cất và lấy đồ tự do.')
+              : 'Đảo này chưa có rương. Hãy xây Rương chứa đồ (building_storage) trong Xưởng chế tác để cất đồ tại đây!'}
+          </p>
         </div>
         <div className={`inventory-pack-status${gameState.backpackEquipped ? ' is-equipped' : ''}`}>
           <span className="inventory-pack-illustration" aria-hidden="true">🎒</span>
@@ -403,6 +421,7 @@ export function InventoryPage() {
           itemDurability={gameState.itemDurability}
           onTransfer={(itemId, quantity) => transferToStorage(itemId, quantity)}
           onUse={(itemId) => consumeItem(itemId)}
+          onFilletFish={(itemId) => filletFish(itemId)}
           onOpenSalvageContainer={openSalvageContainer}
           onBottleAction={(itemId) => void handleBottleAction(itemId)}
           onDiscard={(itemId, quantity) => discardItems(itemId, quantity)}
@@ -412,7 +431,7 @@ export function InventoryPage() {
         />
         <ContainerPanel
           container={storage}
-          title="Rương gỗ · lấy vật phẩm ra"
+          title={hasStorageOnCurrentIsland ? (isAtHome ? 'Rương gỗ · Đảo nhà' : 'Rương gỗ · Đảo hiện tại') : 'Rương gỗ (Chưa có rương trên đảo)'}
           kind="storage"
           itemDurability={gameState.itemDurability}
           onTransfer={(itemId, quantity) => transferToInventory(itemId, quantity)}

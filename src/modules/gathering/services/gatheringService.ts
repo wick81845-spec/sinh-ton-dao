@@ -25,6 +25,7 @@ import { islandDefinitions } from '../../world/data/worldDefinitions'
 import { getFishingLootDefinition } from '../../../data/items/fishingLootCatalog'
 import { fishCatalog } from '../../../data/items/fishCatalog'
 import { getBestFishingRod } from '../../../data/items/fishingRodCatalog'
+import { getSurvivalConditions } from '../../survival/utils/survivalCalculator'
 
 export type GatheringActionResult =
   | { ok: true; state: GameSnapshot; message: string }
@@ -500,11 +501,16 @@ export function completeGathering(
       equippedWeaponId: toolUse.state.equippedWeaponId,
       resourceNodes,
       activeGathering: null,
-      survival: {
-        ...state.survival,
-        health: fortune === 'adverse' ? Math.max(1, state.survival.health - 3) : state.survival.health,
-        stamina: Math.max(0, state.survival.stamina - data.resource.harvesting.staminaCost),
-      },
+      survival: (() => {
+        const health = fortune === 'adverse' ? Math.max(1, state.survival.health - 3) : state.survival.health
+        const stamina = Math.max(0, state.survival.stamina - data.resource.harvesting.staminaCost)
+        return {
+          ...state.survival,
+          health,
+          stamina,
+          conditions: getSurvivalConditions({ ...state.survival, health, stamina }),
+        }
+      })(),
     },
     activityId: activity.id,
     itemId: data.resource.inventoryItemId,

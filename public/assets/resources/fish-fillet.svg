@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <defs>
+    <linearGradient id="filletGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fb7185"/>
+      <stop offset="50%" stop-color="#f43f5e"/>
+      <stop offset="100%" stop-color="#e11d48"/>
+    </linearGradient>
+    <linearGradient id="skinGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#475569"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <rect width="96" height="96" rx="18" fill="#1e293b" fill-opacity="0.1"/>
+  <g filter="url(#shadow)">
+    <!-- Back Fillet Piece -->
+    <path d="M22 42 C28 26, 68 22, 78 36 C82 48, 72 62, 54 62 C34 62, 18 54, 22 42 Z"
+          fill="#f87171" stroke="#991b1b" stroke-width="1.5" opacity="0.7"/>
+    <!-- Front Fillet (Fish Steak) -->
+    <!-- Skin border -->
+    <path d="M18 52 C24 34, 70 28, 80 44 C76 66, 60 76, 40 76 C24 76, 14 66, 18 52 Z"
+          fill="url(#skinGrad)" stroke="#1e293b" stroke-width="2"/>
+    <!-- Fresh Meat -->
+    <path d="M22 50 C28 36, 66 32, 76 44 C72 62, 58 72, 40 72 C26 72, 18 62, 22 50 Z"
+          fill="url(#filletGrad)" stroke="#be123c" stroke-width="1.5"/>
+    <!-- White marbling lines -->
+    <path d="M30 46 Q44 42, 58 48" stroke="#fecdd3" stroke-width="2" fill="none" opacity="0.9"/>
+    <path d="M28 54 Q44 50, 62 56" stroke="#fecdd3" stroke-width="2" fill="none" opacity="0.9"/>
+    <path d="M30 62 Q44 58, 64 64" stroke="#fecdd3" stroke-width="2" fill="none" opacity="0.9"/>
+    <!-- Bone center -->
+    <circle cx="48" cy="54" r="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+  </g>
+</svg>

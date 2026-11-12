@@ -158,7 +158,8 @@ function convertExpiredFood(container: ItemContainer, now: number): { container:
 
   const spoiledSlots: InventorySlot[] = []
   let spoiledRemaining = existingSpoiled + quantity
-  while (spoiledRemaining > 0) {
+  const maxAvailableSpoiledSlots = Math.max(0, container.maxSlots - remainingSlots.length)
+  while (spoiledRemaining > 0 && spoiledSlots.length < maxAvailableSpoiledSlots) {
     const stack = Math.min(itemDefinitions.item_spoiled_food.maxStack, spoiledRemaining)
     spoiledSlots.push({ itemId: 'item_spoiled_food', quantity: stack })
     spoiledRemaining -= stack
@@ -558,11 +559,12 @@ export function consumeItem(state: GameSnapshot, itemId: ItemId, now = Date.now(
     return { ok: false, message: 'Bạn cần hồi sinh trước khi sử dụng vật phẩm.' }
   }
   const definition = itemDefinitions[itemId]
-  if (state.inventory.slots.some((slot) => (
-    slot.itemId === itemId
-    && slot.expiresAt !== undefined
-    && slot.expiresAt <= now
-  ))) {
+  const matchingSlots = state.inventory.slots.filter((slot) => slot.itemId === itemId)
+  if (matchingSlots.length === 0) {
+    return { ok: false, message: 'Vật phẩm này không có trong hành trang.' }
+  }
+  const hasFreshSlot = matchingSlots.some((slot) => slot.expiresAt === undefined || slot.expiresAt > now)
+  if (!hasFreshSlot) {
     return { ok: false, message: 'Thức ăn này đã ôi thiu, không thể sử dụng.' }
   }
   const hungerRestore = definition.hungerRestore ?? 0
@@ -585,8 +587,20 @@ export function consumeItem(state: GameSnapshot, itemId: ItemId, now = Date.now(
     return { ok: false, message: 'Bạn hiện không đói.' }
   }
 
-  const updatedInventory = removeItems(state.inventory, itemId, 1)
-  if (!updatedInventory.ok) return updatedInventory
+  const freshSlotIndex = state.inventory.slots.findIndex((slot) => (
+    slot.itemId === itemId && (slot.expiresAt === undefined || slot.expiresAt > now)
+  ))
+  if (freshSlotIndex === -1) {
+    return { ok: false, message: 'Không còn vật phẩm phù hợp để sử dụng.' }
+  }
+  const freshSlot = state.inventory.slots[freshSlotIndex]
+  const newSlots = [...state.inventory.slots]
+  if (freshSlot.quantity > 1) {
+    newSlots[freshSlotIndex] = { ...freshSlot, quantity: freshSlot.quantity - 1 }
+  } else {
+    newSlots.splice(freshSlotIndex, 1)
+  }
+  const updatedInventory: ItemContainer = { ...state.inventory, slots: newSlots }
 
   const hunger = Math.min(survivalConfig.hunger.max, state.survival.hunger + hungerRestore)
   const thirst = Math.min(survivalConfig.thirst.max, state.survival.thirst + thirstRestore)
@@ -650,7 +664,7 @@ export function consumeItem(state: GameSnapshot, itemId: ItemId, now = Date.now(
     ok: true,
     state: {
       ...stateAfterUse,
-      inventory: updatedInventory.container,
+      inventory: updatedInventory,
       survival,
       ailments: (stateAfterUse.ailments ?? [])
         .filter((ailment) => !definition.curesAilments?.includes(ailment.id)),
