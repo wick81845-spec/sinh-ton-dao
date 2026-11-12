@@ -6,6 +6,7 @@ import { completeConstructions, getShelterRestBonusMultiplier, startConstruction
 import {
   advanceCampfireFuel,
   fuelCampfire as addCampfireFuel,
+  fuelCookingStove as addCookingStoveFuel,
   setCampfireWarming as updateCampfireWarming,
 } from '../../modules/building/services/campfireService'
 import { advanceClothesDrying, startClothesDrying } from '../../modules/building/services/clothesDryingService'
@@ -758,6 +759,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const currentState = stateRef.current
     if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
     const result = addCampfireFuel(currentState, buildingId, fuelItemId, gameClock.now())
+    if (!result.ok) {
+      setNotice(result.message)
+      return result
+    }
+    return commitWorkState(currentState, result.state, result.message)
+  }, [commitWorkState])
+
+  const fuelCookingStoveAction = useCallback((buildingId: string, fuelItemId: ItemId): GameActionResult => {
+    const currentState = stateRef.current
+    if (!currentState) return { ok: false, message: 'Dữ liệu trò chơi chưa sẵn sàng.' }
+    const result = addCookingStoveFuel(currentState, buildingId, fuelItemId, gameClock.now())
     if (!result.ok) {
       setNotice(result.message)
       return result
@@ -1528,6 +1540,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       startBuilding: startBuildingAction,
       upgradeBuilding: upgradeBuildingAction,
       fuelCampfire: fuelCampfireAction,
+      fuelCookingStove: fuelCookingStoveAction,
       setCampfireWarming: setCampfireWarmingAction,
       startDryingClothes: startDryingClothesAction,
       plantCrop: plantCropAction,

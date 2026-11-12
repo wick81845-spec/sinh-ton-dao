@@ -293,6 +293,26 @@ describe('gatheringService', () => {
     expect(completed.state.itemDurability?.item_wooden_axe).toBeUndefined()
   })
 
+  it.each([
+    { itemId: 'item_copper_axe' as const, completesAt: 9_000 },
+    { itemId: 'item_iron_axe' as const, completesAt: 8_000 },
+  ])('reduces gathering time with $itemId', ({ itemId, completesAt }) => {
+    const stateWithUpgradedAxe = {
+      ...stateWithAxe,
+      inventory: {
+        ...stateWithAxe.inventory,
+        slots: [...stateWithAxe.inventory.slots, { itemId, quantity: 1 }],
+      },
+    }
+
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const started = startGathering(stateWithUpgradedAxe, 'chop-forest-wood', 1_000)
+    random.mockRestore()
+    if (!started.ok) throw new Error(started.message)
+
+    expect(started.state.activeGathering?.completesAt).toBe(completesAt)
+  })
+
   it('taps tree resin on the rainforest island without felling the tree', () => {
     const rainforestState = {
       ...stateWithAxe,

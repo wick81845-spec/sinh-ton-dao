@@ -11,6 +11,7 @@ import {
 import { researchTechnology } from '../../progression/services/technologyService'
 import { consumeItem } from '../../inventory/services/inventoryService'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
+import { fuelCookingStove } from '../../building/services/campfireService'
 
 function gameWithWorkbench() {
   const preparedState = {
@@ -153,6 +154,7 @@ describe('craftingService', () => {
         health: 140,
         status: 'completed' as const,
       }],
+      campfireFuel: { 'stove-1': { remainingMs: 60_000, lastUpdatedAt: 1_000 } },
     }
 
     const jam = queueRecipe(state, 'recipe_fruit_jam', 1_000)
@@ -182,7 +184,7 @@ describe('craftingService', () => {
         ],
       },
     }
-    expect(getRecipeAvailability(rawWaterOnly, 'recipe_mushroom_soup'))
+    expect(getRecipeAvailability(rawWaterOnly, 'recipe_mushroom_soup', 1_000))
       .toBe('Không đủ nguyên liệu trong túi đồ.')
   })
 
@@ -316,6 +318,52 @@ describe('craftingService', () => {
       .toContainEqual({ itemId: 'item_cooked_fish', quantity: 1, expiresAt: expect.any(Number) })
   })
 
+  it('requires stove fuel and pauses cooking if the stove runs out', () => {
+    const state = {
+      ...initialGameState,
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [
+          { itemId: 'item_wild_mushroom' as const, quantity: 2 },
+          { itemId: 'item_clean_water' as const, quantity: 1 },
+          { itemId: 'item_branch' as const, quantity: 1 },
+        ],
+      },
+      buildings: [{
+        id: 'stove-1',
+        definitionId: 'building_cooking_stove',
+        islandId: initialGameState.character.homeIslandId,
+        level: 1,
+        health: 140,
+        status: 'completed' as const,
+      }],
+    }
+
+    expect(getRecipeAvailability(state, 'recipe_mushroom_soup', 1_000))
+      .toContain('Bếp đã hết nhiên liệu')
+    const fueled = {
+      ...state,
+      campfireFuel: { 'stove-1': { remainingMs: 60_000, lastUpdatedAt: 1_000 } },
+    }
+    const queued = queueRecipe(fueled, 'recipe_mushroom_soup', 1_000)
+    if (!queued.ok) throw new Error(queued.message)
+
+    const paused = completeCrafting(queued.state, 61_001)
+    expect(paused.status).toBe('pending')
+    expect(paused.state.inventory.slots).not.toContainEqual(
+      expect.objectContaining({ itemId: 'item_mushroom_soup' }),
+    )
+
+    const refueled = fuelCookingStove(paused.state, 'stove-1', 'item_branch', 61_001)
+    if (!refueled.ok) throw new Error(refueled.message)
+    const completed = completeCrafting(refueled.state, 61_001)
+    expect(completed.status).toBe('completed')
+    if (completed.status !== 'completed') throw new Error('Soup should finish after refueling.')
+    expect(completed.state.inventory.slots).toContainEqual(
+      expect.objectContaining({ itemId: 'item_mushroom_soup', quantity: 1 }),
+    )
+  })
+
   it('boils water in a reusable pot or can at a fueled campfire', () => {
     const state = {
       ...initialGameState,
@@ -430,9 +478,10 @@ describe('craftingService', () => {
         health: 100,
         status: 'completed' as const,
       }],
+      campfireFuel: { 'cooking-stove-1': { remainingMs: 60_000, lastUpdatedAt: 1_000 } },
     }
 
-    expect(getRecipeAvailability(state, 'recipe_goat_cheese')).toBeNull()
+    expect(getRecipeAvailability(state, 'recipe_goat_cheese', 1_000)).toBeNull()
     const queued = queueRecipe(state, 'recipe_goat_cheese', 1_000)
     if (!queued.ok) throw new Error(queued.message)
     const completed = completeCrafting(queued.state, 26_000)

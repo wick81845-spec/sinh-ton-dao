@@ -80,7 +80,7 @@ function FishingScene({
         {method === 'spear'
           ? <span aria-hidden="true">↗</span>
           : <img src={rod?.image ?? '/assets/fishing/rods/rod-1.png'} alt="" />}
-        <span>{method === 'spear' ? 'Lao đánh cá' : rod?.name ?? 'Cần câu'}</span>
+        <span>{method === 'spear' ? 'Lao đánh cá' : `${rod?.name ?? 'Cần câu'} · cấp ${rod?.tier ?? 1}`}</span>
       </div>
     </div>
   )

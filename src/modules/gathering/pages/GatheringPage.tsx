@@ -179,7 +179,12 @@ export function GatheringPage({
   if (!gameState) return <p className="page-state error-state" role="alert">{error ?? 'Chưa có dữ liệu trò chơi.'}</p>
 
   const currentIsland = getIslandDefinition(gameState.character.currentLocationId)
-  const islandPlayers = getOnlinePlayersOnIsland(onlinePlayers, gameState.character.currentLocationId)
+  const isPersonalIsland = currentIsland?.type === 'personal'
+  const islandPlayers = getOnlinePlayersOnIsland(
+    onlinePlayers,
+    gameState.character.currentLocationId,
+    isPersonalIsland,
+  )
   const currentMapLayout = currentIsland ? gatheringMapLayouts[currentIsland.id] : undefined
   const currentWorldLocation = worldLocations.find((location) => location.islandId === gameState.character.currentLocationId)
   const currentPositionName = currentWorldLocation?.name ?? currentIsland?.name ?? 'Vị trí chưa xác định'
@@ -415,10 +420,14 @@ export function GatheringPage({
                 <div className="gathering-map-presence-bar">
                   <div className="gathering-presence-shared">
                     <span className="gathering-presence-tag is-shared">
-                      👥 <strong>Người chơi đang ở đảo này ({islandPlayers.length}):</strong>
+                      👥 <strong>{isPersonalIsland
+                        ? 'Đảo riêng tư · chỉ có bạn:'
+                        : `Người chơi đang ở đảo này (${islandPlayers.length}):`}</strong>
                     </span>
                     <small className="gathering-presence-names">
-                      {worldPresenceStatus === 'online' || worldPresenceStatus === 'full'
+                      {isPersonalIsland
+                        ? `${gameState.character.name} (bạn)`
+                        : worldPresenceStatus === 'online' || worldPresenceStatus === 'full'
                         ? islandPlayers.length > 0
                           ? islandPlayers.map((player) => player.displayName).join(' · ')
                           : 'Hiện không có người chơi online nào ở đây.'
@@ -630,7 +639,10 @@ export function GatheringPage({
                         )}
                         {currentFishingRod && !active && (
                           <small className="gathering-map-rod-status">
-                            Đang dùng {currentFishingRod.name} · độ bền {currentFishingRod.durability}/{currentFishingRod.maxDurability}
+                            Đang dùng {currentFishingRod.name} · cấp {currentFishingRod.tier}
+                            {' · '}thu dây {Math.round(currentFishingRod.reelSpeed * 100)}%
+                            {' · '}giảm lực căng {Math.round(currentFishingRod.tensionResistance * 100)}%
+                            {' · '}độ bền {currentFishingRod.durability}/{currentFishingRod.maxDurability}
                           </small>
                         )}
                         {spearFishingIssue && !active && <small className="activity-blocked">{spearFishingIssue}</small>}
@@ -826,7 +838,7 @@ export function GatheringPage({
                   <span>{isSpearFishing ? 'Cá nhỏ ven bờ × 1' : 'Cá ngẫu nhiên × 1'}</span>
                   {isSpearFishing && <span>Cần có lao đánh cá</span>}
                   {!isSpearFishing && currentFishingRod && (
-                    <span>{currentFishingRod.name} · bền {currentFishingRod.durability}/{currentFishingRod.maxDurability}</span>
+                    <span>{currentFishingRod.name} · cấp {currentFishingRod.tier} · bền {currentFishingRod.durability}/{currentFishingRod.maxDurability}</span>
                   )}
                 </div>
                 {issue && !active && <small className="activity-blocked">{issue}</small>}

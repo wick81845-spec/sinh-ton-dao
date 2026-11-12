@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { initialGameState, newPlayerGameState } from '../../../data/mockGameState'
 import { addItems } from '../../inventory/services/inventoryService'
 import { buildingDefinitions } from '../data/buildingDefinitions'
-import { completeConstructions, getShelterRestBonusMultiplier, getUpgradeAvailability, startConstruction, upgradeBuilding } from './buildingService'
+import {
+  completeConstructions,
+  getBuildingsOnIsland,
+  getShelterRestBonusMultiplier,
+  getUpgradeAvailability,
+  startConstruction,
+  upgradeBuilding,
+} from './buildingService'
 
 function stateWithWorkbenchMaterials(researchedTechnologyIds = ['tech_island_settlement']) {
   return {
@@ -22,6 +29,30 @@ function stateWithWorkbenchMaterials(researchedTechnologyIds = ['tech_island_set
 }
 
 describe('buildingService', () => {
+  it('returns only buildings that belong to the requested island', () => {
+    const buildings = [
+      {
+        id: 'shelter-island-a',
+        definitionId: 'building_shelter',
+        islandId: 'island_001',
+        level: 1,
+        health: 80,
+        status: 'completed' as const,
+      },
+      {
+        id: 'shelter-island-b',
+        definitionId: 'building_shelter',
+        islandId: 'island_002',
+        level: 1,
+        health: 80,
+        status: 'completed' as const,
+      },
+    ]
+
+    expect(getBuildingsOnIsland(buildings, 'island_002').map((building) => building.id))
+      .toEqual(['shelter-island-b'])
+  })
+
   it('requires island settlement research before building the workbench', () => {
     expect(startConstruction(stateWithWorkbenchMaterials([]), 'building_workbench', 1_000))
       .toMatchObject({

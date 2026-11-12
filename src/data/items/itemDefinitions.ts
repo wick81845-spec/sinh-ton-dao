@@ -25,6 +25,7 @@ export interface ItemDefinition {
   equipmentSlot?: 'weapon'
   clothingSlot?: ClothingSlot
   weaponDamageBonus?: number
+  gatheringTimeReduction?: number
   damageReduction?: number
   curesAilments?: readonly SurvivalAilmentId[]
   coldProtection?: number
@@ -505,7 +506,7 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
   },
   item_copper_axe: {
     name: 'Rìu đồng',
-    description: 'Rìu kim loại bền hơn rìu gỗ, thích hợp khai thác gỗ cứng.',
+    description: 'Rìu đồng bền và sắc hơn rìu gỗ, giúp khai thác nhanh hơn và gây sát thương cao hơn.',
     category: 'tool',
     maxStack: 1,
     weight: 2,
@@ -515,10 +516,13 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
     usable: false,
     tradable: true,
     maxDurability: 60,
+    equipmentSlot: 'weapon',
+    weaponDamageBonus: 16,
+    gatheringTimeReduction: 0.2,
   },
   item_iron_axe: {
     name: 'Rìu sắt',
-    description: 'Rìu chắc chắn cho những chuyến khai thác dài ngày.',
+    description: 'Rìu sắt chắc và sắc bén, giúp khai thác nhanh nhất và gây sát thương mạnh nhất.',
     category: 'tool',
     maxStack: 1,
     weight: 2.4,
@@ -528,6 +532,9 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
     usable: false,
     tradable: true,
     maxDurability: 100,
+    equipmentSlot: 'weapon',
+    weaponDamageBonus: 20,
+    gatheringTimeReduction: 0.35,
   },
   item_fresh_water: {
     name: 'Nước suối',

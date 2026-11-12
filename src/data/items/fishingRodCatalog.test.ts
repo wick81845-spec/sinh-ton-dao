@@ -21,6 +21,10 @@ describe('fishingRodCatalog', () => {
       if (index === 0) continue
       expect(recipes.find((recipe) => recipe.output.itemId === rod.itemId)?.ingredients)
         .toContainEqual({ itemId: fishingRodCatalog[index - 1].itemId, quantity: 1 })
+      expect(rod.tier).toBeGreaterThan(fishingRodCatalog[index - 1].tier)
+      expect(rod.reelSpeed).toBeGreaterThan(fishingRodCatalog[index - 1].reelSpeed)
+      expect(rod.tensionResistance).toBeGreaterThan(fishingRodCatalog[index - 1].tensionResistance)
+      expect(rod.maxDurability).toBeGreaterThan(fishingRodCatalog[index - 1].maxDurability)
     }
   })
 

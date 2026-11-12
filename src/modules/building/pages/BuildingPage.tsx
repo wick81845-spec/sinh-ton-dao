@@ -3,7 +3,12 @@ import { Link } from 'react-router-dom'
 import { useGame } from '../../../app/providers/useGame'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import { gameClock } from '../../../services/clock/gameClock'
-import { buildingDefinitions, getConstructionAvailability, getUpgradeAvailability } from '../services/buildingService'
+import {
+  buildingDefinitions,
+  getBuildingsOnIsland,
+  getConstructionAvailability,
+  getUpgradeAvailability,
+} from '../services/buildingService'
 import { campfireFuelOptions, getCampfireRemainingMs } from '../services/campfireService'
 import { ItemStack } from '../../../shared/components/ItemArtwork'
 import { cropDefinitions, getCropPlantAvailability } from '../services/farmService'
@@ -26,6 +31,7 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
     startBuilding,
     upgradeBuilding,
     fuelCampfire,
+    fuelCookingStove,
     plantCrop,
     harvestCrop,
     raiseChicken,
@@ -46,6 +52,13 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
   if (isLoading) return <p className="page-state">Đang tải công trình…</p>
   if (!gameState) return <p className="page-state error-state" role="alert">{error ?? 'Chưa có dữ liệu trò chơi.'}</p>
 
+  const currentIslandBuildings = getBuildingsOnIsland(gameState.buildings, gameState.character.currentLocationId)
+  const currentIslandBuildingIds = new Set(currentIslandBuildings.map((building) => building.id))
+  const currentIslandConstructionQueue = gameState.constructionQueue.filter((job) => (
+    currentIslandBuildingIds.has(job.buildingId)
+  ))
+  const currentIsland = getIslandDefinition(gameState.character.currentLocationId)
+
   return (
     <div className="building-page">
       {ownedOnly && (
@@ -53,7 +66,7 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
           <div>
             <span className="section-kicker">CĂN CỨ · CÔNG TRÌNH ĐÃ DỰNG</span>
             <h1>Công trình</h1>
-            <p>Chọn công trình đã xây để sử dụng và quản lý tại từng đảo.</p>
+            <p>Chỉ hiển thị công trình trên {currentIsland?.name ?? 'đảo hiện tại'}.</p>
           </div>
         </div>
       )}
@@ -66,7 +79,7 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
         <div className="stamina-chip"><strong>{gameState.constructionQueue.length} / 2</strong> việc xây dựng</div>
       </div>}
 
-      {!ownedOnly && gameState.constructionQueue.length > 0 && (
+      {!ownedOnly && currentIslandConstructionQueue.length > 0 && (
         <section className="construction-queue" aria-label="Tiến độ xây dựng">
           <div className="section-heading">
             <div>
@@ -75,7 +88,7 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
             </div>
           </div>
           <div className="construction-list">
-            {gameState.constructionQueue.map((job) => {
+            {currentIslandConstructionQueue.map((job) => {
               const building = gameState.buildings.find((entry) => entry.id === job.buildingId)
               const definition = buildingDefinitions.find((entry) => entry.id === building?.definitionId)
               const island = building && getIslandDefinition(building.islandId)
@@ -148,10 +161,10 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
       <div className="section-heading building-section-heading">
         <div>
           <span className="section-kicker">CÔNG TRÌNH CỦA BẠN</span>
-          <h2>Đã xây dựng</h2>
+          <h2>Đã xây dựng trên {currentIsland?.name ?? 'đảo hiện tại'}</h2>
         </div>
       </div>
-      {gameState.buildings.length === 0
+      {currentIslandBuildings.length === 0
         ? (
           <p className="empty-buildings">
             Chưa có công trình nào. <Link to="/building">Đến xây dựng công trình đầu tiên.</Link>
@@ -159,13 +172,14 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
         )
         : (
           <section className="owned-building-list" aria-label="Công trình đã xây dựng">
-            {gameState.buildings.map((building) => {
+            {currentIslandBuildings.map((building) => {
               const definition = buildingDefinitions.find((entry) => entry.id === building.definitionId)
               if (!definition) return null
               const nextLevel = building.level + 1
               const upgradeCost = definition.upgradeCosts[nextLevel]
               const issue = getUpgradeAvailability(gameState, building.id)
               const isCampfire = building.definitionId === 'building_campfire'
+              const isCookingStove = building.definitionId === 'building_cooking_stove'
               const isShelter = building.definitionId === 'building_shelter'
               const isAtBuilding = building.islandId === gameState.character.currentLocationId
               const isGardenBed = building.definitionId === 'building_garden_bed'
@@ -189,12 +203,12 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
                     <span className="section-kicker">{building.status === 'completed' ? 'ĐÃ HOÀN THÀNH' : 'ĐANG THI CÔNG'}</span>
                     <h3>{definition.name}</h3>
                     <p>Cấp {building.level} / {definition.maxLevel} · Độ bền {building.health} / {definition.maxHealth}</p>
-                    {ownedOnly && <p>{isAtBuilding ? 'Đảo hiện tại' : 'Đảo khác'} · {building.islandId}</p>}
-                    {isCampfire && building.status === 'completed' && (
+                    {ownedOnly && <p>{currentIsland?.name ?? building.islandId}</p>}
+                    {(isCampfire || isCookingStove) && building.status === 'completed' && (
                       <p role="status">
                         {fuelRemaining > 0
-                          ? `Đang cháy · còn ${Math.ceil(fuelRemaining / 60_000)} phút`
-                          : 'Đã tắt · cần thêm nhiên liệu'}
+                          ? `${isCampfire ? 'Đang cháy' : 'Còn nhiên liệu'} · ${Math.ceil(fuelRemaining / 60_000)} phút`
+                          : `${isCampfire ? 'Đã tắt' : 'Đã hết nhiên liệu'} · cần thêm nhiên liệu`}
                       </p>
                     )}
                   </div>
@@ -328,6 +342,26 @@ export function BuildingPage({ ownedOnly = false }: { ownedOnly?: boolean }) {
                             onClick={() => fuelCampfire(building.id, itemId)}
                           >
                             Thêm {item.name} (+{durationMs / 60_000} phút) · có {quantity}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {isCookingStove && building.status === 'completed' && (
+                    <div className="owned-building-upgrade" aria-label="Thêm nhiên liệu cho bếp nấu">
+                      {campfireFuelOptions.map(({ itemId, durationMs }) => {
+                        const quantity = gameState.inventory.slots
+                          .filter((slot) => slot.itemId === itemId)
+                          .reduce((total, slot) => total + slot.quantity, 0)
+                        return (
+                          <button
+                            className="small-action"
+                            type="button"
+                            key={itemId}
+                            disabled={!isAtBuilding || quantity < 1}
+                            onClick={() => fuelCookingStove(building.id, itemId)}
+                          >
+                            Đốt {itemDefinitions[itemId].name} (+{durationMs / 60_000} phút) · có {quantity}
                           </button>
                         )
                       })}

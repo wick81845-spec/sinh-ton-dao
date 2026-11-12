@@ -828,7 +828,7 @@ function isGameSnapshot(value: unknown): value is GameSnapshot {
         typeof buildingId === 'string'
         && value.buildings.some((building) => (
           building.id === buildingId
-          && building.definitionId === 'building_campfire'
+          && (building.definitionId === 'building_campfire' || building.definitionId === 'building_cooking_stove')
           && building.status === 'completed'
         ))
         && isRecord(fuel)

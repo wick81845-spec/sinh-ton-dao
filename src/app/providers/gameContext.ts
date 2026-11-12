@@ -59,6 +59,7 @@ export interface GameContextValue {
   startBuilding(definitionId: string): GameActionResult
   upgradeBuilding(buildingId: string): GameActionResult
   fuelCampfire(buildingId: string, fuelItemId: ItemId): GameActionResult
+  fuelCookingStove(buildingId: string, fuelItemId: ItemId): GameActionResult
   setCampfireWarming(buildingId: string, isWarming: boolean): GameActionResult
   startDryingClothes(buildingId: string): GameActionResult
   plantCrop(buildingId: string, cropId: CropId): GameActionResult

@@ -6,9 +6,10 @@ import { ItemStack } from '../../../shared/components/ItemArtwork'
 import { getRecipeAvailability, getRecipesForStation } from '../../crafting/services/craftingService'
 import { buildingDefinitions } from '../data/buildingDefinitions'
 import { getConstructionAvailability } from '../services/buildingService'
+import { campfireFuelOptions, getCampfireRemainingMs } from '../services/campfireService'
 
 export function CookingStovePage() {
-  const { gameState, isLoading, error, queueRecipe, startBuilding } = useGame()
+  const { gameState, isLoading, error, queueRecipe, startBuilding, fuelCookingStove } = useGame()
   const [now, setNow] = useState(gameClock.now())
 
   useEffect(() => {
@@ -72,6 +73,40 @@ export function CookingStovePage() {
             {stoveDefinition.constructionCost.map((cost) => (
               <ItemStack key={cost.itemId} itemId={cost.itemId} quantity={cost.quantity} />
             ))}
+          </div>
+        </section>
+      )}
+
+      {stove && (
+        <section className="campfire-quick-section">
+          <div className="campfire-quick-section-heading">
+            <div>
+              <span className="section-kicker">NHIÊN LIỆU</span>
+              <h3 role="status">
+                {getCampfireRemainingMs(gameState, stove.id, now) > 0
+                  ? `Bếp còn cháy ${Math.ceil(getCampfireRemainingMs(gameState, stove.id, now) / 60_000)} phút`
+                  : 'Bếp đã hết nhiên liệu'}
+              </h3>
+            </div>
+          </div>
+          <div className="campfire-fuel-options" aria-label="Thêm nhiên liệu cho bếp nấu">
+            {campfireFuelOptions.map(({ itemId, durationMs }) => {
+              const quantity = gameState.inventory.slots
+                .filter((slot) => slot.itemId === itemId)
+                .reduce((total, slot) => total + slot.quantity, 0)
+              return (
+                <button
+                  className="campfire-fuel-button"
+                  type="button"
+                  key={itemId}
+                  disabled={quantity < 1}
+                  onClick={() => fuelCookingStove(stove.id, itemId)}
+                >
+                  <ItemStack itemId={itemId} quantity={quantity} />
+                  <span>+{durationMs / 60_000} phút</span>
+                </button>
+              )
+            })}
           </div>
         </section>
       )}

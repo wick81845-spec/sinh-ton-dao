@@ -6,7 +6,12 @@ export interface WorldPlayerView {
   joinedAt: string
 }
 
-export function getOnlinePlayersOnIsland(players: readonly WorldPlayerView[], islandId: string): WorldPlayerView[] {
+export function getOnlinePlayersOnIsland(
+  players: readonly WorldPlayerView[],
+  islandId: string,
+  isPersonalIsland = false,
+): WorldPlayerView[] {
+  if (isPersonalIsland) return []
   return players.filter((player) => player.currentIslandId === islandId)
 }
 

@@ -13,6 +13,10 @@ export interface ConstructionCompletionResult {
   completedBuildingIds: string[]
 }
 
+export function getBuildingsOnIsland(buildings: readonly PlayerBuilding[], islandId: string): PlayerBuilding[] {
+  return buildings.filter((building) => building.islandId === islandId)
+}
+
 export function getShelterRestBonusMultiplier(state: GameSnapshot): number {
   const shelter = state.buildings.find((building) => (
     building.definitionId === 'building_shelter'

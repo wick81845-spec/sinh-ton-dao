@@ -231,7 +231,12 @@ export function startGathering(state: GameSnapshot, activityId: string, now: num
     : data?.resource.harvesting.durationSeconds
   if (!durationSeconds) return { ok: false, message: 'Hoạt động thu thập chưa được cấu hình đúng.' }
   const outcome = isFishingActivityId(activityId) ? undefined : rollGatheringOutcome()
-  const effectiveDuration = durationSeconds + (outcome === 'adverse' ? 30 : 0)
+  const toolItemId = data?.resource.harvesting.toolItemId
+    ? getAvailableToolItemId(state, data.resource.harvesting.toolItemId)
+    : undefined
+  const timeReduction = toolItemId ? itemDefinitions[toolItemId].gatheringTimeReduction ?? 0 : 0
+  const effectiveDuration = Math.max(1, Math.ceil(durationSeconds * (1 - timeReduction)))
+    + (outcome === 'adverse' ? 30 : 0)
 
   return {
     ok: true,

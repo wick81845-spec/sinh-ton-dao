@@ -188,7 +188,11 @@ export function CraftingPage() {
     )
     if (isCompletedOnCurrentIsland) return false
 
-    const isInQueue = gameState.constructionQueue.some((q) => q.buildingId.startsWith(building.id))
+    const isInQueue = gameState.constructionQueue.some((job) => {
+      const queuedBuilding = gameState.buildings.find((entry) => entry.id === job.buildingId)
+      return queuedBuilding?.definitionId === building.id
+        && queuedBuilding.islandId === gameState.character.currentLocationId
+    })
     if (isInQueue) return false
 
     const ingredientNames = building.constructionCost.map((ingredient) => itemDefinitions[ingredient.itemId].name).join(' ')

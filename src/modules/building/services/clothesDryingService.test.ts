@@ -28,7 +28,9 @@ function litCampfireState(wetness = 65, islandId = initialGameState.character.ho
   }
   const fueled = fuelCampfire(state, 'campfire-1', 'item_branch', 1_000)
   if (!fueled.ok) throw new Error(fueled.message)
-  return fueled.state
+  const fueledAgain = fuelCampfire(fueled.state, 'campfire-1', 'item_branch', 1_000)
+  if (!fueledAgain.ok) throw new Error(fueledAgain.message)
+  return fueledAgain.state
 }
 
 describe('clothesDryingService', () => {

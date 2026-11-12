@@ -119,6 +119,21 @@ describe('gameSaveService', () => {
     expect(isValidGameSnapshot({ ...state, campfireFuel: { missing: { remainingMs: 1, lastUpdatedAt: 1 } } })).toBe(false)
     expect(isValidGameSnapshot({
       ...state,
+      buildings: [
+        ...state.buildings,
+        {
+          id: 'stove-1',
+          definitionId: 'building_cooking_stove',
+          islandId: initialGameState.character.homeIslandId,
+          level: 1,
+          health: 140,
+          status: 'completed' as const,
+        },
+      ],
+      campfireFuel: { 'stove-1': { remainingMs: 120_000, lastUpdatedAt: 1_000 } },
+    })).toBe(true)
+    expect(isValidGameSnapshot({
+      ...state,
       inventory: {
         ...state.inventory,
         slots: [...state.inventory.slots, { itemId: 'item_wooden_spear' as const, quantity: 1 }],

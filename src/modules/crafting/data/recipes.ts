@@ -1339,7 +1339,7 @@ export const recipes: readonly RecipeDefinition[] = [
     id: 'recipe_copper_axe',
     kind: 'crafting',
     name: 'Rìu đồng',
-    description: 'Đúc lưỡi đồng và lắp vào cán gỗ để khai thác hiệu quả hơn.',
+    description: 'Đúc lưỡi đồng sắc bén để khai thác nhanh hơn và chiến đấu mạnh hơn.',
     ingredients: [
       { itemId: 'item_copper_ingot', quantity: 2 },
       { itemId: 'item_branch', quantity: 1 },
@@ -1356,7 +1356,7 @@ export const recipes: readonly RecipeDefinition[] = [
     id: 'recipe_iron_axe',
     kind: 'crafting',
     name: 'Rìu sắt',
-    description: 'Rèn rìu sắt bền chắc cho công việc khai thác nặng.',
+    description: 'Rèn rìu sắt bền chắc, khai thác nhanh nhất và gây sát thương cao hơn.',
     ingredients: [
       { itemId: 'item_iron_ingot', quantity: 2 },
       { itemId: 'item_copper_axe', quantity: 1 },

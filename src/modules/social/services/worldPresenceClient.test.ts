@@ -30,4 +30,13 @@ describe('getOnlinePlayersOnIsland', () => {
     expect(getOnlinePlayersOnIsland(players, 'island_002').map((player) => player.displayName)).toEqual(['An'])
     expect(getOnlinePlayersOnIsland(players, 'island_004')).toEqual([])
   })
+
+  it('does not show the global roster on a personal island', () => {
+    const playersOnStartingIsland = [
+      ...players,
+      { ...players[0], id: 'player-4', currentIslandId: 'island_001' },
+    ]
+
+    expect(getOnlinePlayersOnIsland(playersOnStartingIsland, 'island_001', true)).toEqual([])
+  })
 })

@@ -56,6 +56,22 @@ describe('combatService', () => {
 
   })
 
+  it('deals more damage with a higher-tier equipped axe', () => {
+    const state = {
+      ...initialGameState,
+      equippedWeaponId: 'item_iron_axe' as const,
+    }
+    const started = startCombat(state, 'encounter_pirate_patrol', 1_000)
+    if (!started.ok) throw new Error(started.message)
+
+    const result = attackCombat(started.state, 2_000)
+    if (!result.ok) throw new Error(result.message)
+
+    expect(result.state.activeCombat).toBeNull()
+    expect(result.state.combatLog.at(-1)?.outcome).toBe('victory')
+    expect(result.state.itemDurability?.item_iron_axe).toBe(99)
+  })
+
   it('removes the wooden axe after it loses its final durability point', () => {
     const state = {
       ...initialGameState,

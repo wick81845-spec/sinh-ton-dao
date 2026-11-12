@@ -2,9 +2,9 @@ import { removeItems } from '../../inventory/services/inventoryService'
 import type { CampfireFuelState, GameSnapshot, ItemId } from '../../../shared/types/game'
 
 export const campfireFuelOptions: readonly { itemId: ItemId; durationMs: number }[] = [
-  { itemId: 'item_branch', durationMs: 5 * 60 * 1000 },
-  { itemId: 'item_wood', durationMs: 15 * 60 * 1000 },
-  { itemId: 'item_charcoal', durationMs: 30 * 60 * 1000 },
+  { itemId: 'item_branch', durationMs: 2 * 60 * 1000 },
+  { itemId: 'item_wood', durationMs: 7 * 60 * 1000 },
+  { itemId: 'item_charcoal', durationMs: 18 * 60 * 1000 },
 ]
 
 export type CampfireActionResult =
@@ -17,10 +17,10 @@ export interface CampfireAdvanceResult {
   extinguishedBuildingIds: string[]
 }
 
-function getCampfireBuilding(state: GameSnapshot, buildingId: string) {
+function getBurnerBuilding(state: GameSnapshot, buildingId: string) {
   return state.buildings.find((building) => (
     building.id === buildingId
-    && building.definitionId === 'building_campfire'
+    && (building.definitionId === 'building_campfire' || building.definitionId === 'building_cooking_stove')
     && building.status === 'completed'
     && building.islandId === state.character.currentLocationId
   ))
@@ -33,7 +33,21 @@ export function getCampfireRemainingMs(state: GameSnapshot, buildingId: string, 
 }
 
 export function isCampfireLitAt(state: GameSnapshot, buildingId: string, now: number): boolean {
-  return Boolean(getCampfireBuilding(state, buildingId)) && getCampfireRemainingMs(state, buildingId, now) > 0
+  return state.buildings.some((building) => (
+    building.id === buildingId
+    && building.definitionId === 'building_campfire'
+    && building.status === 'completed'
+    && building.islandId === state.character.currentLocationId
+  )) && getCampfireRemainingMs(state, buildingId, now) > 0
+}
+
+export function isCookingStoveFueledAt(state: GameSnapshot, now: number): boolean {
+  return state.buildings.some((building) => (
+    building.definitionId === 'building_cooking_stove'
+    && building.status === 'completed'
+    && building.islandId === state.character.currentLocationId
+    && getCampfireRemainingMs(state, building.id, now) > 0
+  ))
 }
 
 export function setCampfireWarming(
@@ -65,16 +79,21 @@ export function setCampfireWarming(
   }
 }
 
-export function fuelCampfire(
+function fuelBuilding(
   state: GameSnapshot,
   buildingId: string,
   fuelItemId: ItemId,
   now: number,
+  definitionId: 'building_campfire' | 'building_cooking_stove',
 ): CampfireActionResult {
-  if (state.character.status !== 'alive') return { ok: false, message: 'Bạn cần hồi sinh trước khi nhóm thêm lửa.' }
+  if (state.character.status !== 'alive') return { ok: false, message: 'Bạn cần hồi sinh trước khi thêm nhiên liệu.' }
   if (state.activeCombat) return { ok: false, message: 'Không thể thêm nhiên liệu trong khi chiến đấu.' }
-  if (!getCampfireBuilding(state, buildingId)) {
-    return { ok: false, message: 'Không tìm thấy lửa trại đã hoàn thành tại đảo này.' }
+  const building = getBurnerBuilding(state, buildingId)
+  if (!building || building.definitionId !== definitionId) {
+    return {
+      ok: false,
+      message: `Không tìm thấy ${definitionId === 'building_campfire' ? 'lửa trại' : 'bếp nấu'} đã hoàn thành tại đảo này.`,
+    }
   }
   const option = campfireFuelOptions.find((entry) => entry.itemId === fuelItemId)
   if (!option) return { ok: false, message: 'Vật phẩm này không thể dùng làm nhiên liệu.' }
@@ -89,13 +108,34 @@ export function fuelCampfire(
   return {
     ok: true,
     state: { ...state, inventory: removed.container, campfireFuel },
-    message: `Đã thêm nhiên liệu. Lửa trại cháy thêm ${Math.round(option.durationMs / 60_000)} phút.`,
+    message: `Đã thêm nhiên liệu. ${building.definitionId === 'building_campfire' ? 'Lửa trại' : 'Bếp nấu'} cháy thêm ${Math.round(option.durationMs / 60_000)} phút.`,
   }
+}
+
+export function fuelCampfire(
+  state: GameSnapshot,
+  buildingId: string,
+  fuelItemId: ItemId,
+  now: number,
+): CampfireActionResult {
+  return fuelBuilding(state, buildingId, fuelItemId, now, 'building_campfire')
+}
+
+export function fuelCookingStove(
+  state: GameSnapshot,
+  buildingId: string,
+  fuelItemId: ItemId,
+  now: number,
+): CampfireActionResult {
+  return fuelBuilding(state, buildingId, fuelItemId, now, 'building_cooking_stove')
 }
 
 export function advanceCampfireFuel(state: GameSnapshot, now: number): CampfireAdvanceResult {
   const campfireIds = state.buildings
-    .filter((building) => building.definitionId === 'building_campfire' && building.status === 'completed')
+    .filter((building) => (
+      (building.definitionId === 'building_campfire' || building.definitionId === 'building_cooking_stove')
+      && building.status === 'completed'
+    ))
     .map((building) => building.id)
   const existingFuel = state.campfireFuel ?? {}
   let changed = false

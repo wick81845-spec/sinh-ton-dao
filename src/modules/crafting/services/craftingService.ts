@@ -5,7 +5,7 @@ import { craftingQueueLimit, recipes, type RecipeDefinition, type RecipeIngredie
 import { awardExperience } from '../../progression/services/progressionService'
 import { buildingDefinitions } from '../../building/data/buildingDefinitions'
 import { getIslandDefinition } from '../../world/data/worldDefinitions'
-import { isCampfireLitAt } from '../../building/services/campfireService'
+import { isCampfireLitAt, isCookingStoveFueledAt } from '../../building/services/campfireService'
 import { fishCatalog } from '../../../data/items/fishCatalog'
 import type { FishItemId } from '../../../shared/types/fish'
 
@@ -217,6 +217,9 @@ export function getRecipeAvailability(
   if (recipe.requiresLitCampfire && !state.buildings.some((building) => (
     building.definitionId === 'building_campfire' && isCampfireLitAt(state, building.id, now)
   ))) return 'Cần có lửa trại đang cháy; hãy thêm nhiên liệu cho lửa trại.'
+  if (recipe.stationId === 'building_cooking_stove' && !isCookingStoveFueledAt(state, now)) {
+    return 'Bếp đã hết nhiên liệu; hãy thêm cành cây, gỗ hoặc than trước khi nấu.'
+  }
   const fishSelection = getFishSelectionIssue(state, recipe, fishItemId)
   if (fishSelection.issue) return fishSelection.issue
   if (!hasIngredients(state, recipe.ingredients)) return 'Không đủ nguyên liệu trong túi đồ.'
@@ -292,6 +295,13 @@ export function completeCrafting(state: GameSnapshot, now: number): CraftingComp
       state: { ...state, craftingQueue: state.craftingQueue.slice(1) },
       message: 'Công thức của hàng đợi không còn tồn tại.',
     }
+  }
+
+  if (recipe.requiresLitCampfire && !state.buildings.some((building) => (
+    building.definitionId === 'building_campfire' && isCampfireLitAt(state, building.id, now)
+  ))) return { status: 'pending', state }
+  if (recipe.stationId === 'building_cooking_stove' && !isCookingStoveFueledAt(state, now)) {
+    return { status: 'pending', state }
   }
 
   const outputQuantity = activeJob.outputQuantity ?? recipe.output.quantity

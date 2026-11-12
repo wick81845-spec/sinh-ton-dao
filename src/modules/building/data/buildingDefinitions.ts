@@ -158,7 +158,7 @@ export const buildingDefinitions: readonly BuildingDefinition[] = [
   {
     id: 'building_cooking_stove',
     name: 'Bếp nấu',
-    description: 'Bếp đất tiết kiệm nhiên liệu, dùng nấu món ăn và đun nước.',
+    description: 'Bếp đất cần được tiếp nhiên liệu để nấu món ăn và đun nước.',
     maxLevel: 2,
     maxHealth: 140,
     constructionCost: [{ itemId: 'item_stone', quantity: 8 }, { itemId: 'item_wood', quantity: 4 }],

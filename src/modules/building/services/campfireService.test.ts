@@ -3,7 +3,9 @@ import { initialGameState } from '../../../data/mockGameState'
 import {
   advanceCampfireFuel,
   fuelCampfire,
+  fuelCookingStove,
   getCampfireRemainingMs,
+  isCookingStoveFueledAt,
   isCampfireLitAt,
   setCampfireWarming,
 } from './campfireService'
@@ -35,7 +37,7 @@ describe('campfireService', () => {
     const result = fuelCampfire(litCampfireState(), 'campfire-1', 'item_branch', 1_000)
     expect(result.ok).toBe(true)
     if (!result.ok) throw new Error(result.message)
-    expect(result.state.campfireFuel?.['campfire-1']).toEqual({ remainingMs: 5 * 60_000, lastUpdatedAt: 1_000 })
+    expect(result.state.campfireFuel?.['campfire-1']).toEqual({ remainingMs: 2 * 60_000, lastUpdatedAt: 1_000 })
     expect(result.state.inventory.slots.find((slot) => slot.itemId === 'item_branch')?.quantity).toBe(1)
     expect(isCampfireLitAt(result.state, 'campfire-1', 1_000)).toBe(true)
   })
@@ -59,7 +61,29 @@ describe('campfireService', () => {
     const second = fuelCampfire(first.state, 'campfire-1', 'item_branch', 61_000)
     expect(second.ok).toBe(true)
     if (!second.ok) throw new Error(second.message)
-    expect(second.state.campfireFuel?.['campfire-1']?.remainingMs).toBe(9 * 60_000)
+    expect(second.state.campfireFuel?.['campfire-1']?.remainingMs).toBe(3 * 60_000)
+  })
+
+  it('requires and consumes separate fuel for a cooking stove', () => {
+    const state = {
+      ...litCampfireState(),
+      buildings: [{
+        id: 'stove-1',
+        definitionId: 'building_cooking_stove',
+        islandId: initialGameState.character.homeIslandId,
+        level: 1,
+        health: 140,
+        status: 'completed' as const,
+      }],
+    }
+
+    expect(isCookingStoveFueledAt(state, 1_000)).toBe(false)
+    const fueled = fuelCookingStove(state, 'stove-1', 'item_branch', 1_000)
+    expect(fueled.ok).toBe(true)
+    if (!fueled.ok) throw new Error(fueled.message)
+    expect(fueled.state.campfireFuel?.['stove-1']).toEqual({ remainingMs: 2 * 60_000, lastUpdatedAt: 1_000 })
+    expect(isCookingStoveFueledAt(fueled.state, 1_000)).toBe(true)
+    expect(fuelCookingStove(state, 'campfire-1', 'item_branch', 1_000).ok).toBe(false)
   })
 
   it('only starts warming beside a lit campfire when body temperature is low', () => {
