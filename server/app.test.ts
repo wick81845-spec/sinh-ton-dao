@@ -19,6 +19,7 @@ const onlinePlayer: WorldPlayer = {
   id: profile.id,
   displayName: profile.display_name,
   islandName: profile.island_name,
+  currentIslandId: 'island_002',
   joinedAt: '2026-11-09T00:00:00.000Z',
 }
 

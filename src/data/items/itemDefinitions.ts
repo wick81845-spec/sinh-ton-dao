@@ -15,6 +15,7 @@ export interface ItemDefinition {
   usable: boolean
   tradable: boolean
   causesAilment?: SurvivalAilmentId
+  causesAilmentChance?: number
   hungerRestore?: number
   thirstRestore?: number
   healthRestore?: number
@@ -530,7 +531,7 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
   },
   item_fresh_water: {
     name: 'Nước suối',
-    description: 'Nước ngọt lấy từ dòng suối trong trên đảo.',
+    description: 'Nước lấy trực tiếp từ suối, giải khát nhanh nhưng có nguy cơ gây bệnh đường ruột.',
     category: 'resource',
     maxStack: 20,
     weight: 1,
@@ -540,6 +541,8 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
     usable: true,
     tradable: true,
     thirstRestore: 25,
+    causesAilment: 'diarrhea',
+    causesAilmentChance: 0.5,
   },
   item_seawater: {
     name: 'Nước biển',
@@ -883,15 +886,18 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
   },
   item_filtered_water: {
     name: 'Nước đã lọc',
-    description: 'Đã loại bỏ phần lớn cặn thô nhưng vẫn cần đun sôi để uống an toàn.',
-    category: 'resource',
+    description: 'Đã loại bỏ cặn thô; có thể uống tạm nhưng đun sôi sẽ an toàn hơn.',
+    category: 'food',
     maxStack: 20,
     weight: 0.5,
     icon: '◉',
     image: '/assets/resources/fresh-water.svg',
     tone: 'stone',
-    usable: false,
+    usable: true,
     tradable: true,
+    thirstRestore: 18,
+    causesAilment: 'diarrhea',
+    causesAilmentChance: 0.15,
   },
   item_sea_salt: {
     name: 'Muối biển',
@@ -1299,6 +1305,7 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
     tradable: true,
     hungerRestore: 8,
     causesAilment: 'diarrhea',
+    causesAilmentChance: 0.6,
     shelfLifeMs: 30 * 60 * 1000,
   },
   item_cooked_meat: {
@@ -1353,6 +1360,7 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
     tradable: true,
     hungerRestore: 12,
     causesAilment: 'diarrhea',
+    causesAilmentChance: 0.5,
     shelfLifeMs: 45 * 60 * 1000,
   },
   item_cooked_fillet: {
@@ -1371,8 +1379,8 @@ const staticItemDefinitions: Record<StaticItemId, ItemDefinition> = {
     shelfLifeMs: 120 * 60 * 1000,
   },
   item_pottery: {
-    name: 'Đồ gốm nung',
-    description: 'Vật dụng bằng đất sét nung kiên cố dùng chứa đựng và sinh hoạt.',
+    name: 'Nồi gốm',
+    description: 'Nồi đất sét nung để chứa nước và nấu ăn; không bị tiêu hao khi đun nước.',
     category: 'resource',
     maxStack: 10,
     weight: 1.0,

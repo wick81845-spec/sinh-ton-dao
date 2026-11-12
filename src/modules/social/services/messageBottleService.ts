@@ -16,6 +16,16 @@ const blockedWords = [
   'đĩ',
 ]
 
+export function getMessageBottleRpcErrorMessage(error: { code?: string; message: string }): string {
+  if (error.code === '42702') {
+    return 'Máy chủ chai thông điệp đang dùng bản lỗi cũ. Hãy áp dụng migration 20261112195500_fix_message_bottle_rpc.sql.'
+  }
+  if (error.code === 'PGRST202' || error.code === '42883' || error.code === '42P01') {
+    return 'Máy chủ chưa bật chức năng chai thông điệp. Hãy áp dụng các migration message_bottle_social và fix_message_bottle_rpc.'
+  }
+  return error.message
+}
+
 export function validateMessageBottleText(value: string): string | null {
   const message = value.trim()
   if (message.length < 1 || message.length > 280) {
@@ -45,13 +55,13 @@ export async function sendMessageBottle(message: string): Promise<void> {
   if (validationError) throw new Error(validationError)
   const client = await getClient()
   const { error } = await client.rpc('send_message_bottle', { p_message: message.trim() })
-  if (error) throw error
+  if (error) throw new Error(getMessageBottleRpcErrorMessage(error))
 }
 
 export async function readMessageBottle(): Promise<MessageBottle> {
   const client = await getClient()
   const { data, error } = await client.rpc('read_message_bottle')
-  if (error) throw error
+  if (error) throw new Error(getMessageBottleRpcErrorMessage(error))
   const message = data[0]
   if (!message) throw new Error('Chưa có thông điệp mới trôi đến đảo này.')
   return message
@@ -66,6 +76,6 @@ export async function reportMessageBottle(
     p_message_id: messageId,
     p_reason: reason,
   })
-  if (error) throw error
+  if (error) throw new Error(getMessageBottleRpcErrorMessage(error))
 }
 

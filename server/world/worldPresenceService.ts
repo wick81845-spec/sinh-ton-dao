@@ -6,6 +6,7 @@ export interface WorldPlayer {
   id: string
   displayName: string
   islandName: string
+  currentIslandId: string | null
   joinedAt: string
 }
 
@@ -67,11 +68,27 @@ export function createSupabaseWorldPresenceService(config: ApiConfig): WorldPres
         .in('id', presences.map((presence) => presence.player_id))
       if (profileError) throw profileError
 
+      const { data: gameStates, error: gameStateError } = await adminClient
+        .from('player_game_states')
+        .select('player_id, state')
+        .in('player_id', presences.map((presence) => presence.player_id))
+      if (gameStateError) throw gameStateError
+
       const profilesById = new Map(profiles.map((profile) => [profile.id, profile]))
+      const currentIslandByPlayerId = new Map(gameStates.map(({ player_id, state }) => [
+        player_id,
+        typeof state.character?.currentLocationId === 'string' ? state.character.currentLocationId : null,
+      ]))
       return presences.flatMap((presence) => {
         const profile = profilesById.get(presence.player_id)
         return profile
-          ? [{ id: profile.id, displayName: profile.display_name, islandName: profile.island_name, joinedAt: presence.joined_at }]
+          ? [{
+              id: profile.id,
+              displayName: profile.display_name,
+              islandName: profile.island_name,
+              currentIslandId: currentIslandByPlayerId.get(profile.id) ?? null,
+              joinedAt: presence.joined_at,
+            }]
           : []
       })
     },

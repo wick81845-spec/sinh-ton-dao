@@ -209,6 +209,11 @@ export function getRecipeAvailability(
     const station = buildingDefinitions.find((building) => building.id === recipe.stationId)
     return `Cần có ${station?.name.toLocaleLowerCase('vi-VN') ?? 'trạm chế biến'} đã hoàn thành.`
   }
+  if (recipe.requiredToolAlternatives?.length
+    && !recipe.requiredToolAlternatives.some((itemId) => countItem(state, itemId) > 0)) {
+    const alternatives = recipe.requiredToolAlternatives.map((itemId) => itemDefinitions[itemId].name)
+    return `Cần có ${alternatives.join(' hoặc ')} trong túi đồ; vật dụng này không bị tiêu hao.`
+  }
   if (recipe.requiresLitCampfire && !state.buildings.some((building) => (
     building.definitionId === 'building_campfire' && isCampfireLitAt(state, building.id, now)
   ))) return 'Cần có lửa trại đang cháy; hãy thêm nhiên liệu cho lửa trại.'

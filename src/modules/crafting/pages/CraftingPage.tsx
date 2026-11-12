@@ -146,8 +146,10 @@ export function CraftingPage() {
     const matchesTab = activeTab === 'all' || activeTab === category
 
     const ingredientNames = recipe.ingredients.map((ingredient) => itemDefinitions[ingredient.itemId].name).join(' ')
+    const requiredToolNames = (recipe.requiredToolAlternatives ?? [])
+      .map((itemId) => itemDefinitions[itemId].name).join(' ')
     const outputName = itemDefinitions[recipe.output.itemId].name
-    const matchesSearch = `${recipe.name} ${outputName} ${recipe.description} ${ingredientNames}`.toLocaleLowerCase('vi')
+    const matchesSearch = `${recipe.name} ${outputName} ${recipe.description} ${ingredientNames} ${requiredToolNames}`.toLocaleLowerCase('vi')
       .includes(normalizedSearch)
 
     if (!matchesTab || !matchesSearch) return false
@@ -156,7 +158,9 @@ export function CraftingPage() {
       const hasAllIngredients = recipe.ingredients.every(
         (ing) => getInventoryQuantity(gameState, ing.itemId) >= ing.quantity,
       )
-      if (!hasAllIngredients) return false
+      const hasRequiredTool = !recipe.requiredToolAlternatives?.length
+        || recipe.requiredToolAlternatives.some((itemId) => getInventoryQuantity(gameState, itemId) > 0)
+      if (!hasAllIngredients || !hasRequiredTool) return false
     }
 
     return true
@@ -210,15 +214,6 @@ export function CraftingPage() {
 
   return (
     <div className="crafting-page mc-crafting-wrapper">
-      <div className="page-title-row">
-        <div>
-          <span className="section-kicker">CHẾ TẠO · BÀN CHẾ TÁC 3×3</span>
-          <h1>Bàn chế tạo Minecraft</h1>
-          <p>Chọn công thức trong sách bên trái để tự động xếp nguyên liệu vào bàn chế tác 3×3.</p>
-        </div>
-        <div className="stamina-chip"><strong>{gameState.craftingQueue.length} / 3</strong> việc trong hàng đợi</div>
-      </div>
-
       {activeJob && activeRecipe && isActive && (
         <section className="gathering-progress" aria-live="polite">
           <div className="progress-heading">
@@ -361,13 +356,15 @@ export function CraftingPage() {
                   const hasAll = recipe.ingredients.every(
                     (ing) => getInventoryQuantity(gameState, ing.itemId) >= ing.quantity,
                   )
+                  const hasRequiredTool = !recipe.requiredToolAlternatives?.length
+                    || recipe.requiredToolAlternatives.some((itemId) => getInventoryQuantity(gameState, itemId) > 0)
                   const isSelected = selectedRecipe?.id === recipe.id
                   return (
                     <button
                       key={recipe.id}
                       type="button"
-                      className={`mc-recipe-slot${isSelected ? ' is-selected' : ''}${!hasAll ? ' is-unusable' : ''}`}
-                      title={`${recipe.name} (${hasAll ? 'Đủ nguyên liệu' : 'Thiếu nguyên liệu'})`}
+                      className={`mc-recipe-slot${isSelected ? ' is-selected' : ''}${!hasAll || !hasRequiredTool ? ' is-unusable' : ''}`}
+                      title={`${recipe.name} (${hasAll && hasRequiredTool ? 'Đủ nguyên liệu và dụng cụ' : 'Thiếu nguyên liệu hoặc dụng cụ'})`}
                       onClick={() => setSelectedRecipeId(recipe.id)}
                     >
                       <img src={outDef.image} alt={recipe.name} />
@@ -485,6 +482,12 @@ export function CraftingPage() {
                     />
                   ))}
                 </div>
+                {selectedRecipe.requiredToolAlternatives && selectedRecipe.requiredToolAlternatives.length > 0 && (
+                  <p className="mc-recipe-tool-requirement">
+                    Dụng cụ cần có (không tiêu hao): {selectedRecipe.requiredToolAlternatives
+                      .map((itemId) => itemDefinitions[itemId].name).join(' hoặc ')}
+                  </p>
+                )}
 
                 {selectedIssue && <span className="mc-issue-warning">{selectedIssue}</span>}
               </div>

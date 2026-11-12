@@ -268,6 +268,31 @@ describe('gatheringService', () => {
     expect(getGatheringAvailability(withIronAxe, 'chop-hardwood', 1000)).toBeNull()
   })
 
+  it('uses a stronger axe for activities that only require a wooden axe', () => {
+    const withIronAxe = {
+      ...stateWithAxe,
+      inventory: {
+        ...stateWithAxe.inventory,
+        slots: [
+          ...stateWithAxe.inventory.slots,
+          { itemId: 'item_iron_axe' as const, quantity: 1 },
+        ],
+      },
+    }
+    expect(getGatheringAvailability(withIronAxe, 'chop-forest-wood', 1_000)).toBeNull()
+
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+    const started = startGathering(withIronAxe, 'chop-forest-wood', 1_000)
+    if (!started.ok) throw new Error(started.message)
+    const completed = completeGathering(started.state, started.state.activeGathering?.completesAt ?? 11_000)
+    random.mockRestore()
+
+    expect(completed.status).toBe('completed')
+    if (completed.status !== 'completed') throw new Error('Wood chopping should complete.')
+    expect(completed.state.itemDurability?.item_iron_axe).toBe(99)
+    expect(completed.state.itemDurability?.item_wooden_axe).toBeUndefined()
+  })
+
   it('taps tree resin on the rainforest island without felling the tree', () => {
     const rainforestState = {
       ...stateWithAxe,

@@ -8,7 +8,12 @@ import {
 } from '../data/gatheringConfig'
 import { itemDefinitions } from '../../../data/items/itemDefinitions'
 import { getResourceDefinition } from '../../../data/resources/resourceDefinitions'
-import { addItems, degradeItemDurability, hasItemOrEquipped } from '../../inventory/services/inventoryService'
+import {
+  addItems,
+  degradeItemDurability,
+  getAvailableToolItemId,
+  hasItemOrEquipped,
+} from '../../inventory/services/inventoryService'
 import type { GameSnapshot, ItemId, ItemQuantity, ResourceNodeState } from '../../../shared/types/game'
 import { awardExperience } from '../../progression/services/progressionService'
 import {
@@ -95,7 +100,7 @@ export function getNodeUnlockIssue(state: GameSnapshot, nodeId: string): string 
     return 'Hãy hoàn thành một lần thám hiểm để mở khóa địa điểm này.'
   }
   const toolItemId = getResourceDefinition(node.resourceId)?.harvesting.toolItemId
-  if (toolItemId && !hasItemOrEquipped(state, toolItemId)) {
+  if (toolItemId && !getAvailableToolItemId(state, toolItemId)) {
     return `Cần có ${itemDefinitions[toolItemId].name} trong túi hoặc ô trang bị.`
   }
   return null
@@ -123,7 +128,7 @@ function getGatheringIssue(state: GameSnapshot, activityId: string, now: number)
   if (state.survival.stamina < resource.harvesting.staminaCost) return 'Không đủ thể lực để thực hiện hoạt động này.'
 
   if (resource.harvesting.toolItemId) {
-    if (!hasItemOrEquipped(state, resource.harvesting.toolItemId)) {
+    if (!getAvailableToolItemId(state, resource.harvesting.toolItemId)) {
       return `Cần có ${itemDefinitions[resource.harvesting.toolItemId].name} trong túi hoặc ô trang bị.`
     }
   }
@@ -476,6 +481,8 @@ export function completeGathering(
     }
   }
   const toolItemId = data.resource.harvesting.toolItemId
+    ? getAvailableToolItemId(state, data.resource.harvesting.toolItemId)
+    : undefined
   const toolUse = toolItemId
     ? degradeItemDurability({ ...state, inventory }, toolItemId)
     : { state: { ...state, inventory }, remaining: 0, broke: false }

@@ -2,7 +2,12 @@ export interface WorldPlayerView {
   id: string
   displayName: string
   islandName: string
+  currentIslandId: string | null
   joinedAt: string
+}
+
+export function getOnlinePlayersOnIsland(players: readonly WorldPlayerView[], islandId: string): WorldPlayerView[] {
+  return players.filter((player) => player.currentIslandId === islandId)
 }
 
 interface WorldPresenceResponse {
@@ -28,6 +33,7 @@ function parseWorldPresence(value: unknown): WorldPresenceResponse {
       || typeof player.id !== 'string'
       || typeof player.displayName !== 'string'
       || typeof player.islandName !== 'string'
+      || (player.currentIslandId !== null && typeof player.currentIslandId !== 'string')
       || typeof player.joinedAt !== 'string') {
       throw new Error('Máy chủ trả về hồ sơ người chơi không hợp lệ.')
     }
@@ -35,6 +41,7 @@ function parseWorldPresence(value: unknown): WorldPresenceResponse {
       id: player.id,
       displayName: player.displayName,
       islandName: player.islandName,
+      currentIslandId: player.currentIslandId,
       joinedAt: player.joinedAt,
     }
   })

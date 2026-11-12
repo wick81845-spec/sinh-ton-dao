@@ -28,7 +28,8 @@ import { fishCatalog } from '../../../data/items/fishCatalog'
 import { getBestFishingRod } from '../../../data/items/fishingRodCatalog'
 import { biomeDefinitionsById } from '../../world/data/biomeDefinitions'
 import { getIslandDefinition, worldLocations } from '../../world/data/worldDefinitions'
-import { getIslandPresence } from '../../world/services/islandPresenceService'
+import { useWorldPresence } from '../../../app/providers/useWorldPresence'
+import { getOnlinePlayersOnIsland } from '../../social/services/worldPresenceClient'
 import { getCurrentWeather } from '../../world/services/weatherService'
 import { buildingDefinitions } from '../../building/data/buildingDefinitions'
 import { getBodyStatusEffects, type BodyStatusSeverity } from '../../survival/services/bodyStatusService'
@@ -62,6 +63,7 @@ export function GatheringPage({
   onClosePanel?: () => void
 }) {
   const { gameState, isLoading, error, startGathering, cancelGathering, finishFishing, failFishing, consumeItem } = useGame()
+  const { status: worldPresenceStatus, players: onlinePlayers } = useWorldPresence()
   const caughtFishSpecies = fishCatalog.filter((fish) => (gameState?.fishingJournal?.[fish.itemId] ?? 0) > 0).length
   const [now, setNow] = useState(gameClock.now())
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
@@ -177,7 +179,7 @@ export function GatheringPage({
   if (!gameState) return <p className="page-state error-state" role="alert">{error ?? 'Chưa có dữ liệu trò chơi.'}</p>
 
   const currentIsland = getIslandDefinition(gameState.character.currentLocationId)
-  const islandPresence = getIslandPresence(gameState.character.currentLocationId)
+  const islandPlayers = getOnlinePlayersOnIsland(onlinePlayers, gameState.character.currentLocationId)
   const currentMapLayout = currentIsland ? gatheringMapLayouts[currentIsland.id] : undefined
   const currentWorldLocation = worldLocations.find((location) => location.islandId === gameState.character.currentLocationId)
   const currentPositionName = currentWorldLocation?.name ?? currentIsland?.name ?? 'Vị trí chưa xác định'
@@ -411,20 +413,18 @@ export function GatheringPage({
                   {gameState.isResting && <span className="gathering-map-resting-indicator">Đang nghỉ ngơi tại {shelterLabel}</span>}
                 </div>
                 <div className="gathering-map-presence-bar">
-                  {islandPresence.isPersonal ? (
-                    <span className="gathering-presence-tag is-personal">
-                      🏝 <strong>Đảo nhà riêng tư</strong> (Chỉ có bạn)
+                  <div className="gathering-presence-shared">
+                    <span className="gathering-presence-tag is-shared">
+                      👥 <strong>Người chơi đang ở đảo này ({islandPlayers.length}):</strong>
                     </span>
-                  ) : (
-                    <div className="gathering-presence-shared">
-                      <span className="gathering-presence-tag is-shared">
-                        👥 <strong>Đảo chung ({islandPresence.playerCount} người đang có mặt):</strong>
-                      </span>
-                      <small className="gathering-presence-names">
-                        {islandPresence.players.join(' · ')}
-                      </small>
-                    </div>
-                  )}
+                    <small className="gathering-presence-names">
+                      {worldPresenceStatus === 'online' || worldPresenceStatus === 'full'
+                        ? islandPlayers.length > 0
+                          ? islandPlayers.map((player) => player.displayName).join(' · ')
+                          : 'Hiện không có người chơi online nào ở đây.'
+                        : 'Chưa kết nối được danh sách người chơi online.'}
+                    </small>
+                  </div>
                 </div>
                 <div className="gathering-map-survival-stats" aria-label="Thông số sinh tồn hiện tại">
                   {([

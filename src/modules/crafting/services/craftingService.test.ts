@@ -316,7 +316,7 @@ describe('craftingService', () => {
       .toContainEqual({ itemId: 'item_cooked_fish', quantity: 1, expiresAt: expect.any(Number) })
   })
 
-  it('boils fresh water at a fueled campfire', () => {
+  it('boils water in a reusable pot or can at a fueled campfire', () => {
     const state = {
       ...initialGameState,
       inventory: {
@@ -324,6 +324,7 @@ describe('craftingService', () => {
         slots: [
           { itemId: 'item_fresh_water' as const, quantity: 1 },
           { itemId: 'item_branch' as const, quantity: 1 },
+          { itemId: 'item_pottery' as const, quantity: 1 },
         ],
       },
       buildings: [{
@@ -340,8 +341,32 @@ describe('craftingService', () => {
     expect(getRecipeAvailability(state, 'recipe_clean_water', 1_000)).toBeNull()
     const queued = queueRecipe(state, 'recipe_clean_water', 1_000)
     if (!queued.ok) throw new Error(queued.message)
+    expect(queued.state.inventory.slots).toContainEqual({ itemId: 'item_pottery', quantity: 1 })
+    expect(queued.state.inventory.slots).toContainEqual({ itemId: 'item_branch', quantity: 1 })
     expect(completeCrafting(queued.state, 9_000).state.inventory.slots)
       .toContainEqual({ itemId: 'item_clean_water', quantity: 1 })
+
+    const withoutContainer = {
+      ...state,
+      inventory: {
+        ...state.inventory,
+        slots: [{ itemId: 'item_fresh_water' as const, quantity: 1 }],
+      },
+    }
+    expect(getRecipeAvailability(withoutContainer, 'recipe_clean_water', 1_000))
+      .toContain('Nồi gốm hoặc Lon kim loại')
+
+    const filteredWater = {
+      ...state,
+      inventory: {
+        ...state.inventory,
+        slots: [
+          { itemId: 'item_filtered_water' as const, quantity: 1 },
+          { itemId: 'item_metal_can' as const, quantity: 1 },
+        ],
+      },
+    }
+    expect(getRecipeAvailability(filteredWater, 'recipe_boil_filtered_water', 1_000)).toBeNull()
   })
 
   it('prepares an herbal antidote at a fueled campfire', () => {

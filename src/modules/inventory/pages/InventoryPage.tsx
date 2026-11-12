@@ -20,6 +20,10 @@ const reportReasons: { value: MessageBottleReportReason; label: string }[] = [
   { value: 'other', label: 'Lý do khác' },
 ]
 
+function getBottleErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Không thể hoàn tất thao tác chai thông điệp.'
+}
+
 function getStatStatus(stat: SurvivalStatName, value: number): string {
   return getSurvivalMeterStatus(stat, value)
 }
@@ -294,13 +298,18 @@ export function InventoryPage() {
     if (itemId !== 'item_message_bottle') return
 
     setIsBottleBusy(true)
-    const result = await readMessageBottle()
-    setIsBottleBusy(false)
-    if (!result.ok) {
-      setBottleError(result.message)
-      return
+    try {
+      const result = await readMessageBottle()
+      if (!result.ok) {
+        setBottleError(result.message)
+        return
+      }
+      setActiveBottle(result.bottle)
+    } catch (readError: unknown) {
+      setBottleError(getBottleErrorMessage(readError))
+    } finally {
+      setIsBottleBusy(false)
     }
-    setActiveBottle(result.bottle)
   }
 
   async function handleSendBottle(event: FormEvent<HTMLFormElement>) {
@@ -308,27 +317,37 @@ export function InventoryPage() {
     if (isBottleBusy) return
     setIsBottleBusy(true)
     setBottleError(null)
-    const result = await sendMessageBottle(bottleMessage)
-    setIsBottleBusy(false)
-    if (!result.ok) {
-      setBottleError(result.message)
-      return
+    try {
+      const result = await sendMessageBottle(bottleMessage)
+      if (!result.ok) {
+        setBottleError(result.message)
+        return
+      }
+      setBottleDialogMode(null)
+      setBottleMessage('')
+    } catch (sendError: unknown) {
+      setBottleError(getBottleErrorMessage(sendError))
+    } finally {
+      setIsBottleBusy(false)
     }
-    setBottleDialogMode(null)
-    setBottleMessage('')
   }
 
   async function handleReportBottle() {
     if (!activeBottle || isBottleBusy || bottleReportMessage) return
     setIsBottleBusy(true)
     setBottleError(null)
-    const result = await reportMessageBottle(activeBottle.message_id, reportReason)
-    setIsBottleBusy(false)
-    if (!result.ok) {
-      setBottleError(result.message)
-      return
+    try {
+      const result = await reportMessageBottle(activeBottle.message_id, reportReason)
+      if (!result.ok) {
+        setBottleError(result.message)
+        return
+      }
+      setBottleReportMessage(result.message)
+    } catch (reportError: unknown) {
+      setBottleError(getBottleErrorMessage(reportError))
+    } finally {
+      setIsBottleBusy(false)
     }
-    setBottleReportMessage(result.message)
   }
 
   const isAtHome = gameState.character.currentLocationId === gameState.character.homeIslandId

@@ -191,13 +191,62 @@ describe('inventoryService', () => {
       ...initialGameState.inventory,
       slots: [...initialGameState.inventory.slots, { itemId: 'item_fresh_water' as const, quantity: 1 }],
     }
-    const result = consumeItem({ ...initialGameState, inventory }, 'item_fresh_water')
+    const result = consumeItem({ ...initialGameState, inventory }, 'item_fresh_water', 1_000, () => 0.99)
 
     expect(result.ok).toBe(true)
     if (!result.ok) throw new Error(result.message)
     expect(result.state.survival.thirst).toBe(99)
     expect(result.state.survival.hunger).toBe(initialGameState.survival.hunger)
     expect(result.state.inventory.slots.some((slot) => slot.itemId === 'item_fresh_water')).toBe(false)
+  })
+
+  it('can cause diarrhea from raw meat and untreated stream water', () => {
+    const rawFoodState = {
+      ...initialGameState,
+      survival: { ...initialGameState.survival, hunger: 50 },
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [{ itemId: 'item_raw_meat' as const, quantity: 1 }],
+      },
+    }
+    const rawFood = consumeItem(rawFoodState, 'item_raw_meat', 1_000, () => 0.59)
+    expect(rawFood.ok).toBe(true)
+    if (!rawFood.ok) throw new Error(rawFood.message)
+    expect(rawFood.state.ailments).toContainEqual({ id: 'diarrhea', elapsedMs: 0 })
+
+    const rawWaterState = {
+      ...initialGameState,
+      survival: { ...initialGameState.survival, thirst: 50 },
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [{ itemId: 'item_fresh_water' as const, quantity: 1 }],
+      },
+    }
+    const rawWater = consumeItem(rawWaterState, 'item_fresh_water', 1_000, () => 0.49)
+    expect(rawWater.ok).toBe(true)
+    if (!rawWater.ok) throw new Error(rawWater.message)
+    expect(rawWater.state.ailments).toContainEqual({ id: 'diarrhea', elapsedMs: 0 })
+  })
+
+  it('lets filtered water restore thirst with a lower illness chance', () => {
+    const state = {
+      ...initialGameState,
+      survival: { ...initialGameState.survival, thirst: 50 },
+      inventory: {
+        ...initialGameState.inventory,
+        slots: [{ itemId: 'item_filtered_water' as const, quantity: 1 }],
+      },
+    }
+    const safeOutcome = consumeItem(state, 'item_filtered_water', 1_000, () => 0.15)
+    expect(safeOutcome.ok).toBe(true)
+    if (!safeOutcome.ok) throw new Error(safeOutcome.message)
+    expect(safeOutcome.state.survival.thirst).toBe(68)
+    expect(safeOutcome.state.ailments ?? []).toEqual([])
+
+    const riskyOutcome = consumeItem(state, 'item_filtered_water', 1_000, () => 0.14)
+    expect(riskyOutcome.ok).toBe(true)
+    if (!riskyOutcome.ok) throw new Error(riskyOutcome.message)
+    expect(riskyOutcome.state.ailments).toContainEqual({ id: 'diarrhea', elapsedMs: 0 })
   })
 
   it('lets wild fruit provide a small health recovery when injured', () => {

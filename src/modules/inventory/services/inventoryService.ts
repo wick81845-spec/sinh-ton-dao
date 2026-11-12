@@ -1,6 +1,6 @@
 import { isAccessoryItem, itemDefinitions } from '../../../data/items/itemDefinitions'
 import { survivalConfig } from '../../survival/data/survivalConfig'
-import { inflictPoisoning } from '../../survival/services/ailmentService'
+import { inflictSurvivalAilment } from '../../survival/services/ailmentService'
 import { getSurvivalConditions } from '../../survival/utils/survivalCalculator'
 import type {
   GameSnapshot,
@@ -351,6 +351,22 @@ export function hasItemOrEquipped(state: GameSnapshot, itemId: ItemId): boolean 
     || state.inventory.slots.some((slot) => slot.itemId === itemId)
 }
 
+const toolUpgradeFamilies: readonly (readonly ItemId[])[] = [
+  ['item_wooden_axe', 'item_copper_axe', 'item_iron_axe'],
+]
+
+export function getAvailableToolItemId(state: GameSnapshot, requiredItemId: ItemId): ItemId | undefined {
+  const family = toolUpgradeFamilies.find((tools) => tools.includes(requiredItemId))
+  const candidates = family
+    ? family.slice(family.indexOf(requiredItemId)).reverse()
+    : [requiredItemId]
+  return candidates.find((itemId) => {
+    if (!hasItemOrEquipped(state, itemId)) return false
+    const maximum = itemDefinitions[itemId].maxDurability
+    return !maximum || (state.itemDurability?.[itemId] ?? maximum) > 0
+  })
+}
+
 export function repairItem(state: GameSnapshot, itemId: ItemId): InventoryActionResult {
   const maximum = itemDefinitions[itemId].maxDurability
   if (!maximum || !hasItemOrEquipped(state, itemId)) {
@@ -554,7 +570,12 @@ export function transferItems(
   }
 }
 
-export function consumeItem(state: GameSnapshot, itemId: ItemId, now = Date.now()): UseItemResult {
+export function consumeItem(
+  state: GameSnapshot,
+  itemId: ItemId,
+  now = Date.now(),
+  random: () => number = Math.random,
+): UseItemResult {
   if (state.character.status !== 'alive') {
     return { ok: false, message: 'Bạn cần hồi sinh trước khi sử dụng vật phẩm.' }
   }
@@ -648,12 +669,15 @@ export function consumeItem(state: GameSnapshot, itemId: ItemId, now = Date.now(
   const curedAilmentMessage = curedAilments.length > 0
     ? ` Đã chữa: ${curedAilments.map((ailment) => curedAilmentNames[ailment.id]).join(', ')}.`
     : ''
-  const causedPoisoning = definition.causesAilment === 'poisoning'
-    && !state.ailments?.some((ailment) => ailment.id === 'poisoning')
-  const stateAfterUse = definition.causesAilment === 'poisoning'
-    ? inflictPoisoning(state)
+  const causedAilment = definition.causesAilment !== undefined
+    && random() < (definition.causesAilmentChance ?? 1)
+    && !state.ailments?.some((ailment) => ailment.id === definition.causesAilment)
+  const stateAfterUse = causedAilment && definition.causesAilment
+    ? inflictSurvivalAilment(state, definition.causesAilment)
     : state
-  const causedAilmentMessage = causedPoisoning ? ' Bạn bị ngộ độc; hãy dùng thuốc giải độc.' : ''
+  const causedAilmentMessage = causedAilment && definition.causesAilment
+    ? ` Bạn bị ${curedAilmentNames[definition.causesAilment]}; hãy dùng thuốc giải độc.`
+    : ''
   const restorationMessage = [
     restoredHunger > 0 ? `No bụng +${restoredHunger}.` : '',
     restoredThirst > 0 ? `Nước +${restoredThirst}.` : '',

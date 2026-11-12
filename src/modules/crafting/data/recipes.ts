@@ -18,6 +18,7 @@ export interface RecipeDefinition {
   pattern?: (ItemId | null)[][]
   durationSeconds: number
   stationId?: string
+  requiredToolAlternatives?: readonly ItemId[]
   requiredLevel?: number
   technologyId?: string
   requiredDiscoveryId?: string
@@ -313,8 +314,8 @@ export const recipes: readonly RecipeDefinition[] = [
   {
     id: 'recipe_pottery',
     kind: 'processing',
-    name: 'Nung đồ gốm',
-    description: 'Nung đất sét dẻo thành đồ gốm chịu lực và chứa nước trong lò.',
+    name: 'Nung nồi gốm',
+    description: 'Nung đất sét dẻo thành nồi gốm chắc chắn để chứa nước và nấu ăn.',
     ingredients: [
       { itemId: 'item_clay', quantity: 3 },
       { itemId: 'item_charcoal', quantity: 1 },
@@ -1084,11 +1085,12 @@ export const recipes: readonly RecipeDefinition[] = [
     id: 'recipe_clean_water',
     kind: 'processing',
     name: 'Đun sôi nước',
-    description: 'Đun nước thu thập được để giảm nguy cơ bệnh do nước.',
-    ingredients: [{ itemId: 'item_fresh_water', quantity: 1 }, { itemId: 'item_branch', quantity: 1 }],
+    description: 'Đun nước suối trong nồi gốm hoặc lon kim loại để giảm nguy cơ bệnh do nước.',
+    ingredients: [{ itemId: 'item_fresh_water', quantity: 1 }],
     output: { itemId: 'item_clean_water', quantity: 1 },
     durationSeconds: 8,
     stationId: 'building_campfire',
+    requiredToolAlternatives: ['item_pottery', 'item_metal_can'],
     requiresLitCampfire: true,
     requiredLevel: 1,
   },
@@ -1112,11 +1114,12 @@ export const recipes: readonly RecipeDefinition[] = [
     id: 'recipe_boil_filtered_water',
     kind: 'processing',
     name: 'Đun sôi nước đã lọc',
-    description: 'Đun sôi nước sau lọc để xử lý an toàn trước khi uống.',
-    ingredients: [{ itemId: 'item_filtered_water', quantity: 1 }, { itemId: 'item_branch', quantity: 1 }],
+    description: 'Đun sôi nước đã lọc trong nồi gốm hoặc lon kim loại để xử lý an toàn trước khi uống.',
+    ingredients: [{ itemId: 'item_filtered_water', quantity: 1 }],
     output: { itemId: 'item_clean_water', quantity: 1 },
     durationSeconds: 8,
     stationId: 'building_campfire',
+    requiredToolAlternatives: ['item_pottery', 'item_metal_can'],
     requiresLitCampfire: true,
     requiredLevel: 1,
   },
